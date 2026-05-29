@@ -1,36 +1,41 @@
-import {App, PluginSettingTab, Setting} from "obsidian";
-import MyPlugin from "./main";
+import { App, PluginSettingTab, Setting } from 'obsidian';
 
-export interface MyPluginSettings {
-	mySetting: string;
+import type DialPlugin from './main';
+
+export interface DialSettings {
+	defaultSpeed: number;
 }
 
-export const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
-}
+export const DEFAULT_SETTINGS: DialSettings = {
+	defaultSpeed: 1,
+};
 
-export class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+export class DialSettingTab extends PluginSettingTab {
+	plugin: DialPlugin;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: DialPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
 
 	display(): void {
-		const {containerEl} = this;
-
+		const { containerEl } = this;
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Settings #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
-				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
-					await this.plugin.saveSettings();
-				}));
+			.setName('Default playback speed')
+			.setDesc('The default playback speed for videos.')
+			.addText((text) =>
+				text
+					.setPlaceholder('1')
+					.setValue(String(this.plugin.settings.defaultSpeed))
+					.onChange(async (value) => {
+						const speed = parseFloat(value);
+						if (!isNaN(speed) && speed > 0) {
+							this.plugin.settings.defaultSpeed = speed;
+							await this.plugin.saveSettings();
+						}
+					}),
+			);
 	}
 }
