@@ -1,14 +1,11 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab } from 'obsidian';
 
 import type DialPlugin from './main';
 
-export interface DialSettings {
-	defaultSpeed: number;
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface DialSettings {}
 
-export const DEFAULT_SETTINGS: DialSettings = {
-	defaultSpeed: 1,
-};
+export const DEFAULT_SETTINGS: DialSettings = {};
 
 export class DialSettingTab extends PluginSettingTab {
 	plugin: DialPlugin;
@@ -21,21 +18,5 @@ export class DialSettingTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
-
-		new Setting(containerEl)
-			.setName('Default playback speed')
-			.setDesc('The default playback speed for videos.')
-			.addText((text) =>
-				text
-					.setPlaceholder('1')
-					.setValue(String(this.plugin.settings.defaultSpeed))
-					.onChange(async (value) => {
-						const speed = parseFloat(value);
-						if (!isNaN(speed) && speed > 0) {
-							this.plugin.settings.defaultSpeed = speed;
-							await this.plugin.saveSettings();
-						}
-					}),
-			);
 	}
 }
