@@ -1,6 +1,7 @@
 import type { View } from 'obsidian';
 
 import { Notice, TFile } from 'obsidian';
+import { join } from 'path';
 
 import type DialPlugin from '@/main';
 import type { Subtitle } from '@/types';
@@ -10,7 +11,13 @@ import { SubtitleView, SUBTITLE_VIEW_TYPE } from '@/ui/subtitle-view';
 import { VideoPlayerView, VIDEO_PLAYER_VIEW_TYPE } from '@/ui/video-player-view';
 
 export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
-	// 1. Read frontmatter
+	// 1. Validate settings
+	if (!plugin.settings.videoLibraryPath) {
+		new Notice('Please set the video library path in plugin settings.');
+		return;
+	}
+
+	// 2. Read frontmatter
 	const activeFile = plugin.app.workspace.getActiveFile();
 	if (!activeFile) {
 		new Notice('No active file');
@@ -25,10 +32,17 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 		return;
 	}
 
-	const videoPath = String(frontmatter.video);
-	const subtitlePath = String(frontmatter.subtitle);
+	const videoRelative = String(frontmatter.video);
+	const subtitleRelative = String(frontmatter.subtitle);
 
-	// 2. Read subtitle file (inside vault)
+	// 3. Resolve video path (absolute, outside vault)
+	const videoPath = join(plugin.settings.videoLibraryPath, videoRelative);
+
+	// 4. Read subtitle file (inside vault)
+	const subtitlePath = join(plugin.settings.subtitleLibraryPath, subtitleRelative).replace(
+		/\\/g,
+		'/',
+	);
 	const subtitleFile = plugin.app.vault.getAbstractFileByPath(subtitlePath);
 	if (!subtitleFile || !(subtitleFile instanceof TFile)) {
 		new Notice(`Subtitle file not found: ${subtitlePath}`);
@@ -56,11 +70,11 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 		return;
 	}
 
-	// 3. Open both views
+	// 5. Open both views
 	const videoView = (await openView(plugin, VIDEO_PLAYER_VIEW_TYPE)) as VideoPlayerView;
 	const subtitleView = (await openView(plugin, SUBTITLE_VIEW_TYPE)) as SubtitleView;
 
-	// 4. Wire everything up
+	// 6. Wire everything up
 	videoView.loadVideo(videoPath);
 	videoView.setSubtitles(subtitles);
 	subtitleView.setSubtitles(subtitles);
