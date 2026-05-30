@@ -26,9 +26,11 @@ New-Item -ItemType SymbolicLink `
 # mklink /D "D:\vaults\my-vault\.obsidian\plugins\my-plugin" "D:\code\my-plugin-src"
 # mklink /J "D:\vaults\my-vault\.obsidian\plugins\my-plugin" "D:\code\my-plugin-src"
 mklink /J "dial-vault\.obsidian\plugins\dial" "dial"
+mklink /J "dial-vault\_lib\videos" "C:\Users\28180\Videos\obh"
 
 # Bash
 ln -s ~/Documents/code3/base/web/dial ~/Documents/code3/base/web/dial-vault/.obsidian/plugins/dial
+ln -s ~/Movies/obh ~/Documents/code3/base/web/dial-vault/_lib/videos
 ```
 
 - build copy
