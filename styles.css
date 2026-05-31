@@ -56,3 +56,14 @@
 	color: var(--text-normal);
 	line-height: 1.6;
 }
+
+/* Video Note Modal */
+.dial-input {
+	width: 100%;
+}
+
+.dial-hint {
+	color: var(--text-muted);
+	font-size: 0.85em;
+	margin: 8px 0 0;
+}

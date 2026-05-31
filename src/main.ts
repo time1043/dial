@@ -2,6 +2,7 @@ import { Plugin } from 'obsidian';
 
 import type { DialSettings } from './settings';
 
+import { createVideoNote } from './commands/create-video-note';
 import { openVideoPlayer } from './commands/open-player';
 import { DEFAULT_SETTINGS, DialSettingTab } from './settings';
 import { SubtitleView, SUBTITLE_VIEW_TYPE } from './ui/subtitle-view';
@@ -24,6 +25,12 @@ export default class DialPlugin extends Plugin {
 			id: 'open-video-player',
 			name: 'Open video player',
 			callback: () => openVideoPlayer(this),
+		});
+
+		this.addCommand({
+			id: 'create-video-note',
+			name: 'Create video note',
+			callback: () => createVideoNote(this),
 		});
 
 		this.addSettingTab(new DialSettingTab(this.app, this));
