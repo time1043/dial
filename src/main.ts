@@ -66,6 +66,15 @@ export default class DialPlugin extends Plugin {
 		const subtitleView = this.app.workspace.getLeavesOfType(SUBTITLE_VIEW_TYPE).first()?.view;
 		if (videoView instanceof VideoPlayerView && subtitleView instanceof SubtitleView) {
 			setupSync(this, videoView, subtitleView);
+
+			// Restore playback position after vault reload
+			const path = videoView.getVideoPath();
+			if (path && videoView.getCurrentTime() === 0) {
+				const savedTime = this.positions.restore(path);
+				if (savedTime !== null) {
+					videoView.jumpToTime(savedTime);
+				}
+			}
 		}
 	}
 
