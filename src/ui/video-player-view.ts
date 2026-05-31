@@ -13,6 +13,8 @@ export class VideoPlayerView extends ItemView {
 	private subtitles: Subtitle[] = [];
 	private currentSubtitleId: number = -1;
 	private onSubtitleChange: ((id: number) => void) | null = null;
+	private savePositionCallback: ((time: number) => void) | null = null;
+	private saveTimer: ReturnType<typeof setTimeout> | null = null;
 	private blobUrl: string | null = null;
 
 	constructor(leaf: WorkspaceLeaf) {
@@ -53,9 +55,14 @@ export class VideoPlayerView extends ItemView {
 				this.onSubtitleChange?.(sub.id);
 			}
 		});
+
+		this.videoEl.addEventListener('pause', () => {
+			this.debouncedSavePosition();
+		});
 	}
 
 	async onClose(): Promise<void> {
+		this.savePositionImmediate();
 		this.revokeBlobUrl();
 		this.videoEl = null;
 	}
@@ -105,6 +112,27 @@ export class VideoPlayerView extends ItemView {
 		this.onSubtitleChange = cb;
 	}
 
+	setSavePositionCallback(cb: (time: number) => void): void {
+		this.savePositionCallback = cb;
+	}
+
+	private debouncedSavePosition(): void {
+		if (this.saveTimer) clearTimeout(this.saveTimer);
+		this.saveTimer = setTimeout(() => {
+			this.savePositionImmediate();
+		}, 1000);
+	}
+
+	private savePositionImmediate(): void {
+		if (this.saveTimer) {
+			clearTimeout(this.saveTimer);
+			this.saveTimer = null;
+		}
+		if (this.videoEl && this.videoPath && this.savePositionCallback) {
+			this.savePositionCallback(this.videoEl.currentTime);
+		}
+	}
+
 	jumpToTime(time: number): void {
 		if (!this.videoEl) return;
 		this.videoEl.currentTime = time;
@@ -125,6 +153,10 @@ export class VideoPlayerView extends ItemView {
 
 	getCurrentTime(): number {
 		return this.videoEl?.currentTime ?? 0;
+	}
+
+	getVideoPath(): string | null {
+		return this.videoPath;
 	}
 
 	getState(): Record<string, unknown> {

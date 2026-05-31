@@ -79,7 +79,13 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 	videoView.setSubtitles(subtitles);
 	subtitleView.setSubtitles(subtitles);
 
-	setupSync(videoView, subtitleView);
+	setupSync(plugin, videoView, subtitleView);
+
+	// 7. Restore playback position
+	const savedTime = plugin.positions.restore(videoPath);
+	if (savedTime !== null) {
+		videoView.jumpToTime(savedTime);
+	}
 
 	new Notice(`Loaded ${subtitles.length} subtitles`);
 }
@@ -100,7 +106,11 @@ async function openView(plugin: DialPlugin, viewType: string): Promise<View> {
 	return leaf.view;
 }
 
-export function setupSync(videoView: VideoPlayerView, subtitleView: SubtitleView): void {
+export function setupSync(
+	plugin: DialPlugin,
+	videoView: VideoPlayerView,
+	subtitleView: SubtitleView,
+): void {
 	// Video → Subtitle: highlight current subtitle
 	videoView.setSubtitleChangeCallback((id: number) => {
 		subtitleView.setCurrentSubtitle(id);
@@ -112,5 +122,13 @@ export function setupSync(videoView: VideoPlayerView, subtitleView: SubtitleView
 			videoView.jumpToTime(sub.start);
 			videoView.play();
 		},
+	});
+
+	// Save playback position on pause
+	videoView.setSavePositionCallback((time: number) => {
+		const path = videoView.getVideoPath();
+		if (path) {
+			plugin.positions.save(path, time);
+		}
 	});
 }
