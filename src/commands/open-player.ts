@@ -70,9 +70,9 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 		return;
 	}
 
-	// 5. Open both views
-	const videoView = (await openView(plugin, VIDEO_PLAYER_VIEW_TYPE)) as VideoPlayerView;
-	const subtitleView = (await openView(plugin, SUBTITLE_VIEW_TYPE)) as SubtitleView;
+	// 5. Open views in split layout: left (md + subtitles) | right (video)
+	const subtitleView = (await openView(plugin, SUBTITLE_VIEW_TYPE, 'tab')) as SubtitleView;
+	const videoView = (await openView(plugin, VIDEO_PLAYER_VIEW_TYPE, 'split')) as VideoPlayerView;
 
 	// 6. Wire everything up
 	videoView.loadVideo(videoPath);
@@ -90,14 +90,14 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 	new Notice(`Loaded ${subtitles.length} subtitles`);
 }
 
-async function openView(plugin: DialPlugin, viewType: string): Promise<View> {
+async function openView(plugin: DialPlugin, viewType: string, mode: 'tab' | 'split'): Promise<View> {
 	const existing = plugin.app.workspace.getLeavesOfType(viewType);
 	if (existing.length > 0) {
 		await plugin.app.workspace.revealLeaf(existing[0]!);
 		return existing[0]!.view;
 	}
 
-	const leaf = plugin.app.workspace.getLeaf('tab');
+	const leaf = plugin.app.workspace.getLeaf(mode);
 	await leaf.setViewState({
 		type: viewType,
 		active: true,
