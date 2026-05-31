@@ -8,6 +8,7 @@ import { PositionManager } from './modules/position-manager/position-manager';
 import { DEFAULT_SETTINGS, DialSettingTab } from './settings';
 import { SUBTITLE_VIEW_TYPE, SubtitleView } from './ui/subtitle-view';
 import { VIDEO_PLAYER_VIEW_TYPE, VideoPlayerView } from './ui/video-player-view';
+import { applySplitRatio } from './utils/layout';
 
 export default class DialPlugin extends Plugin {
 	settings: DialSettings = DEFAULT_SETTINGS;
@@ -75,6 +76,11 @@ export default class DialPlugin extends Plugin {
 					videoView.jumpToTime(savedTime);
 				}
 			}
+
+			// Re-apply 2:8 split ratio after DOM is ready
+			setTimeout(() => {
+				applySplitRatio(subtitleView.containerEl, [2, 8]);
+			}, 100);
 		}
 	}
 
