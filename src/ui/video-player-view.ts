@@ -126,11 +126,16 @@ export class VideoPlayerView extends ItemView {
 	}
 
 	private findSubtitleAt(time: number): Subtitle | null {
+		// Find the subtitle containing time, or the nearest previous one
+		let nearest: Subtitle | null = null;
 		for (const sub of this.subtitles) {
 			if (time >= sub.start && time <= sub.end) {
 				return sub;
 			}
+			if (sub.start < time) {
+				nearest = sub;
+			}
 		}
-		return null;
+		return nearest;
 	}
 }
