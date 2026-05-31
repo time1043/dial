@@ -7,8 +7,9 @@ import type DialPlugin from '@/main';
 import type { Subtitle } from '@/types';
 
 import { parseSubtitle } from '@/modules/subtitle-parsers';
-import { SubtitleView, SUBTITLE_VIEW_TYPE } from '@/ui/subtitle-view';
-import { VideoPlayerView, VIDEO_PLAYER_VIEW_TYPE } from '@/ui/video-player-view';
+import { SUBTITLE_VIEW_TYPE, SubtitleView } from '@/ui/subtitle-view';
+import { VIDEO_PLAYER_VIEW_TYPE, VideoPlayerView } from '@/ui/video-player-view';
+import { applySplitRatio } from '@/utils/layout';
 
 export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 	// 1. Validate settings
@@ -72,7 +73,16 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 
 	// 5. Open views in split layout: left (md + subtitles) | right (video)
 	const subtitleView = (await openView(plugin, SUBTITLE_VIEW_TYPE, 'tab')) as SubtitleView;
-	const videoView = (await openView(plugin, VIDEO_PLAYER_VIEW_TYPE, 'split')) as VideoPlayerView;
+	const subLeaf = plugin.app.workspace.getLeavesOfType(SUBTITLE_VIEW_TYPE)[0]!;
+	const videoLeaf = plugin.app.workspace.createLeafBySplit(subLeaf, 'vertical');
+	await videoLeaf.setViewState({ type: VIDEO_PLAYER_VIEW_TYPE, active: true });
+	await plugin.app.workspace.revealLeaf(subLeaf);
+	const videoView = videoLeaf.view as VideoPlayerView;
+
+	// 6. Set 2:8 ratio via CSS flex
+	setTimeout(() => {
+		applySplitRatio(subtitleView.containerEl, [2, 8]);
+	}, 100);
 
 	// 6. Wire everything up
 	videoView.loadVideo(videoPath);
@@ -90,7 +100,11 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 	new Notice(`Loaded ${subtitles.length} subtitles`);
 }
 
-async function openView(plugin: DialPlugin, viewType: string, mode: 'tab' | 'split'): Promise<View> {
+async function openView(
+	plugin: DialPlugin,
+	viewType: string,
+	mode: 'tab' | 'split',
+): Promise<View> {
 	const existing = plugin.app.workspace.getLeavesOfType(viewType);
 	if (existing.length > 0) {
 		await plugin.app.workspace.revealLeaf(existing[0]!);
