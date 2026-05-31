@@ -73,6 +73,17 @@ export class SubtitleView extends ItemView {
 		this.onSubtitleClick = opts.onSubtitleClick;
 	}
 
+	getState(): Record<string, unknown> {
+		return { subtitles: this.subtitles };
+	}
+
+	async setState(state: Record<string, unknown>): Promise<void> {
+		const { subtitles } = state as { subtitles: Subtitle[] | undefined };
+		if (subtitles) {
+			this.setSubtitles(subtitles);
+		}
+	}
+
 	private renderSubtitles(): void {
 		if (!this.subtitleContainerEl) return;
 		this.subtitleContainerEl.empty();

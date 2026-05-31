@@ -100,7 +100,7 @@ async function openView(plugin: DialPlugin, viewType: string): Promise<View> {
 	return leaf.view;
 }
 
-function setupSync(videoView: VideoPlayerView, subtitleView: SubtitleView): void {
+export function setupSync(videoView: VideoPlayerView, subtitleView: SubtitleView): void {
 	// Video → Subtitle: highlight current subtitle
 	videoView.setSubtitleChangeCallback((id: number) => {
 		subtitleView.setCurrentSubtitle(id);

@@ -9,6 +9,7 @@ export const VIDEO_PLAYER_VIEW_TYPE = 'dial-video-player';
 
 export class VideoPlayerView extends ItemView {
 	private videoEl: HTMLVideoElement | null = null;
+	private videoPath: string | null = null;
 	private subtitles: Subtitle[] = [];
 	private currentSubtitleId: number = -1;
 	private onSubtitleChange: ((id: number) => void) | null = null;
@@ -61,6 +62,7 @@ export class VideoPlayerView extends ItemView {
 
 	loadVideo(path: string): void {
 		if (!this.videoEl) return;
+		this.videoPath = path;
 		try {
 			const buffer = fs.readFileSync(path) as Uint8Array;
 			const ext = path.split('.').pop()?.toLowerCase() ?? 'mp4';
@@ -123,6 +125,27 @@ export class VideoPlayerView extends ItemView {
 
 	getCurrentTime(): number {
 		return this.videoEl?.currentTime ?? 0;
+	}
+
+	getState(): Record<string, unknown> {
+		return {
+			videoPath: this.videoPath,
+			subtitles: this.subtitles,
+		};
+	}
+
+	async setState(state: Record<string, unknown>): Promise<void> {
+		const { videoPath, subtitles } = state as {
+			videoPath: string | undefined;
+			subtitles: Subtitle[] | undefined;
+		};
+		if (videoPath) {
+			this.videoPath = videoPath;
+			this.loadVideo(videoPath);
+		}
+		if (subtitles) {
+			this.subtitles = subtitles;
+		}
 	}
 
 	private findSubtitleAt(time: number): Subtitle | null {
