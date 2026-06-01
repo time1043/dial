@@ -76,6 +76,30 @@
 	font-weight: 600;
 }
 
+/* Speed Controls */
+.dial-speed-controls {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 12px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	flex-shrink: 0;
+}
+
+.dial-speed-label {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--text-muted);
+	min-width: 32px;
+	text-align: right;
+}
+
+.dial-speed-slider {
+	flex: 1;
+	accent-color: var(--text-accent);
+	cursor: pointer;
+}
+
 /* Subtitle List */
 .dial-subtitle-list {
 	flex: 1;

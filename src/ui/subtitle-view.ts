@@ -4,6 +4,10 @@ import type { ABLoopState, Subtitle } from '@/types';
 
 import { formatTime } from '@/utils/time';
 
+function formatSpeed(rate: number): string {
+	return rate % 1 === 0 ? `${rate}x` : `${rate.toFixed(2)}x`;
+}
+
 export const SUBTITLE_VIEW_TYPE = 'dial-subtitle';
 
 interface SubtitleViewCallbacks {
@@ -15,6 +19,7 @@ interface SubtitleViewCallbacks {
 	onTogglePlay: () => void;
 	onJumpPrev: () => void;
 	onJumpNext: () => void;
+	onSpeedChange: (rate: number) => void;
 }
 
 export class SubtitleView extends ItemView {
@@ -29,6 +34,9 @@ export class SubtitleView extends ItemView {
 	private keyHandler: ((e: KeyboardEvent) => void) | null = null;
 
 	private callbacks: SubtitleViewCallbacks | null = null;
+	private playbackRate = 1;
+	private speedLabel!: HTMLElement;
+	private speedSlider!: HTMLInputElement;
 
 	constructor(leaf: WorkspaceLeaf) {
 		super(leaf);
@@ -87,6 +95,28 @@ export class SubtitleView extends ItemView {
 			text: 'No loop set',
 		});
 
+		// Speed controls
+		const speedEl = container.createDiv({
+			cls: 'dial-speed-controls',
+		});
+
+		this.speedLabel = speedEl.createSpan({
+			cls: 'dial-speed-label',
+			text: '1x',
+		});
+
+		this.speedSlider = speedEl.createEl('input', {
+			cls: 'dial-speed-slider',
+			type: 'range',
+			attr: { min: '0.25', max: '3', step: '0.25', value: '1' },
+		});
+		this.speedSlider.addEventListener('input', () => {
+			const rate = parseFloat(this.speedSlider.value);
+			this.playbackRate = rate;
+			this.speedLabel.textContent = formatSpeed(rate);
+			this.callbacks?.onSpeedChange(rate);
+		});
+
 		// Subtitle list
 		this.subtitleContainerEl = container.createDiv({
 			cls: 'dial-subtitle-list',
@@ -112,6 +142,15 @@ export class SubtitleView extends ItemView {
 			} else if (e.code === 'KeyC') {
 				e.preventDefault();
 				this.handleToggleAB();
+			} else if (e.code === 'BracketRight') {
+				e.preventDefault();
+				this.changeSpeed(0.25);
+			} else if (e.code === 'BracketLeft') {
+				e.preventDefault();
+				this.changeSpeed(-0.25);
+			} else if (e.code === 'Backslash') {
+				e.preventDefault();
+				this.setSpeed(1);
 			}
 		};
 		(container as HTMLElement).addEventListener('keydown', this.keyHandler);
@@ -209,6 +248,18 @@ export class SubtitleView extends ItemView {
 		}
 		this.updateABDisplay();
 		this.updateLoopHighlight();
+	}
+
+	private changeSpeed(delta: number): void {
+		const newRate = Math.max(0.25, Math.min(3, this.playbackRate + delta));
+		this.setSpeed(newRate);
+	}
+
+	private setSpeed(rate: number): void {
+		this.playbackRate = rate;
+		this.speedSlider.value = String(rate);
+		this.speedLabel.textContent = formatSpeed(rate);
+		this.callbacks?.onSpeedChange(rate);
 	}
 
 	private renderSubtitles(): void {

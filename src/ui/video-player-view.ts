@@ -174,6 +174,16 @@ export class VideoPlayerView extends ItemView {
 		return this.videoPath;
 	}
 
+	setPlaybackRate(rate: number): void {
+		if (this.videoEl) {
+			this.videoEl.playbackRate = rate;
+		}
+	}
+
+	getPlaybackRate(): number {
+		return this.videoEl?.playbackRate ?? 1;
+	}
+
 	getState(): Record<string, unknown> {
 		return {
 			videoPath: this.videoPath,

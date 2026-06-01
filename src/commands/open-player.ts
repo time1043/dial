@@ -173,6 +173,9 @@ export function setupSync(
 		onJumpNext: () => {
 			plugin.jumpSubtitle(1);
 		},
+		onSpeedChange: (rate: number) => {
+			videoView.setPlaybackRate(rate);
+		},
 	});
 
 	// Save playback position on pause
