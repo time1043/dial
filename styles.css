@@ -19,6 +19,64 @@
 	height: 100%;
 }
 
+/* AB Controls */
+.dial-ab-controls {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	flex-shrink: 0;
+}
+
+.dial-ab-btn {
+	padding: 4px 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	background: var(--interactive-normal);
+	color: var(--text-normal);
+	cursor: pointer;
+	font-weight: 600;
+	font-size: 14px;
+	min-width: 36px;
+}
+
+.dial-ab-btn:hover {
+	background: var(--interactive-hover);
+}
+
+.dial-ab-btn-a {
+	border-color: var(--text-accent);
+	color: var(--text-accent);
+}
+
+.dial-ab-btn-b {
+	border-color: var(--text-accent);
+	color: var(--text-accent);
+}
+
+.dial-ab-btn-clear {
+	border-color: var(--text-accent);
+	color: var(--text-accent);
+}
+
+.dial-ab-btn-clear.dial-ab-btn-active {
+	border-color: var(--text-error);
+	color: var(--text-error);
+}
+
+.dial-ab-status {
+	margin-left: auto;
+	font-size: 12px;
+	color: var(--text-muted);
+}
+
+.dial-ab-status-active {
+	color: var(--text-accent);
+	font-weight: 600;
+}
+
+/* Subtitle List */
 .dial-subtitle-list {
 	flex: 1;
 	overflow-y: auto;
@@ -40,8 +98,19 @@
 }
 
 .dial-subtitle-item.dial-subtitle-active {
-	background: var(--background-modifier-active-border);
+	background: var(--background-modifier-hover);
 	border-left: 3px solid var(--text-accent);
+}
+
+.dial-subtitle-item.dial-subtitle-looped {
+	background: var(--background-modifier-border);
+	border-left: 3px solid var(--interactive-accent);
+}
+
+.dial-subtitle-item.dial-subtitle-active.dial-subtitle-looped {
+	background: var(--background-modifier-hover);
+	border-left: 3px solid var(--text-accent);
+	box-shadow: inset 0 0 0 1px var(--interactive-accent);
 }
 
 .dial-subtitle-time {

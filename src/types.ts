@@ -4,3 +4,9 @@ export interface Subtitle {
 	end: number; // seconds
 	text: string;
 }
+
+export interface ABLoopState {
+	a: number | null;
+	b: number | null;
+	active: boolean;
+}

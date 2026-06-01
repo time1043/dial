@@ -10,6 +10,7 @@ import { parseSubtitle } from '@/modules/subtitle-parsers';
 import { SUBTITLE_VIEW_TYPE, SubtitleView } from '@/ui/subtitle-view';
 import { VIDEO_PLAYER_VIEW_TYPE, VideoPlayerView } from '@/ui/video-player-view';
 import { applySplitRatio } from '@/utils/layout';
+import { formatTime } from '@/utils/time';
 
 export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 	// 1. Validate settings
@@ -89,6 +90,7 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 	videoView.loadVideo(videoPath);
 	videoView.setSubtitles(subtitles);
 	subtitleView.setSubtitles(subtitles);
+	plugin.setSubtitles(subtitles);
 
 	setupSync(plugin, videoView, subtitleView);
 
@@ -136,6 +138,40 @@ export function setupSync(
 		onSubtitleClick: (sub: Subtitle) => {
 			videoView.jumpToTime(sub.start);
 			videoView.play();
+		},
+		onSetA: (time: number) => {
+			const state = plugin.abLoop.setPointA(time);
+			videoView.setABLoop(state.a, state.b, state.active);
+			new Notice(`A: ${formatTime(time)}`);
+			return state;
+		},
+		onSetB: (time: number) => {
+			const { state, error } = plugin.abLoop.setPointB(time);
+			if (error) {
+				new Notice(error);
+			} else {
+				videoView.setABLoop(state.a, state.b, state.active);
+				new Notice(`Loop: ${formatTime(state.a!)} → ${formatTime(state.b!)}`);
+			}
+			return state;
+		},
+		onClearAB: () => {
+			const state = plugin.abLoop.clear();
+			videoView.setABLoop(state.a, state.b, state.active);
+			new Notice('Loop cleared');
+			return state;
+		},
+		onGetCurrentTime: () => {
+			return videoView.getCurrentTime();
+		},
+		onTogglePlay: () => {
+			videoView.togglePlay();
+		},
+		onJumpPrev: () => {
+			plugin.jumpSubtitle(-1);
+		},
+		onJumpNext: () => {
+			plugin.jumpSubtitle(1);
 		},
 	});
 

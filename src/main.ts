@@ -1,19 +1,26 @@
-import { Plugin } from 'obsidian';
+import { Notice, Plugin } from 'obsidian';
 
 import type { DialSettings } from './settings';
+import type { ABLoopState, Subtitle } from './types';
 
 import { createVideoNote } from './commands/create-video-note';
 import { openVideoPlayer, setupSync } from './commands/open-player';
+import { AbLoopManager } from './modules/ab-loop/ab-loop-manager';
 import { PositionManager } from './modules/position-manager/position-manager';
+import { getJumpTarget } from './modules/subtitle-navigator/subtitle-navigator';
 import { DEFAULT_SETTINGS, DialSettingTab } from './settings';
 import { SUBTITLE_VIEW_TYPE, SubtitleView } from './ui/subtitle-view';
 import { VIDEO_PLAYER_VIEW_TYPE, VideoPlayerView } from './ui/video-player-view';
 import { applySplitRatio } from './utils/layout';
+import { formatTime } from './utils/time';
 
 export default class DialPlugin extends Plugin {
 	settings: DialSettings = DEFAULT_SETTINGS;
 
 	readonly positions = new PositionManager();
+
+	readonly abLoop = new AbLoopManager();
+	private subtitles: Subtitle[] = [];
 
 	async onload(): Promise<void> {
 		await this.loadPersistedData();
@@ -35,6 +42,47 @@ export default class DialPlugin extends Plugin {
 			id: 'create-video-note',
 			name: 'Create video note',
 			callback: () => createVideoNote(this),
+		});
+
+		this.addCommand({
+			id: 'set-ab-loop-a',
+			name: 'Set loop start point',
+			callback: () => {
+				const view = this.getVideoView();
+				if (view) {
+					const state = this.abLoop.setPointA(view.getCurrentTime());
+					this.syncABToViews(state);
+					new Notice(`A: ${formatTime(state.a!)}`);
+				}
+			},
+		});
+
+		this.addCommand({
+			id: 'set-ab-loop-b',
+			name: 'Set loop end point',
+			callback: () => {
+				const view = this.getVideoView();
+				if (view) {
+					const { state, error } = this.abLoop.setPointB(view.getCurrentTime());
+					if (error) {
+						new Notice(error);
+					} else {
+						this.syncABToViews(state);
+						new Notice(`Loop: ${formatTime(state.a!)} → ${formatTime(state.b!)}`);
+					}
+				}
+			},
+		});
+
+		this.addCommand({
+			id: 'toggle-ab-loop',
+			name: 'Toggle loop',
+			callback: () => {
+				const view = this.app.workspace.getLeavesOfType(SUBTITLE_VIEW_TYPE).first()?.view;
+				if (view instanceof SubtitleView) {
+					view.toggleAbLoop();
+				}
+			},
 		});
 
 		this.addSettingTab(new DialSettingTab(this.app, this));
@@ -63,7 +111,7 @@ export default class DialPlugin extends Plugin {
 	}
 
 	private trySetupSync(): void {
-		const videoView = this.app.workspace.getLeavesOfType(VIDEO_PLAYER_VIEW_TYPE).first()?.view;
+		const videoView = this.getVideoView();
 		const subtitleView = this.app.workspace.getLeavesOfType(SUBTITLE_VIEW_TYPE).first()?.view;
 		if (videoView instanceof VideoPlayerView && subtitleView instanceof SubtitleView) {
 			setupSync(this, videoView, subtitleView);
@@ -105,5 +153,33 @@ export default class DialPlugin extends Plugin {
 			settings: this.settings,
 			positions: this.positions.getAll(),
 		});
+	}
+
+	setSubtitles(subtitles: Subtitle[]): void {
+		this.subtitles = subtitles;
+	}
+
+	jumpSubtitle(direction: number): void {
+		const videoView = this.getVideoView();
+		if (!videoView) return;
+		const target = getJumpTarget(this.subtitles, videoView.getCurrentTime(), direction);
+		if (target) {
+			videoView.jumpToTime(target.start);
+			videoView.play();
+		}
+	}
+
+	private getVideoView(): VideoPlayerView | null {
+		const view = this.app.workspace.getLeavesOfType(VIDEO_PLAYER_VIEW_TYPE).first()?.view;
+		return view instanceof VideoPlayerView ? view : null;
+	}
+
+	private syncABToViews(state: ABLoopState): void {
+		const videoView = this.getVideoView();
+		videoView?.setABLoop(state.a, state.b, state.active);
+		const subtitleView = this.app.workspace.getLeavesOfType(SUBTITLE_VIEW_TYPE).first()?.view;
+		if (subtitleView instanceof SubtitleView) {
+			subtitleView.setABLoopState(state);
+		}
 	}
 }

@@ -1,19 +1,34 @@
 import { ItemView, WorkspaceLeaf } from 'obsidian';
 
-import type { Subtitle } from '@/types';
+import type { ABLoopState, Subtitle } from '@/types';
 
 import { formatTime } from '@/utils/time';
 
 export const SUBTITLE_VIEW_TYPE = 'dial-subtitle';
 
+interface SubtitleViewCallbacks {
+	onSubtitleClick: (sub: Subtitle) => void;
+	onSetA: (time: number) => ABLoopState;
+	onSetB: (time: number) => ABLoopState;
+	onClearAB: () => ABLoopState;
+	onGetCurrentTime: () => number;
+	onTogglePlay: () => void;
+	onJumpPrev: () => void;
+	onJumpNext: () => void;
+}
+
 export class SubtitleView extends ItemView {
 	private subtitles: Subtitle[] = [];
 	private currentSubtitleId: number = -1;
+	private abLoop: ABLoopState = { a: null, b: null, active: false };
 	private subtitleContainerEl: HTMLElement | null = null;
+	private abStatusEl: HTMLElement | null = null;
+	private btnClearEl: HTMLElement | null = null;
 	private subtitleEls: Map<number, HTMLElement> = new Map();
+	private loopedSubtitleIds: Set<number> = new Set();
+	private keyHandler: ((e: KeyboardEvent) => void) | null = null;
 
-	// Callbacks
-	private onSubtitleClick: ((sub: Subtitle) => void) | null = null;
+	private callbacks: SubtitleViewCallbacks | null = null;
 
 	constructor(leaf: WorkspaceLeaf) {
 		super(leaf);
@@ -36,21 +51,100 @@ export class SubtitleView extends ItemView {
 		if (!container) return;
 		container.empty();
 		container.addClass('dial-subtitle-container');
+		(container as HTMLElement).setAttribute('tabindex', '-1');
+
+		// AB controls
+		const controlsEl = container.createDiv({
+			cls: 'dial-ab-controls',
+		});
+
+		const btnA = controlsEl.createEl('button', {
+			text: 'A',
+			cls: 'dial-ab-btn dial-ab-btn-a',
+		});
+		btnA.addEventListener('click', () => {
+			this.handleSetA();
+		});
+
+		const btnB = controlsEl.createEl('button', {
+			text: 'B',
+			cls: 'dial-ab-btn dial-ab-btn-b',
+		});
+		btnB.addEventListener('click', () => {
+			this.handleSetB();
+		});
+
+		this.btnClearEl = controlsEl.createEl('button', {
+			text: 'AB',
+			cls: 'dial-ab-btn dial-ab-btn-clear',
+		});
+		this.btnClearEl.addEventListener('click', () => {
+			this.handleToggleAB();
+		});
+
+		this.abStatusEl = controlsEl.createDiv({
+			cls: 'dial-ab-status',
+			text: 'No loop set',
+		});
 
 		// Subtitle list
 		this.subtitleContainerEl = container.createDiv({
 			cls: 'dial-subtitle-list',
 		});
+
+		// Keyboard shortcuts
+		this.keyHandler = (e: KeyboardEvent) => {
+			if (e.code === 'Space') {
+				e.preventDefault();
+				this.callbacks?.onTogglePlay();
+			} else if (e.code === 'ArrowLeft') {
+				e.preventDefault();
+				this.callbacks?.onJumpPrev();
+			} else if (e.code === 'ArrowRight') {
+				e.preventDefault();
+				this.callbacks?.onJumpNext();
+			} else if (e.code === 'KeyZ') {
+				e.preventDefault();
+				this.handleSetA();
+			} else if (e.code === 'KeyX') {
+				e.preventDefault();
+				this.handleSetB();
+			} else if (e.code === 'KeyC') {
+				e.preventDefault();
+				this.handleToggleAB();
+			}
+		};
+		(container as HTMLElement).addEventListener('keydown', this.keyHandler);
+		container.addEventListener('click', () => {
+			(container as HTMLElement).focus();
+		});
+		(container as HTMLElement).focus();
 	}
 
 	async onClose(): Promise<void> {
+		if (this.keyHandler) {
+			const container = this.containerEl.children[1];
+			(container as HTMLElement | undefined)?.removeEventListener('keydown', this.keyHandler);
+			this.keyHandler = null;
+		}
 		this.subtitleContainerEl = null;
+		this.abStatusEl = null;
 		this.subtitleEls.clear();
 	}
 
 	setSubtitles(subtitles: Subtitle[]): void {
 		this.subtitles = subtitles;
 		this.renderSubtitles();
+	}
+
+	setABLoopState(state: ABLoopState): void {
+		this.abLoop = state;
+		this.updateABDisplay();
+		this.updateLoopHighlight();
+	}
+
+	toggleAbLoop(): void {
+		this.handleToggleAB();
 	}
 
 	setCurrentSubtitle(id: number): void {
@@ -69,8 +163,8 @@ export class SubtitleView extends ItemView {
 		}
 	}
 
-	setCallbacks(opts: { onSubtitleClick: (sub: Subtitle) => void }): void {
-		this.onSubtitleClick = opts.onSubtitleClick;
+	setCallbacks(callbacks: SubtitleViewCallbacks): void {
+		this.callbacks = callbacks;
 	}
 
 	getState(): Record<string, unknown> {
@@ -82,6 +176,39 @@ export class SubtitleView extends ItemView {
 		if (subtitles) {
 			this.setSubtitles(subtitles);
 		}
+	}
+
+	private handleSetA(): void {
+		if (!this.callbacks) return;
+		const sub = this.getCurrentSubtitle();
+		const time = sub?.start ?? this.callbacks.onGetCurrentTime();
+		this.abLoop = this.callbacks.onSetA(time);
+		this.updateABDisplay();
+		this.updateLoopHighlight();
+	}
+
+	private handleSetB(): void {
+		if (!this.callbacks) return;
+		const sub = this.getCurrentSubtitle();
+		const time = sub?.end ?? this.callbacks.onGetCurrentTime();
+		this.abLoop = this.callbacks.onSetB(time);
+		this.updateABDisplay();
+		this.updateLoopHighlight();
+	}
+
+	private handleToggleAB(): void {
+		if (!this.callbacks) return;
+		if (this.abLoop.active) {
+			this.abLoop = this.callbacks.onClearAB();
+		} else {
+			const sub = this.subtitles.find((s) => s.id === this.currentSubtitleId);
+			if (sub) {
+				this.abLoop = this.callbacks.onSetA(sub.start);
+				this.abLoop = this.callbacks.onSetB(sub.end);
+			}
+		}
+		this.updateABDisplay();
+		this.updateLoopHighlight();
 	}
 
 	private renderSubtitles(): void {
@@ -105,10 +232,50 @@ export class SubtitleView extends ItemView {
 			});
 
 			el.addEventListener('click', () => {
-				this.onSubtitleClick?.(sub);
+				this.callbacks?.onSubtitleClick(sub);
 			});
 
 			this.subtitleEls.set(sub.id, el);
+		}
+	}
+
+	private updateLoopHighlight(): void {
+		// Remove old highlights
+		for (const id of this.loopedSubtitleIds) {
+			this.subtitleEls.get(id)?.removeClass('dial-subtitle-looped');
+		}
+		this.loopedSubtitleIds.clear();
+
+		if (!this.abLoop.active || this.abLoop.a === null || this.abLoop.b === null) return;
+
+		// Highlight all subtitles within A-B range
+		for (const sub of this.subtitles) {
+			if (sub.end >= this.abLoop.a && sub.start <= this.abLoop.b) {
+				this.loopedSubtitleIds.add(sub.id);
+				this.subtitleEls.get(sub.id)?.addClass('dial-subtitle-looped');
+			}
+		}
+	}
+
+	private getCurrentSubtitle(): Subtitle | null {
+		return this.subtitles.find((s) => s.id === this.currentSubtitleId) ?? null;
+	}
+
+	private updateABDisplay(): void {
+		if (!this.abStatusEl) return;
+
+		if (this.abLoop.active && this.abLoop.a !== null && this.abLoop.b !== null) {
+			this.abStatusEl.textContent = `Loop: ${formatTime(this.abLoop.a)} → ${formatTime(this.abLoop.b)}`;
+			this.abStatusEl.addClass('dial-ab-status-active');
+			this.btnClearEl?.addClass('dial-ab-btn-active');
+		} else if (this.abLoop.a !== null) {
+			this.abStatusEl.textContent = `A: ${formatTime(this.abLoop.a)} — set B`;
+			this.abStatusEl.removeClass('dial-ab-status-active');
+			this.btnClearEl?.removeClass('dial-ab-btn-active');
+		} else {
+			this.abStatusEl.textContent = 'No loop set';
+			this.abStatusEl.removeClass('dial-ab-status-active');
+			this.btnClearEl?.removeClass('dial-ab-btn-active');
 		}
 	}
 }

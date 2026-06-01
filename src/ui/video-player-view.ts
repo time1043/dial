@@ -1,6 +1,6 @@
 import { ItemView, Notice, WorkspaceLeaf } from 'obsidian';
 
-import type { Subtitle } from '@/types';
+import type { ABLoopState, Subtitle } from '@/types';
 
 // Node.js fs module (available in Obsidian's Electron)
 const fs = window.require('fs') as typeof import('fs');
@@ -12,6 +12,8 @@ export class VideoPlayerView extends ItemView {
 	private videoPath: string | null = null;
 	private subtitles: Subtitle[] = [];
 	private currentSubtitleId: number = -1;
+	private abLoop: ABLoopState = { a: null, b: null, active: false };
+	private onTimeUpdate: ((time: number) => void) | null = null;
 	private onSubtitleChange: ((id: number) => void) | null = null;
 	private savePositionCallback: ((time: number) => void) | null = null;
 	private saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -49,10 +51,19 @@ export class VideoPlayerView extends ItemView {
 			if (!this.videoEl) return;
 			const time = this.videoEl.currentTime;
 
+			this.onTimeUpdate?.(time);
+
 			const sub = this.findSubtitleAt(time);
 			if (sub && sub.id !== this.currentSubtitleId) {
 				this.currentSubtitleId = sub.id;
 				this.onSubtitleChange?.(sub.id);
+			}
+
+			// AB loop enforcement: seek back to A when outside A-B range
+			if (this.abLoop.active && this.abLoop.a !== null && this.abLoop.b !== null) {
+				if (time < this.abLoop.a || time >= this.abLoop.b) {
+					this.videoEl.currentTime = this.abLoop.a;
+				}
 			}
 		});
 
@@ -149,6 +160,10 @@ export class VideoPlayerView extends ItemView {
 		} else {
 			this.videoEl.pause();
 		}
+	}
+
+	setABLoop(a: number | null, b: number | null, active: boolean): void {
+		this.abLoop = { a, b, active };
 	}
 
 	getCurrentTime(): number {
