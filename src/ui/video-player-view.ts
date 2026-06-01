@@ -181,16 +181,25 @@ export class VideoPlayerView extends ItemView {
 	}
 
 	private findSubtitleAt(time: number): Subtitle | null {
-		// Find the subtitle containing time, or the nearest previous one
-		let nearest: Subtitle | null = null;
-		for (const sub of this.subtitles) {
+		// Binary search: find the last subtitle with start <= time
+		const subs = this.subtitles;
+		let lo = 0;
+		let hi = subs.length - 1;
+		let result: Subtitle | null = null;
+
+		while (lo <= hi) {
+			const mid = (lo + hi) >> 1;
+			const sub = subs[mid]!;
 			if (time >= sub.start && time <= sub.end) {
-				return sub;
+				return sub; // exact match
 			}
 			if (sub.start < time) {
-				nearest = sub;
+				result = sub;
+				lo = mid + 1;
+			} else {
+				hi = mid - 1;
 			}
 		}
-		return nearest;
+		return result;
 	}
 }
