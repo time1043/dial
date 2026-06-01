@@ -250,7 +250,7 @@ export class SubtitleView extends ItemView {
 
 		// Highlight all subtitles within A-B range
 		for (const sub of this.subtitles) {
-			if (sub.end >= this.abLoop.a && sub.start <= this.abLoop.b) {
+			if (sub.start >= this.abLoop.a && sub.end <= this.abLoop.b) {
 				this.loopedSubtitleIds.add(sub.id);
 				this.subtitleEls.get(sub.id)?.addClass('dial-subtitle-looped');
 			}
