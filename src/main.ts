@@ -80,6 +80,7 @@ export default class DialPlugin extends Plugin {
 			// Re-apply 2:8 split ratio after DOM is ready
 			setTimeout(() => {
 				applySplitRatio(subtitleView.containerEl, [2, 8]);
+				(subtitleView.containerEl.children[1] as HTMLElement)?.focus();
 			}, 100);
 		}
 	}

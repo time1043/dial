@@ -79,9 +79,10 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 	await plugin.app.workspace.revealLeaf(subLeaf);
 	const videoView = videoLeaf.view as VideoPlayerView;
 
-	// 6. Set 2:8 ratio via CSS flex
+	// 6. Set 2:8 ratio via CSS flex, then focus subtitle for keyboard shortcuts
 	setTimeout(() => {
 		applySplitRatio(subtitleView.containerEl, [2, 8]);
+		(subtitleView.containerEl.children[1] as HTMLElement)?.focus();
 	}, 100);
 
 	// 6. Wire everything up
