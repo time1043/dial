@@ -171,6 +171,10 @@ export class SubtitleView extends ItemView {
 		this.subtitleEls.clear();
 	}
 
+	getSubtitles(): Subtitle[] {
+		return this.subtitles;
+	}
+
 	setSubtitles(subtitles: Subtitle[]): void {
 		this.subtitles = subtitles;
 		this.renderSubtitles();

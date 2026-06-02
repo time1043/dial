@@ -117,6 +117,9 @@ export default class DialPlugin extends Plugin {
 		if (videoView instanceof VideoPlayerView && subtitleView instanceof SubtitleView) {
 			setupSync(this, videoView, subtitleView);
 
+			// Sync subtitles from subtitle view to plugin for jumpSubtitle
+			this.setSubtitles(subtitleView.getSubtitles());
+
 			// Restore playback position after vault reload
 			const path = videoView.getVideoPath();
 			if (path && videoView.getCurrentTime() === 0) {
