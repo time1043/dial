@@ -4,6 +4,7 @@ import type { DialSettings } from './settings';
 import type { ABLoopState, Subtitle } from './types';
 
 import { createVideoNote } from './commands/create-video-note';
+import { insertTimestamp } from './commands/insert-timestamp';
 import { openVideoPlayer, setupSync } from './commands/open-player';
 import { AbLoopManager } from './modules/ab-loop/ab-loop-manager';
 import { PositionManager } from './modules/position-manager/position-manager';
@@ -86,6 +87,12 @@ export default class DialPlugin extends Plugin {
 			},
 		});
 
+		this.addCommand({
+			id: 'insert-timestamp',
+			name: 'Insert video timestamp',
+			callback: () => insertTimestamp(this),
+		});
+
 		this.addSettingTab(new DialSettingTab(this.app, this));
 
 		// Re-wire sync after vault reload restores views
@@ -94,6 +101,27 @@ export default class DialPlugin extends Plugin {
 				this.trySetupSync();
 			}),
 		);
+
+		// Handle obsidian://dial?seconds=N timestamp links
+		this.registerObsidianProtocolHandler('dial', async (params) => {
+			const seconds = Number(params.seconds);
+			if (isNaN(seconds)) return;
+
+			const videoView = this.getVideoView();
+			if (videoView) {
+				videoView.jumpToTime(seconds);
+				videoView.play();
+				return;
+			}
+
+			// Video not open — try to open it from the active note's frontmatter
+			await openVideoPlayer(this);
+			const view = this.getVideoView();
+			if (view) {
+				view.jumpToTime(seconds);
+				view.play();
+			}
+		});
 	}
 
 	onunload(): void {
