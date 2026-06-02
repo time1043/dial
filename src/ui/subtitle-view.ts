@@ -157,6 +157,15 @@ export class SubtitleView extends ItemView {
 		container.addEventListener('click', () => {
 			(container as HTMLElement).focus();
 		});
+
+		// Re-focus container when tab-switching back to this view
+		this.registerEvent(
+			this.app.workspace.on('active-leaf-change', (leaf) => {
+				if (leaf === this.leaf) {
+					(container as HTMLElement).focus();
+				}
+			}),
+		);
 		(container as HTMLElement).focus();
 	}
 
