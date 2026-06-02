@@ -1,13 +1,12 @@
 import { MarkdownView, Notice } from 'obsidian';
 
 import type DialPlugin from '@/main';
+
 import { VIDEO_PLAYER_VIEW_TYPE, VideoPlayerView } from '@/ui/video-player-view';
 import { formatTime } from '@/utils/time';
 
 export function insertTimestamp(plugin: DialPlugin): void {
-	const videoView = plugin.app.workspace
-		.getLeavesOfType(VIDEO_PLAYER_VIEW_TYPE)
-		.first()?.view;
+	const videoView = plugin.app.workspace.getLeavesOfType(VIDEO_PLAYER_VIEW_TYPE).first()?.view;
 	if (!(videoView instanceof VideoPlayerView)) {
 		new Notice('No video is playing');
 		return;
@@ -19,7 +18,7 @@ export function insertTimestamp(plugin: DialPlugin): void {
 		return;
 	}
 
-	const time = videoView.getCurrentTime();
+	const time = videoView.getCurrentSubtitleStartTime() ?? videoView.getCurrentTime();
 	const text = `- [${formatTime(time)}](obsidian://dial?seconds=${Math.floor(time)})`;
 	mdView.editor.replaceSelection(text);
 }

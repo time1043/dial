@@ -170,6 +170,13 @@ export class VideoPlayerView extends ItemView {
 		return this.videoEl?.currentTime ?? 0;
 	}
 
+	/** Returns the subtitle start time if currently within a subtitle line, otherwise null. */
+	getCurrentSubtitleStartTime(): number | null {
+		const time = this.getCurrentTime();
+		const sub = this.subtitles.find((s) => time >= s.start && time <= s.end);
+		return sub?.start ?? null;
+	}
+
 	getVideoPath(): string | null {
 		return this.videoPath;
 	}
