@@ -141,28 +141,33 @@ export default class DialPlugin extends Plugin {
 
 	private trySetupSync(): void {
 		const videoView = this.getVideoView();
+		if (!(videoView instanceof VideoPlayerView)) return;
+
 		const subtitleView = this.app.workspace.getLeavesOfType(SUBTITLE_VIEW_TYPE).first()?.view;
-		if (videoView instanceof VideoPlayerView && subtitleView instanceof SubtitleView) {
+		if (subtitleView instanceof SubtitleView) {
 			setupSync(this, videoView, subtitleView);
-
-			// Sync subtitles from subtitle view to plugin for jumpSubtitle
 			this.setSubtitles(subtitleView.getSubtitles());
-
-			// Restore playback position after vault reload
-			const path = videoView.getVideoPath();
-			if (path && videoView.getCurrentTime() === 0) {
-				const savedTime = this.positions.restore(path);
-				if (savedTime !== null) {
-					videoView.jumpToTime(savedTime);
-				}
-			}
-
-			// Re-apply 2:8 split ratio after DOM is ready
-			setTimeout(() => {
-				applySplitRatio(subtitleView.containerEl, [2, 8]);
-				(subtitleView.containerEl.children[1] as HTMLElement)?.focus();
-			}, 100);
 		}
+
+		// Restore playback position after vault reload
+		const path = videoView.getVideoPath();
+		if (path && videoView.getCurrentTime() === 0) {
+			const savedTime = this.positions.restore(path);
+			if (savedTime !== null) {
+				videoView.jumpToTime(savedTime);
+			}
+		}
+
+		// Re-apply 2:8 split ratio after DOM is ready
+		setTimeout(() => {
+			const refEl = subtitleView instanceof SubtitleView
+				? subtitleView.containerEl
+				: videoView.containerEl;
+			applySplitRatio(refEl, [2, 8]);
+			if (subtitleView instanceof SubtitleView) {
+				(subtitleView.containerEl.children[1] as HTMLElement)?.focus();
+			}
+		}, 100);
 	}
 
 	private async loadPersistedData(): Promise<void> {
