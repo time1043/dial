@@ -20,6 +20,7 @@ interface SubtitleViewCallbacks {
 	onJumpPrev: () => void;
 	onJumpNext: () => void;
 	onSpeedChange: (rate: number) => void;
+	onSeek: (delta: number) => void;
 }
 
 export class SubtitleView extends ItemView {
@@ -148,6 +149,12 @@ export class SubtitleView extends ItemView {
 			} else if (e.code === 'BracketLeft') {
 				e.preventDefault();
 				this.changeSpeed(-0.25);
+			} else if (e.code === 'KeyJ') {
+				e.preventDefault();
+				this.callbacks?.onSeek(-30);
+			} else if (e.code === 'KeyL') {
+				e.preventDefault();
+				this.callbacks?.onSeek(30);
 			} else if (e.code === 'Backslash') {
 				e.preventDefault();
 				this.setSpeed(1);

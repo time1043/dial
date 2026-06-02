@@ -176,6 +176,10 @@ export function setupSync(
 		onSpeedChange: (rate: number) => {
 			videoView.setPlaybackRate(rate);
 		},
+		onSeek: (delta: number) => {
+			const t = videoView.getCurrentTime() + delta;
+			videoView.jumpToTime(Math.max(0, t));
+		},
 	});
 
 	// Save playback position on pause
