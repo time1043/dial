@@ -75,8 +75,9 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 	const subtitleView = (await openView(plugin, SUBTITLE_VIEW_TYPE, 'tab')) as SubtitleView;
 	const subLeaf = plugin.app.workspace.getLeavesOfType(SUBTITLE_VIEW_TYPE)[0]!;
 	const videoLeaf = plugin.app.workspace.createLeafBySplit(subLeaf, 'vertical');
-	await videoLeaf.setViewState({ type: VIDEO_PLAYER_VIEW_TYPE, active: true });
+	await videoLeaf.setViewState({ type: VIDEO_PLAYER_VIEW_TYPE });
 	await plugin.app.workspace.revealLeaf(subLeaf);
+	plugin.app.workspace.setActiveLeaf(subLeaf);
 	const videoView = videoLeaf.view as VideoPlayerView;
 
 	// 6. Set 2:8 ratio via CSS flex, then focus subtitle for keyboard shortcuts
