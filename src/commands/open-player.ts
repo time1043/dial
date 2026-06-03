@@ -87,7 +87,7 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 	}, 100);
 
 	// 6. Wire everything up
-	videoView.loadVideo(videoPath);
+	videoView.loadVideo(videoPath, plugin.settings.defaultVolume);
 	videoView.setSubtitles(subtitles);
 	subtitleView.setSubtitles(subtitles);
 	plugin.setSubtitles(subtitles);

@@ -78,7 +78,7 @@ export class VideoPlayerView extends ItemView {
 		this.videoEl = null;
 	}
 
-	loadVideo(path: string): void {
+	loadVideo(path: string, volume = 1): void {
 		if (!this.videoEl) return;
 		this.videoPath = path;
 		try {
@@ -96,7 +96,7 @@ export class VideoPlayerView extends ItemView {
 			this.revokeBlobUrl();
 			this.blobUrl = URL.createObjectURL(blob);
 			this.videoEl.muted = false;
-			this.videoEl.volume = 1.0;
+			this.videoEl.volume = Math.min(1, Math.max(0, volume));
 			this.videoEl.src = this.blobUrl;
 			this.videoEl.onerror = () => {
 				const err = this.videoEl?.error;
@@ -198,6 +198,12 @@ export class VideoPlayerView extends ItemView {
 
 	getVolume(): number {
 		return this.videoEl?.volume ?? 1;
+	}
+
+	setVolume(volume: number): void {
+		if (this.videoEl) {
+			this.videoEl.volume = Math.min(1, Math.max(0, volume));
+		}
 	}
 
 	toggleMute(): void {

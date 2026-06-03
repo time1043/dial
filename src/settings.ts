@@ -5,11 +5,13 @@ import type DialPlugin from './main';
 export interface DialSettings {
 	videoLibraryPath: string;
 	subtitleLibraryPath: string;
+	defaultVolume: number;
 }
 
 export const DEFAULT_SETTINGS: DialSettings = {
 	videoLibraryPath: '',
 	subtitleLibraryPath: '_lib/subtitles',
+	defaultVolume: 1,
 };
 
 function trimTrailingSlash(path: string): string {
@@ -51,6 +53,20 @@ export class DialSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.subtitleLibraryPath =
 							trimTrailingSlash(value) || DEFAULT_SETTINGS.subtitleLibraryPath;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName('Default volume')
+			.setDesc('Volume level applied when loading a video (0–100%).')
+			.addSlider((slider) =>
+				slider
+					.setLimits(0, 100, 5)
+					.setValue(this.plugin.settings.defaultVolume * 100)
+					.setDynamicTooltip()
+					.onChange(async (value) => {
+						this.plugin.settings.defaultVolume = value / 100;
 						await this.plugin.saveSettings();
 					}),
 			);
