@@ -107,19 +107,21 @@ export default class DialPlugin extends Plugin {
 			const seconds = Number(params.seconds);
 			if (isNaN(seconds)) return;
 
-			const videoView = this.getVideoView();
-			if (videoView) {
-				videoView.jumpToTime(seconds);
-				videoView.play();
+			const videoLeaf = this.app.workspace.getLeavesOfType(VIDEO_PLAYER_VIEW_TYPE).first();
+			if (videoLeaf?.view instanceof VideoPlayerView) {
+				await this.app.workspace.revealLeaf(videoLeaf);
+				videoLeaf.view.jumpToTime(seconds);
+				videoLeaf.view.play();
 				return;
 			}
 
 			// Video not open — try to open it from the active note's frontmatter
 			await openVideoPlayer(this);
-			const view = this.getVideoView();
-			if (view) {
-				view.jumpToTime(seconds);
-				view.play();
+			const leaf = this.app.workspace.getLeavesOfType(VIDEO_PLAYER_VIEW_TYPE).first();
+			if (leaf?.view instanceof VideoPlayerView) {
+				await this.app.workspace.revealLeaf(leaf);
+				leaf.view.jumpToTime(seconds);
+				leaf.view.play();
 			}
 		});
 	}
