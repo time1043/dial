@@ -1,4 +1,4 @@
-import { ItemView, setIcon, WorkspaceLeaf } from 'obsidian';
+import { ItemView, Notice, setIcon, WorkspaceLeaf } from 'obsidian';
 
 import type { ABLoopState, Subtitle } from '@/types';
 
@@ -266,6 +266,10 @@ export class SubtitleView extends ItemView {
 
 	private handleSetA(): void {
 		if (!this.callbacks) return;
+		if (this.abLoop.active) {
+			new Notice('Loop active — click ab button to cancel');
+			return;
+		}
 		const sub = this.getCurrentSubtitle();
 		const time = sub?.start ?? this.callbacks.onGetCurrentTime();
 		this.abLoop = this.callbacks.onSetA(time);
@@ -275,6 +279,10 @@ export class SubtitleView extends ItemView {
 
 	private handleSetB(): void {
 		if (!this.callbacks) return;
+		if (this.abLoop.active) {
+			new Notice('Loop active — click ab button to cancel');
+			return;
+		}
 		const sub = this.getCurrentSubtitle();
 		const time = sub?.end ?? this.callbacks.onGetCurrentTime();
 		this.abLoop = this.callbacks.onSetB(time);
