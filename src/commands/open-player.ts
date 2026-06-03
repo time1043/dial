@@ -157,6 +157,11 @@ export function setupSync(
 		subtitleView.setCurrentSubtitle(id);
 	});
 
+	// Video → Subtitle: update play/pause button icon
+	videoView.setPlayStateCallback((isPlaying: boolean) => {
+		subtitleView.setPlayState(isPlaying);
+	});
+
 	// Subtitle → Video: click subtitle to jump
 	subtitleView.setCallbacks({
 		onSubtitleClick: (sub: Subtitle) => {

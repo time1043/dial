@@ -45,6 +45,10 @@
 	background: var(--interactive-hover);
 }
 
+.dial-ab-btn-play {
+	margin-right: 4px;
+}
+
 .dial-ab-btn-a {
 	border-color: var(--text-accent);
 	color: var(--text-accent);

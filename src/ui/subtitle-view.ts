@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf } from 'obsidian';
+import { ItemView, setIcon, WorkspaceLeaf } from 'obsidian';
 
 import type { ABLoopState, Subtitle } from '@/types';
 
@@ -32,6 +32,7 @@ export class SubtitleView extends ItemView {
 	private subtitleContainerEl: HTMLElement | null = null;
 	private abStatusEl: HTMLElement | null = null;
 	private btnClearEl: HTMLElement | null = null;
+	private btnPlayPauseEl: HTMLElement | null = null;
 	private subtitleEls: Map<number, HTMLElement> = new Map();
 	private loopedSubtitleIds: Set<number> = new Set();
 	private keyHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -67,6 +68,14 @@ export class SubtitleView extends ItemView {
 		// AB controls
 		const controlsEl = container.createDiv({
 			cls: 'dial-ab-controls',
+		});
+
+		this.btnPlayPauseEl = controlsEl.createEl('button', {
+			cls: 'dial-ab-btn dial-ab-btn-play',
+		});
+		setIcon(this.btnPlayPauseEl, 'play');
+		this.btnPlayPauseEl.addEventListener('click', () => {
+			this.callbacks?.onTogglePlay();
 		});
 
 		const btnA = controlsEl.createEl('button', {
@@ -195,7 +204,14 @@ export class SubtitleView extends ItemView {
 		}
 		this.subtitleContainerEl = null;
 		this.abStatusEl = null;
+		this.btnPlayPauseEl = null;
 		this.subtitleEls.clear();
+	}
+
+	setPlayState(isPlaying: boolean): void {
+		if (this.btnPlayPauseEl) {
+			setIcon(this.btnPlayPauseEl, isPlaying ? 'pause' : 'play');
+		}
 	}
 
 	getSubtitles(): Subtitle[] {
@@ -347,7 +363,7 @@ export class SubtitleView extends ItemView {
 		if (!this.abStatusEl) return;
 
 		if (this.abLoop.active && this.abLoop.a !== null && this.abLoop.b !== null) {
-			this.abStatusEl.textContent = `Loop: ${formatTime(this.abLoop.a)} → ${formatTime(this.abLoop.b)}`;
+			this.abStatusEl.textContent = `${formatTime(this.abLoop.a)} - ${formatTime(this.abLoop.b)}`;
 			this.abStatusEl.addClass('dial-ab-status-active');
 			this.btnClearEl?.addClass('dial-ab-btn-active');
 		} else if (this.abLoop.a !== null) {

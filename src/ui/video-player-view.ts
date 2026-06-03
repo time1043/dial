@@ -12,6 +12,7 @@ export class VideoPlayerView extends ItemView {
 	private abLoop: ABLoopState = { a: null, b: null, active: false };
 	private onTimeUpdate: ((time: number) => void) | null = null;
 	private onSubtitleChange: ((id: number) => void) | null = null;
+	private onPlayStateChange: ((isPlaying: boolean) => void) | null = null;
 	private savePositionCallback: ((time: number) => void) | null = null;
 	private saveTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -65,6 +66,11 @@ export class VideoPlayerView extends ItemView {
 
 		this.videoEl.addEventListener('pause', () => {
 			this.debouncedSavePosition();
+			this.onPlayStateChange?.(false);
+		});
+
+		this.videoEl.addEventListener('play', () => {
+			this.onPlayStateChange?.(true);
 		});
 	}
 
@@ -105,6 +111,10 @@ export class VideoPlayerView extends ItemView {
 
 	setSubtitleChangeCallback(cb: (id: number) => void): void {
 		this.onSubtitleChange = cb;
+	}
+
+	setPlayStateCallback(cb: (isPlaying: boolean) => void): void {
+		this.onPlayStateChange = cb;
 	}
 
 	setSavePositionCallback(cb: (time: number) => void): void {
