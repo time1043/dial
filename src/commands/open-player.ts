@@ -1,6 +1,6 @@
 import type { View } from 'obsidian';
 
-import { Notice, TFile } from 'obsidian';
+import { Notice, Platform, TFile } from 'obsidian';
 
 import type DialPlugin from '@/main';
 import type { Subtitle } from '@/types';
@@ -71,33 +71,66 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 		return;
 	}
 
-	// 5. Open views in split layout: left (md + subtitles) | right (video)
-	const subtitleView = (await openView(plugin, SUBTITLE_VIEW_TYPE, 'tab')) as SubtitleView;
-	const subLeaf = plugin.app.workspace.getLeavesOfType(SUBTITLE_VIEW_TYPE)[0]!;
-	const videoLeaf = plugin.app.workspace.createLeafBySplit(subLeaf, 'vertical');
-	await videoLeaf.setViewState({ type: VIDEO_PLAYER_VIEW_TYPE });
-	await plugin.app.workspace.revealLeaf(subLeaf);
-	plugin.app.workspace.setActiveLeaf(subLeaf);
-	const videoView = videoLeaf.view as VideoPlayerView;
+	// 5. Open views
+	if (Platform.isMobile) {
+		// Mobile: single video view with embedded subtitle panel
+		const videoLeaf = plugin.app.workspace.getLeaf('tab');
+		await videoLeaf.setViewState({ type: VIDEO_PLAYER_VIEW_TYPE, active: true });
+		await plugin.app.workspace.revealLeaf(videoLeaf);
+		const videoView = videoLeaf.view as VideoPlayerView;
 
-	// 6. Set 2:8 ratio via CSS flex, then focus subtitle for keyboard shortcuts
-	setTimeout(() => {
-		applySplitRatio(subtitleView.containerEl, [2, 8]);
-		(subtitleView.containerEl.children[1] as HTMLElement)?.focus();
-	}, 100);
+		await videoView.loadVideo(videoPath, plugin.settings.defaultVolume);
+		videoView.setSubtitles(subtitles);
+		plugin.setSubtitles(subtitles);
 
-	// 6. Wire everything up
-	await videoView.loadVideo(videoPath, plugin.settings.defaultVolume);
-	videoView.setSubtitles(subtitles);
-	subtitleView.setSubtitles(subtitles);
-	plugin.setSubtitles(subtitles);
+		// Wire video → subtitle highlight
+		videoView.setSubtitleChangeCallback((id: number) => {
+			videoView.setCurrentSubtitle(id);
+		});
 
-	setupSync(plugin, videoView, subtitleView);
+		videoView.setPlayStateCallback((isPlaying: boolean) => {
+			videoView.setPlayState(isPlaying);
+		});
 
-	// 7. Restore playback position
-	const savedTime = plugin.positions.restore(videoPath);
-	if (savedTime !== null) {
-		videoView.jumpToTime(savedTime);
+		videoView.setSavePositionCallback((time: number) => {
+			const path = videoView.getVideoPath();
+			if (path) {
+				plugin.positions.save(path, time);
+			}
+		});
+
+		const savedTime = plugin.positions.restore(videoPath);
+		if (savedTime !== null) {
+			videoView.jumpToTime(savedTime);
+		}
+	} else {
+		// Desktop: split layout — left (md + subtitles) | right (video)
+		const subtitleView = (await openView(plugin, SUBTITLE_VIEW_TYPE, 'tab')) as SubtitleView;
+		const subLeaf = plugin.app.workspace.getLeavesOfType(SUBTITLE_VIEW_TYPE)[0]!;
+		const videoLeaf = plugin.app.workspace.createLeafBySplit(subLeaf, 'vertical');
+		await videoLeaf.setViewState({ type: VIDEO_PLAYER_VIEW_TYPE });
+		await plugin.app.workspace.revealLeaf(subLeaf);
+		plugin.app.workspace.setActiveLeaf(subLeaf);
+		const videoView = videoLeaf.view as VideoPlayerView;
+
+		// Set 2:8 ratio via CSS flex, then focus subtitle for keyboard shortcuts
+		setTimeout(() => {
+			applySplitRatio(subtitleView.containerEl, [2, 8]);
+			(subtitleView.containerEl.children[1] as HTMLElement)?.focus();
+		}, 100);
+
+		// Wire everything up
+		await videoView.loadVideo(videoPath, plugin.settings.defaultVolume);
+		videoView.setSubtitles(subtitles);
+		subtitleView.setSubtitles(subtitles);
+		plugin.setSubtitles(subtitles);
+
+		setupSync(plugin, videoView, subtitleView);
+
+		const savedTime = plugin.positions.restore(videoPath);
+		if (savedTime !== null) {
+			videoView.jumpToTime(savedTime);
+		}
 	}
 
 	new Notice(`Loaded ${subtitles.length} subtitles`);

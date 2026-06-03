@@ -1,6 +1,8 @@
-import { ItemView, Notice, TFile, WorkspaceLeaf } from 'obsidian';
+import { ItemView, Notice, Platform, TFile, WorkspaceLeaf } from 'obsidian';
 
 import type { ABLoopState, Subtitle } from '@/types';
+
+import { SubtitlePanel } from './subtitle-panel';
 
 export const VIDEO_PLAYER_VIEW_TYPE = 'dial-video-player';
 
@@ -15,6 +17,7 @@ export class VideoPlayerView extends ItemView {
 	private onPlayStateChange: ((isPlaying: boolean) => void) | null = null;
 	private savePositionCallback: ((time: number) => void) | null = null;
 	private saveTimer: ReturnType<typeof setTimeout> | null = null;
+	private panel: SubtitlePanel | null = null;
 
 	constructor(leaf: WorkspaceLeaf) {
 		super(leaf);
@@ -72,6 +75,36 @@ export class VideoPlayerView extends ItemView {
 		this.videoEl.addEventListener('play', () => {
 			this.onPlayStateChange?.(true);
 		});
+
+		// Mobile: embed full subtitle panel below video
+		if (Platform.isMobile) {
+			(container as HTMLElement).addClass('dial-video-mobile');
+			this.panel = new SubtitlePanel(container as HTMLElement);
+			this.panel.setCallbacks({
+				onSubtitleClick: (sub) => {
+					this.jumpToTime(sub.start);
+					this.play();
+				},
+				onSetA: (time) => {
+					const state = { a: time, b: null, active: false };
+					this.abLoop = state;
+					return state;
+				},
+				onSetB: (time) => {
+					const state = { a: this.abLoop.a, b: time, active: true };
+					this.abLoop = state;
+					return state;
+				},
+				onClearAB: () => {
+					const state = { a: null, b: null, active: false };
+					this.abLoop = state;
+					return state;
+				},
+				onGetCurrentTime: () => this.getCurrentTime(),
+				onTogglePlay: () => this.togglePlay(),
+				onSpeedChange: (rate) => this.setPlaybackRate(rate),
+			});
+		}
 	}
 
 	async onClose(): Promise<void> {
@@ -107,6 +140,15 @@ export class VideoPlayerView extends ItemView {
 
 	setSubtitles(subtitles: Subtitle[]): void {
 		this.subtitles = subtitles;
+		this.panel?.setSubtitles(subtitles);
+	}
+
+	setCurrentSubtitle(id: number): void {
+		this.panel?.setCurrentSubtitle(id);
+	}
+
+	setPlayState(isPlaying: boolean): void {
+		this.panel?.setPlayState(isPlaying);
 	}
 
 	setSubtitleChangeCallback(cb: (id: number) => void): void {
@@ -227,6 +269,7 @@ export class VideoPlayerView extends ItemView {
 		}
 		if (subtitles) {
 			this.subtitles = subtitles;
+			this.panel?.setSubtitles(subtitles);
 		}
 	}
 

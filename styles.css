@@ -12,6 +12,18 @@
 	flex: 1;
 }
 
+/* Mobile: video 30% top, subtitle panel 70% bottom */
+.dial-video-mobile .dial-video {
+	flex: 0 0 30%;
+}
+
+.dial-video-mobile .dial-subtitle-panel {
+	flex: 1;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+}
+
 /* Subtitle View */
 .dial-subtitle-container {
 	display: flex;
