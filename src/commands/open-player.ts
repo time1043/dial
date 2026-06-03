@@ -1,7 +1,6 @@
 import type { View } from 'obsidian';
 
 import { Notice, Platform, TFile } from 'obsidian';
-import { join } from 'path';
 
 import type DialPlugin from '@/main';
 import type { Subtitle } from '@/types';
@@ -38,13 +37,10 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 	const subtitleRelative = String(frontmatter.subtitle);
 
 	// 3. Resolve video path (vault-relative)
-	const videoPath = join(plugin.settings.videoLibraryPath, videoRelative).replace(
-		/\\/g,
-		'/',
-	);
+	const videoPath = `${plugin.settings.videoLibraryPath}/${videoRelative}`.replace(/\\/g, '/');
 
 	// 4. Read subtitle file (vault-relative)
-	const subtitlePath = join(plugin.settings.subtitleLibraryPath, subtitleRelative).replace(
+	const subtitlePath = `${plugin.settings.subtitleLibraryPath}/${subtitleRelative}`.replace(
 		/\\/g,
 		'/',
 	);
