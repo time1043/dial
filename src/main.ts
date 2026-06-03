@@ -149,7 +149,8 @@ export default class DialPlugin extends Plugin {
 			this.setSubtitles(subtitleView.getSubtitles());
 		}
 
-		// Restore playback position after vault reload
+		// Restore playback position and volume after vault reload
+		videoView.setVolume(this.settings.defaultVolume);
 		const path = videoView.getVideoPath();
 		if (path && videoView.getCurrentTime() === 0) {
 			const savedTime = this.positions.restore(path);
