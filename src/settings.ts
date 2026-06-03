@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
 
 import type DialPlugin from './main';
 
@@ -68,6 +68,8 @@ export class DialSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.defaultVolume = value / 100;
 						await this.plugin.saveSettings();
+						this.plugin.applyVolume(this.plugin.settings.defaultVolume);
+						new Notice(`Default volume: ${value}%`);
 					}),
 			);
 	}

@@ -186,6 +186,13 @@ export default class DialPlugin extends Plugin {
 		this.persistAll();
 	}
 
+	applyVolume(volume: number): void {
+		const view = this.getVideoView();
+		if (view) {
+			view.setVolume(volume);
+		}
+	}
+
 	private persistAll(): void {
 		void this.saveData({
 			settings: this.settings,
