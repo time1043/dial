@@ -11,6 +11,39 @@ import { VIDEO_PLAYER_VIEW_TYPE, VideoPlayerView } from '@/ui/video-player-view'
 import { applySplitRatio } from '@/utils/layout';
 import { formatTime } from '@/utils/time';
 
+async function recordTrace(plugin: DialPlugin, videoPath: string, notePath: string, seconds: number): Promise<void> {
+	const trace = plugin.trace;
+	const now = new Date();
+	const date = now.toISOString().slice(0, 10); // YYYY-MM-DD
+	const filePath = trace.getMonthFilePath(now);
+	const dirPath = '_lib/trace';
+
+	const row = {
+		time: trace.formatTime(now),
+		notePath,
+		position: trace.formatPosition(seconds, notePath),
+	};
+
+	// Ensure directory exists
+	if (!plugin.app.vault.getAbstractFileByPath(dirPath)) {
+		await plugin.app.vault.createFolder(dirPath);
+	}
+
+	let content = '';
+	const existing = plugin.app.vault.getAbstractFileByPath(filePath);
+	if (existing instanceof TFile) {
+		content = await plugin.app.vault.read(existing);
+	}
+
+	const updated = trace.addRow(content, date, 'video-player', row);
+
+	if (existing instanceof TFile) {
+		await plugin.app.vault.modify(existing, updated);
+	} else {
+		await plugin.app.vault.create(filePath, updated);
+	}
+}
+
 export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 	// 1. Validate settings
 	if (!plugin.settings.videoLibraryPath) {
@@ -83,6 +116,11 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 		videoView.setSubtitles(subtitles);
 		plugin.setSubtitles(subtitles);
 
+		// Trace: record video opened
+		const notePath = activeFile.path;
+		plugin.activeNotePath = notePath;
+		void recordTrace(plugin, videoPath, notePath, 0);
+
 		// Wire video → subtitle highlight
 		videoView.setSubtitleChangeCallback((id: number) => {
 			videoView.setCurrentSubtitle(id);
@@ -96,6 +134,7 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 			const path = videoView.getVideoPath();
 			if (path) {
 				plugin.positions.save(path, time);
+				void recordTrace(plugin, path, notePath, time);
 			}
 		});
 
@@ -125,7 +164,12 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 		subtitleView.setSubtitles(subtitles);
 		plugin.setSubtitles(subtitles);
 
-		setupSync(plugin, videoView, subtitleView);
+		// Trace: record video opened
+		const notePath = activeFile.path;
+		plugin.activeNotePath = notePath;
+		void recordTrace(plugin, videoPath, notePath, 0);
+
+		setupSync(plugin, videoView, subtitleView, notePath);
 
 		const savedTime = plugin.positions.restore(videoPath);
 		if (savedTime !== null) {
@@ -160,6 +204,7 @@ export function setupSync(
 	plugin: DialPlugin,
 	videoView: VideoPlayerView,
 	subtitleView: SubtitleView,
+	notePath?: string,
 ): void {
 	// Video → Subtitle: highlight current subtitle
 	videoView.setSubtitleChangeCallback((id: number) => {
@@ -233,6 +278,9 @@ export function setupSync(
 		const path = videoView.getVideoPath();
 		if (path) {
 			plugin.positions.save(path, time);
+			if (notePath) {
+				void recordTrace(plugin, path, notePath, time);
+			}
 		}
 	});
 }

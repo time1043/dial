@@ -1,4 +1,4 @@
-import { Notice, Plugin } from 'obsidian';
+import { Notice, Plugin, TFile } from 'obsidian';
 
 import type { DialSettings } from './settings';
 import type { ABLoopState, Subtitle } from './types';
@@ -9,6 +9,7 @@ import { openVideoPlayer, setupSync } from './commands/open-player';
 import { AbLoopManager } from './modules/ab-loop/ab-loop-manager';
 import { PositionManager } from './modules/position-manager/position-manager';
 import { getJumpTarget } from './modules/subtitle-navigator/subtitle-navigator';
+import { TraceManager } from './modules/trace-manager/trace-manager';
 import { DEFAULT_SETTINGS, DialSettingTab } from './settings';
 import { SUBTITLE_VIEW_TYPE, SubtitleView } from './ui/subtitle-view';
 import { VIDEO_PLAYER_VIEW_TYPE, VideoPlayerView } from './ui/video-player-view';
@@ -21,7 +22,10 @@ export default class DialPlugin extends Plugin {
 	readonly positions = new PositionManager();
 
 	readonly abLoop = new AbLoopManager();
+
+	readonly trace = new TraceManager();
 	private subtitles: Subtitle[] = [];
+	activeNotePath: string | null = null;
 
 	async onload(): Promise<void> {
 		await this.loadPersistedData();
@@ -102,10 +106,19 @@ export default class DialPlugin extends Plugin {
 			}),
 		);
 
-		// Handle obsidian://dial?seconds=N timestamp links
+		// Handle obsidian://dial?note=path&seconds=N timestamp links
 		this.registerObsidianProtocolHandler('dial', async (params) => {
 			const seconds = Number(params.seconds);
 			if (isNaN(seconds)) return;
+
+			// If note param is provided, open that note first
+			if (params.note) {
+				const notePath = decodeURIComponent(params.note);
+				const noteFile = this.app.vault.getAbstractFileByPath(notePath);
+				if (noteFile instanceof TFile) {
+					await this.app.workspace.openLinkText(notePath, '', false);
+				}
+			}
 
 			const videoLeaf = this.app.workspace.getLeavesOfType(VIDEO_PLAYER_VIEW_TYPE).first();
 			if (videoLeaf?.view instanceof VideoPlayerView) {
@@ -147,7 +160,7 @@ export default class DialPlugin extends Plugin {
 
 		const subtitleView = this.app.workspace.getLeavesOfType(SUBTITLE_VIEW_TYPE).first()?.view;
 		if (subtitleView instanceof SubtitleView) {
-			setupSync(this, videoView, subtitleView);
+			setupSync(this, videoView, subtitleView, this.activeNotePath ?? undefined);
 			this.setSubtitles(subtitleView.getSubtitles());
 		}
 
@@ -164,9 +177,10 @@ export default class DialPlugin extends Plugin {
 		// Re-apply split ratio after DOM is ready
 		const splitRatio: [number, number] = [2, 8];
 		setTimeout(() => {
-			const refEl = subtitleView instanceof SubtitleView
-				? subtitleView.containerEl
-				: videoView.containerEl;
+			const refEl =
+				subtitleView instanceof SubtitleView
+					? subtitleView.containerEl
+					: videoView.containerEl;
 			applySplitRatio(refEl, splitRatio);
 			if (subtitleView instanceof SubtitleView) {
 				(subtitleView.containerEl.children[1] as HTMLElement)?.focus();
