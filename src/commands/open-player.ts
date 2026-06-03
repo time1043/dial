@@ -180,6 +180,14 @@ export function setupSync(
 			const t = videoView.getCurrentTime() + delta;
 			videoView.jumpToTime(Math.max(0, t));
 		},
+		onVolumeChange: (delta: number) => {
+			videoView.changeVolume(delta);
+			new Notice(`Volume: ${Math.round(videoView.getVolume() * 100)}%`);
+		},
+		onToggleMute: () => {
+			videoView.toggleMute();
+			new Notice(videoView.isMuted() ? 'Muted' : 'Unmuted');
+		},
 	});
 
 	// Save playback position on pause

@@ -21,6 +21,8 @@ interface SubtitleViewCallbacks {
 	onJumpNext: () => void;
 	onSpeedChange: (rate: number) => void;
 	onSeek: (delta: number) => void;
+	onVolumeChange: (delta: number) => void;
+	onToggleMute: () => void;
 }
 
 export class SubtitleView extends ItemView {
@@ -134,6 +136,15 @@ export class SubtitleView extends ItemView {
 			} else if (e.code === 'ArrowRight') {
 				e.preventDefault();
 				this.callbacks?.onJumpNext();
+			} else if (e.code === 'ArrowUp') {
+				e.preventDefault();
+				this.callbacks?.onVolumeChange(0.05);
+			} else if (e.code === 'ArrowDown') {
+				e.preventDefault();
+				this.callbacks?.onVolumeChange(-0.05);
+			} else if (e.code === 'KeyM') {
+				e.preventDefault();
+				this.callbacks?.onToggleMute();
 			} else if (e.code === 'KeyZ') {
 				e.preventDefault();
 				this.handleSetA();

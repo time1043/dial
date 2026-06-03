@@ -191,6 +191,24 @@ export class VideoPlayerView extends ItemView {
 		return this.videoEl?.playbackRate ?? 1;
 	}
 
+	changeVolume(delta: number): void {
+		if (!this.videoEl) return;
+		this.videoEl.volume = Math.min(1, Math.max(0, this.videoEl.volume + delta));
+	}
+
+	getVolume(): number {
+		return this.videoEl?.volume ?? 1;
+	}
+
+	toggleMute(): void {
+		if (!this.videoEl) return;
+		this.videoEl.muted = !this.videoEl.muted;
+	}
+
+	isMuted(): boolean {
+		return this.videoEl?.muted ?? false;
+	}
+
 	getState(): Record<string, unknown> {
 		return {
 			videoPath: this.videoPath,
