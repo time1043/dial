@@ -14,7 +14,6 @@ export class VideoPlayerView extends ItemView {
 	private onSubtitleChange: ((id: number) => void) | null = null;
 	private savePositionCallback: ((time: number) => void) | null = null;
 	private saveTimer: ReturnType<typeof setTimeout> | null = null;
-	private blobUrl: string | null = null;
 
 	constructor(leaf: WorkspaceLeaf) {
 		super(leaf);
@@ -71,7 +70,6 @@ export class VideoPlayerView extends ItemView {
 
 	async onClose(): Promise<void> {
 		this.savePositionImmediate();
-		this.revokeBlobUrl();
 		this.videoEl = null;
 	}
 
@@ -84,22 +82,13 @@ export class VideoPlayerView extends ItemView {
 				new Notice(`Video file not found: ${path}`);
 				return;
 			}
-			const buffer = await this.app.vault.readBinary(file);
-			const ext = path.split('.').pop()?.toLowerCase() ?? 'mp4';
-			const mimeMap: Record<string, string> = {
-				mp4: 'video/mp4',
-				mkv: 'video/x-matroska',
-				webm: 'video/webm',
-				avi: 'video/x-msvideo',
-				mov: 'video/quicktime',
-			};
-			const mime = mimeMap[ext] ?? 'video/mp4';
-			const blob = new Blob([new Uint8Array(buffer)], { type: mime });
-			this.revokeBlobUrl();
-			this.blobUrl = URL.createObjectURL(blob);
+
+			// Use resource URL for streaming — avoids loading the entire file into memory
+			const resourcePath = this.app.vault.getResourcePath(file);
+
 			this.videoEl.muted = false;
 			this.videoEl.volume = Math.min(1, Math.max(0, volume));
-			this.videoEl.src = this.blobUrl;
+			this.videoEl.src = resourcePath;
 			this.videoEl.onerror = () => {
 				const err = this.videoEl?.error;
 				new Notice(`Video load error: ${err?.message ?? 'unknown'}`);
@@ -107,13 +96,6 @@ export class VideoPlayerView extends ItemView {
 			this.videoEl.load();
 		} catch {
 			new Notice(`Cannot read video file: ${path}`);
-		}
-	}
-
-	private revokeBlobUrl(): void {
-		if (this.blobUrl) {
-			URL.revokeObjectURL(this.blobUrl);
-			this.blobUrl = null;
 		}
 	}
 
