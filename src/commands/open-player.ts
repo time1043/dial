@@ -37,10 +37,13 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 	const videoRelative = String(frontmatter.video);
 	const subtitleRelative = String(frontmatter.subtitle);
 
-	// 3. Resolve video path (absolute, outside vault)
-	const videoPath = join(plugin.settings.videoLibraryPath, videoRelative);
+	// 3. Resolve video path (vault-relative)
+	const videoPath = join(plugin.settings.videoLibraryPath, videoRelative).replace(
+		/\\/g,
+		'/',
+	);
 
-	// 4. Read subtitle file (inside vault)
+	// 4. Read subtitle file (vault-relative)
 	const subtitlePath = join(plugin.settings.subtitleLibraryPath, subtitleRelative).replace(
 		/\\/g,
 		'/',
@@ -112,7 +115,7 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 	}, 100);
 
 	// 6. Wire everything up
-	videoView.loadVideo(videoPath, plugin.settings.defaultVolume);
+	await videoView.loadVideo(videoPath, plugin.settings.defaultVolume);
 	videoView.setSubtitles(subtitles);
 	subtitleView.setSubtitles(subtitles);
 	plugin.setSubtitles(subtitles);

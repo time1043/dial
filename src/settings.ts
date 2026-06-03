@@ -9,7 +9,7 @@ export interface DialSettings {
 }
 
 export const DEFAULT_SETTINGS: DialSettings = {
-	videoLibraryPath: '',
+	videoLibraryPath: '_lib/videos',
 	subtitleLibraryPath: '_lib/subtitles',
 	defaultVolume: 1,
 };
@@ -32,13 +32,14 @@ export class DialSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Video library path')
-			.setDesc('Absolute path to the directory containing your video files.')
+			.setDesc('Vault-relative path to the directory containing video files.')
 			.addText((text) =>
 				text
-					.setPlaceholder('/path/to/videos')
+					.setPlaceholder('_lib/videos')
 					.setValue(this.plugin.settings.videoLibraryPath)
 					.onChange(async (value) => {
-						this.plugin.settings.videoLibraryPath = trimTrailingSlash(value);
+						this.plugin.settings.videoLibraryPath =
+							trimTrailingSlash(value) || DEFAULT_SETTINGS.videoLibraryPath;
 						await this.plugin.saveSettings();
 					}),
 			);

@@ -1,9 +1,6 @@
-import { ItemView, Notice, WorkspaceLeaf } from 'obsidian';
+import { ItemView, Notice, TFile, WorkspaceLeaf } from 'obsidian';
 
 import type { ABLoopState, Subtitle } from '@/types';
-
-// Node.js fs module (available in Obsidian's Electron)
-const fs = window.require('fs') as typeof import('fs');
 
 export const VIDEO_PLAYER_VIEW_TYPE = 'dial-video-player';
 
@@ -78,11 +75,16 @@ export class VideoPlayerView extends ItemView {
 		this.videoEl = null;
 	}
 
-	loadVideo(path: string, volume = 1): void {
+	async loadVideo(path: string, volume = 1): Promise<void> {
 		if (!this.videoEl) return;
 		this.videoPath = path;
 		try {
-			const buffer = fs.readFileSync(path) as Uint8Array;
+			const file = this.app.vault.getAbstractFileByPath(path);
+			if (!(file instanceof TFile)) {
+				new Notice(`Video file not found: ${path}`);
+				return;
+			}
+			const buffer = await this.app.vault.readBinary(file);
 			const ext = path.split('.').pop()?.toLowerCase() ?? 'mp4';
 			const mimeMap: Record<string, string> = {
 				mp4: 'video/mp4',
@@ -229,7 +231,7 @@ export class VideoPlayerView extends ItemView {
 		};
 		if (videoPath) {
 			this.videoPath = videoPath;
-			this.loadVideo(videoPath);
+			await this.loadVideo(videoPath);
 		}
 		if (subtitles) {
 			this.subtitles = subtitles;
