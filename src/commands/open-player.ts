@@ -1,6 +1,6 @@
 import type { View } from 'obsidian';
 
-import { Notice, TFile } from 'obsidian';
+import { Notice, Platform, TFile } from 'obsidian';
 import { join } from 'path';
 
 import type DialPlugin from '@/main';
@@ -72,17 +72,42 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 		return;
 	}
 
-	// 5. Open views in split layout: left (md + subtitles) | right (video)
-	const subtitleView = (await openView(plugin, SUBTITLE_VIEW_TYPE, 'tab')) as SubtitleView;
-	const subLeaf = plugin.app.workspace.getLeavesOfType(SUBTITLE_VIEW_TYPE)[0]!;
-	const videoLeaf = plugin.app.workspace.createLeafBySplit(subLeaf, 'vertical');
-	await videoLeaf.setViewState({ type: VIDEO_PLAYER_VIEW_TYPE, active: true });
-	await plugin.app.workspace.revealLeaf(subLeaf);
-	const videoView = videoLeaf.view as VideoPlayerView;
+	// 5. Open views in split layout
+	//    Desktop: left (subtitles + md) | right (video)  2:8
+	//    Mobile:  top (video) | bottom (subtitles + md)   3:7
+	const isMobile = Platform.isMobile;
+	const splitDirection = isMobile ? 'horizontal' : 'vertical';
+	const splitRatio: [number, number] = isMobile ? [3, 7] : [2, 8];
 
-	// 6. Set 2:8 ratio via CSS flex, then focus subtitle for keyboard shortcuts
+	let subtitleView: SubtitleView;
+	let videoView: VideoPlayerView;
+	let refEl: HTMLElement;
+
+	if (isMobile) {
+		// Mobile: video on top, subtitle below
+		const videoLeaf = plugin.app.workspace.getLeaf('tab');
+		await videoLeaf.setViewState({ type: VIDEO_PLAYER_VIEW_TYPE, active: true });
+		videoView = videoLeaf.view as VideoPlayerView;
+
+		const subLeaf = plugin.app.workspace.createLeafBySplit(videoLeaf, splitDirection);
+		await subLeaf.setViewState({ type: SUBTITLE_VIEW_TYPE, active: true });
+		await plugin.app.workspace.revealLeaf(subLeaf);
+		subtitleView = subLeaf.view as SubtitleView;
+		refEl = videoView.containerEl;
+	} else {
+		// Desktop: subtitle left, video right
+		subtitleView = (await openView(plugin, SUBTITLE_VIEW_TYPE, 'tab')) as SubtitleView;
+		const subLeaf = plugin.app.workspace.getLeavesOfType(SUBTITLE_VIEW_TYPE)[0]!;
+		const videoLeaf = plugin.app.workspace.createLeafBySplit(subLeaf, splitDirection);
+		await videoLeaf.setViewState({ type: VIDEO_PLAYER_VIEW_TYPE, active: true });
+		await plugin.app.workspace.revealLeaf(subLeaf);
+		videoView = videoLeaf.view as VideoPlayerView;
+		refEl = subtitleView.containerEl;
+	}
+
+	// 6. Set split ratio via CSS flex, then focus subtitle for keyboard shortcuts
 	setTimeout(() => {
-		applySplitRatio(subtitleView.containerEl, [2, 8]);
+		applySplitRatio(refEl, splitRatio);
 		(subtitleView.containerEl.children[1] as HTMLElement)?.focus();
 	}, 100);
 
