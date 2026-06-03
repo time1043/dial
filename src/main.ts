@@ -1,4 +1,4 @@
-import { Notice, Platform, Plugin } from 'obsidian';
+import { Notice, Plugin } from 'obsidian';
 
 import type { DialSettings } from './settings';
 import type { ABLoopState, Subtitle } from './types';
@@ -160,7 +160,7 @@ export default class DialPlugin extends Plugin {
 		}
 
 		// Re-apply split ratio after DOM is ready
-		const splitRatio: [number, number] = Platform.isMobile ? [3, 7] : [2, 8];
+		const splitRatio: [number, number] = [2, 8];
 		setTimeout(() => {
 			const refEl = subtitleView instanceof SubtitleView
 				? subtitleView.containerEl
