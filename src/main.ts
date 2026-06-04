@@ -7,6 +7,7 @@ import { createVideoNote } from './commands/create-video-note';
 import { insertTimestamp } from './commands/insert-timestamp';
 import { openVideoPlayer, setupSync } from './commands/open-player';
 import { openTrace } from './commands/open-trace';
+import { togglePlay } from './commands/toggle-play';
 import { AbLoopManager } from './modules/ab-loop/ab-loop-manager';
 import { PositionManager } from './modules/position-manager/position-manager';
 import { getJumpTarget } from './modules/subtitle-navigator/subtitle-navigator';
@@ -96,6 +97,12 @@ export default class DialPlugin extends Plugin {
 			id: 'insert-timestamp',
 			name: 'Insert video timestamp',
 			callback: () => insertTimestamp(this),
+		});
+
+		this.addCommand({
+			id: 'toggle-play',
+			name: 'Toggle play/pause',
+			callback: () => togglePlay(this),
 		});
 
 		this.addCommand({
