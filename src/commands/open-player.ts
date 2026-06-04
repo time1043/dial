@@ -40,7 +40,7 @@ async function recordTrace(
 		content = await plugin.app.vault.read(existing);
 	}
 
-	const updated = trace.addRow(content, date, 'video-player', row);
+	const updated = trace.addRow(content, date, 'Video Player', row);
 
 	if (existing instanceof TFile) {
 		await plugin.app.vault.modify(existing, updated);

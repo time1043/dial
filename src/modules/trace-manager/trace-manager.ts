@@ -42,7 +42,7 @@ export class TraceManager {
 	 * 4. Otherwise → append a new row.
 	 */
 	addRow(content: string, date: string, module: string, row: TraceRow): string {
-		const lines = content.split('\n');
+		const lines = content ? content.split('\n') : [];
 		const dateHeading = `# ${date}`;
 		const moduleHeading = `## ${module}`;
 
