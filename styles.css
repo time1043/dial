@@ -31,6 +31,13 @@
 	height: 100%;
 }
 
+.dial-subtitle-panel {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	overflow: hidden;
+}
+
 /* AB Controls */
 .dial-ab-controls {
 	display: flex;
