@@ -11,7 +11,12 @@ import { VIDEO_PLAYER_VIEW_TYPE, VideoPlayerView } from '@/ui/video-player-view'
 import { applySplitRatio } from '@/utils/layout';
 import { formatTime } from '@/utils/time';
 
-async function recordTrace(plugin: DialPlugin, videoPath: string, notePath: string, seconds: number): Promise<void> {
+async function recordTrace(
+	plugin: DialPlugin,
+	videoPath: string,
+	notePath: string,
+	seconds: number,
+): Promise<void> {
 	const trace = plugin.trace;
 	const now = new Date();
 	const date = now.toISOString().slice(0, 10); // YYYY-MM-DD
