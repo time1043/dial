@@ -121,7 +121,7 @@ export class TypePanel {
 	}
 
 	focus(): void {
-		this.containerEl.focus();
+		this.focusWord(this.activeWordIndex);
 	}
 
 	setCallbacks(cb: TypePanelCallbacks): void {
