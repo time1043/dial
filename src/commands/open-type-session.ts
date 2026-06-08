@@ -197,12 +197,12 @@ async function openTypeLayout(
 	});
 	tv.loadSession(subtitles, session);
 
-	// Position video at the current sentence. Must happen before
+	// Play the current sentence on open. Must happen before
 	// layout-change handlers fire, otherwise they'll restore the
 	// previously saved playback position for this video.
 	const currentSub = subtitles[session.currentIndex];
 	if (currentSub) {
-		videoView.jumpToTime(currentSub.start);
+		videoView.playRangeOnce(currentSub.start, currentSub.end);
 	}
 
 	// Sync video subtitle changes to the subtitle panel only
