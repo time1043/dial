@@ -12,6 +12,7 @@ export class VideoPlayerView extends ItemView {
 	private subtitles: Subtitle[] = [];
 	private currentSubtitleId: number = -1;
 	private abLoop: ABLoopState = { a: null, b: null, active: false };
+	private playOnceEnd: number | null = null;
 	private onTimeUpdate: ((time: number) => void) | null = null;
 	private onSubtitleChange: ((id: number) => void) | null = null;
 	private onPlayStateChange: ((isPlaying: boolean) => void) | null = null;
@@ -57,6 +58,13 @@ export class VideoPlayerView extends ItemView {
 			if (sub && sub.id !== this.currentSubtitleId) {
 				this.currentSubtitleId = sub.id;
 				this.onSubtitleChange?.(sub.id);
+			}
+
+			// Play-once enforcement: pause when reaching end
+			if (this.playOnceEnd !== null && time >= this.playOnceEnd) {
+				this.videoEl.pause();
+				this.videoEl.currentTime = this.playOnceEnd;
+				this.playOnceEnd = null;
 			}
 
 			// AB loop enforcement: seek back to A when outside A-B range
@@ -200,6 +208,14 @@ export class VideoPlayerView extends ItemView {
 
 	setABLoop(a: number | null, b: number | null, active: boolean): void {
 		this.abLoop = { a, b, active };
+	}
+
+	/** Play from start to end once, then pause. */
+	playRangeOnce(start: number, end: number): void {
+		if (!this.videoEl) return;
+		this.playOnceEnd = end;
+		this.videoEl.currentTime = start;
+		void this.videoEl.play();
 	}
 
 	getCurrentTime(): number {

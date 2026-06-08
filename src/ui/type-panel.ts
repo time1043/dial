@@ -4,10 +4,14 @@ import { extractPunctuation } from '@/modules/type-session/type-session-manager'
 
 export interface TypePanelCallbacks {
 	onSave: (session: TypeSessionData) => void;
+	onReplaySentence: (start: number, end: number) => void;
+	onSentenceChange: (subtitleId: number) => void;
 }
 
 interface SentenceState {
 	subtileId: number;
+	start: number;
+	end: number;
 	words: { word: string; trailing: string }[];
 	correct: string[];
 	userInput: string[];
@@ -23,7 +27,9 @@ export class TypePanel {
 
 	private contextEl: HTMLElement | null = null;
 	private currentEl: HTMLElement | null = null;
+	private toolbarEl: HTMLElement | null = null;
 	private answerEl: HTMLElement | null = null;
+	private answerVisible = false;
 
 	private wordEls: HTMLElement[] = [];
 	private inputEls: HTMLInputElement[] = [];
@@ -50,6 +56,8 @@ export class TypePanel {
 
 			return {
 				subtileId: sub.id,
+				start: sub.start,
+				end: sub.end,
 				words,
 				correct,
 				userInput: record?.userInput ?? [],
@@ -60,6 +68,7 @@ export class TypePanel {
 		this.currentIndex = session.currentIndex;
 		this.activeWordIndex = 0;
 		this.render();
+		this.renderToolbar();
 	}
 
 	goToSentence(index: number): void {
@@ -67,7 +76,12 @@ export class TypePanel {
 		this.persistSession();
 		this.currentIndex = index;
 		this.activeWordIndex = 0;
+		this.answerVisible = false;
+		this.hideAnswer();
 		this.render();
+		this.renderToolbar();
+		const s = this.sentences[this.currentIndex];
+		if (s) this.callbacks?.onSentenceChange(s.subtileId);
 	}
 
 	focus(): void {
@@ -83,7 +97,116 @@ export class TypePanel {
 	private buildUI(): void {
 		this.contextEl = this.containerEl.createDiv({ cls: 'dial-type-context' });
 		this.currentEl = this.containerEl.createDiv({ cls: 'dial-type-current' });
+		this.toolbarEl = this.containerEl.createDiv({ cls: 'dial-type-toolbar' });
 		this.answerEl = this.containerEl.createDiv({ cls: 'dial-type-answer' });
+		this.renderToolbar();
+	}
+
+	// ── Toolbar ───────────────────────────────────────────────────
+
+	private renderToolbar(): void {
+		if (!this.toolbarEl) return;
+		this.toolbarEl.empty();
+
+		const s = this.sentences[this.currentIndex];
+
+		const showAnswerBtn = this.toolbarEl.createEl('button', {
+			cls: 'dial-type-toolbar-btn',
+			text: this.answerVisible ? 'Hide answer' : 'Show answer',
+		});
+		showAnswerBtn.addEventListener('click', () => {
+			this.toggleAnswer();
+		});
+
+		const clearBtn = this.toolbarEl.createEl('button', {
+			cls: 'dial-type-toolbar-btn',
+			text: 'Clear',
+		});
+		clearBtn.addEventListener('click', () => {
+			this.clearSentence();
+		});
+
+		const replayBtn = this.toolbarEl.createEl('button', {
+			cls: 'dial-type-toolbar-btn',
+			text: '🔊 Replay',
+		});
+		replayBtn.addEventListener('click', () => {
+			if (s) this.callbacks?.onReplaySentence(s.start, s.end);
+		});
+	}
+
+	private toggleAnswer(): void {
+		this.answerVisible = !this.answerVisible;
+		if (this.answerVisible) {
+			this.showAnswer();
+		} else {
+			this.hideAnswer();
+		}
+		this.renderToolbar();
+	}
+
+	// ── Show answer ───────────────────────────────────────────────
+
+	private showAnswer(): void {
+		const s = this.sentences[this.currentIndex];
+		if (!s || !this.answerEl) return;
+
+		this.answerEl.empty();
+		this.answerEl.addClass('dial-type-answer-visible');
+
+		// User input line
+		const userLine = this.answerEl.createDiv({ cls: 'dial-type-answer-line' });
+		userLine.createSpan({ cls: 'dial-type-answer-label', text: 'You typed: ' });
+		for (let i = 0; i < s.words.length; i++) {
+			const userWord = s.userInput[i] ?? '';
+			const isCorrect = userWord.toLowerCase() === s.correct[i];
+			const cls = userWord
+				? isCorrect
+					? 'dial-type-answer-correct'
+					: 'dial-type-answer-wrong'
+				: 'dial-type-answer-missing';
+			userLine.createSpan({ cls, text: userWord || '___' });
+			if (s.words[i]!.trailing) {
+				userLine.createSpan({ cls: 'dial-type-answer-punct', text: s.words[i]!.trailing });
+			}
+			userLine.createSpan({ text: ' ' });
+		}
+
+		// Correct answer line
+		const correctLine = this.answerEl.createDiv({ cls: 'dial-type-answer-line' });
+		correctLine.createSpan({ cls: 'dial-type-answer-label', text: 'Correct:   ' });
+		for (let i = 0; i < s.words.length; i++) {
+			const wordInfo = s.words[i]!;
+			const userWord = s.userInput[i] ?? '';
+			const isCorrect = userWord.toLowerCase() === s.correct[i];
+			const cls = userWord && !isCorrect ? 'dial-type-answer-correct-word' : '';
+			correctLine.createSpan({ cls, text: wordInfo.word });
+			if (wordInfo.trailing) {
+				correctLine.createSpan({ cls: 'dial-type-answer-punct', text: wordInfo.trailing });
+			}
+			correctLine.createSpan({ text: ' ' });
+		}
+	}
+
+	private hideAnswer(): void {
+		this.answerVisible = false;
+		this.answerEl?.empty();
+		this.answerEl?.removeClass('dial-type-answer-visible');
+	}
+
+	// ── Clear sentence ────────────────────────────────────────────
+
+	private clearSentence(): void {
+		const s = this.sentences[this.currentIndex];
+		if (!s) return;
+
+		s.userInput = [];
+		s.completedAt = null;
+		this.answerVisible = false;
+		this.hideAnswer();
+		this.renderCurrent();
+		this.renderToolbar();
+		this.focusWord(0);
 	}
 
 	// ── Keyboard ─────────────────────────────────────────────────
@@ -192,7 +315,12 @@ export class TypePanel {
 		if (this.currentIndex < this.sentences.length - 1) {
 			this.currentIndex++;
 			this.activeWordIndex = 0;
+			this.answerVisible = false;
+			this.hideAnswer();
 			this.render();
+			this.renderToolbar();
+			const next = this.sentences[this.currentIndex];
+			if (next) this.callbacks?.onSentenceChange(next.subtileId);
 		}
 	}
 
@@ -201,7 +329,9 @@ export class TypePanel {
 	private render(): void {
 		this.renderContext();
 		this.renderCurrent();
-		this.answerEl?.empty();
+		if (!this.answerVisible) {
+			this.answerEl?.empty();
+		}
 		this.focusWord(this.activeWordIndex);
 	}
 

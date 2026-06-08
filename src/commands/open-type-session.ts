@@ -149,7 +149,18 @@ async function openTypeLayout(
 	plugin.setSubtitles(subtitles);
 
 	// Wire type → session persistence
-	tv.setCallbacks({ onSave: (s) => void getManager(plugin).save(s) });
+	tv.setCallbacks({
+		onSave: (s) => void getManager(plugin).save(s),
+		onReplaySentence: (start, end) => {
+			videoView.playRangeOnce(start, end);
+		},
+		onSentenceChange: (subtitleId) => {
+			// Clear any AB loop — type mode drives playback, not loop
+			videoView.setABLoop(null, null, false);
+			const sub = subtitles.find((s) => s.id === subtitleId);
+			if (sub) videoView.playRangeOnce(sub.start, sub.end);
+		},
+	});
 	tv.loadSession(subtitles, session);
 
 	// Wire video subtitle change → type view navigation
