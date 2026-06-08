@@ -2,6 +2,8 @@ import { ItemView, WorkspaceLeaf } from 'obsidian';
 
 import type { Subtitle, TypeSessionData } from '@/types';
 
+import { applySplitRatio } from '@/utils/layout';
+
 import { TypePanel, type TypePanelCallbacks } from './type-panel';
 
 export const TYPE_VIEW_TYPE = 'dial-type';
@@ -36,6 +38,12 @@ export class TypeView extends ItemView {
 		if (this.callbacks) {
 			this.panel.setCallbacks(this.callbacks);
 		}
+
+		// Re-apply split ratio on workspace restore (refresh) — Obsidian
+		// resets flex ratios when rebuilding the layout from saved state.
+		setTimeout(() => {
+			applySplitRatio(this.containerEl, [2, 8]);
+		}, 200);
 	}
 
 	async onClose(): Promise<void> {
