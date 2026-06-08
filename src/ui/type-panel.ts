@@ -12,10 +12,44 @@ interface SentenceState {
 	subtileId: number;
 	start: number;
 	end: number;
-	words: { word: string; trailing: string }[];
+	words: { leading: string; word: string; trailing: string }[];
 	correct: string[];
 	userInput: string[];
 	completedAt: string | null;
+}
+
+type ParsedWord = { leading: string; word: string; trailing: string };
+
+/** Merge all-punctuation tokens (word === '') into adjacent word tokens. */
+function mergePunctuation(tokens: ParsedWord[]): ParsedWord[] {
+	const merged: ParsedWord[] = [];
+	let pendingLeading = '';
+
+	for (const t of tokens) {
+		if (t.word === '') {
+			// All-punctuation token — attach as punctuation of adjacent words
+			const punct = t.leading;
+			if (merged.length > 0) {
+				merged[merged.length - 1]!.trailing += punct;
+			} else {
+				pendingLeading += punct;
+			}
+		} else {
+			merged.push({
+				leading: pendingLeading + t.leading,
+				word: t.word,
+				trailing: t.trailing,
+			});
+			pendingLeading = '';
+		}
+	}
+
+	// Stray punctuation at the very end
+	if (pendingLeading && merged.length > 0) {
+		merged[merged.length - 1]!.trailing += pendingLeading;
+	}
+
+	return merged;
 }
 
 export class TypePanel {
@@ -51,7 +85,7 @@ export class TypePanel {
 		this.sentences = subtitles.map((sub, i) => {
 			const record = session.sentences[i];
 			const rawWords = sub.text.split(/\s+/).filter((w) => w.length > 0);
-			const words = rawWords.map((w) => extractPunctuation(w));
+			const words = mergePunctuation(rawWords.map((w) => extractPunctuation(w)));
 			const correct = words.map((w) => w.word.toLowerCase());
 
 			return {
@@ -128,7 +162,7 @@ export class TypePanel {
 
 		const replayBtn = this.toolbarEl.createEl('button', {
 			cls: 'dial-type-toolbar-btn',
-			text: '🔊 Replay',
+			text: 'Replay',
 		});
 		replayBtn.addEventListener('click', () => {
 			if (s) this.callbacks?.onReplaySentence(s.start, s.end);
@@ -158,6 +192,7 @@ export class TypePanel {
 		const userLine = this.answerEl.createDiv({ cls: 'dial-type-answer-line' });
 		userLine.createSpan({ cls: 'dial-type-answer-label', text: 'You typed: ' });
 		for (let i = 0; i < s.words.length; i++) {
+			const wordInfo = s.words[i]!;
 			const userWord = s.userInput[i] ?? '';
 			const isCorrect = userWord.toLowerCase() === s.correct[i];
 			const cls = userWord
@@ -165,9 +200,13 @@ export class TypePanel {
 					? 'dial-type-answer-correct'
 					: 'dial-type-answer-wrong'
 				: 'dial-type-answer-missing';
+
+			if (wordInfo.leading) {
+				userLine.createSpan({ cls: 'dial-type-answer-punct', text: wordInfo.leading });
+			}
 			userLine.createSpan({ cls, text: userWord || '___' });
-			if (s.words[i]!.trailing) {
-				userLine.createSpan({ cls: 'dial-type-answer-punct', text: s.words[i]!.trailing });
+			if (wordInfo.trailing) {
+				userLine.createSpan({ cls: 'dial-type-answer-punct', text: wordInfo.trailing });
 			}
 			userLine.createSpan({ text: ' ' });
 		}
@@ -180,6 +219,10 @@ export class TypePanel {
 			const userWord = s.userInput[i] ?? '';
 			const isCorrect = userWord.toLowerCase() === s.correct[i];
 			const cls = userWord && !isCorrect ? 'dial-type-answer-correct-word' : '';
+
+			if (wordInfo.leading) {
+				correctLine.createSpan({ cls: 'dial-type-answer-punct', text: wordInfo.leading });
+			}
 			correctLine.createSpan({ cls, text: wordInfo.word });
 			if (wordInfo.trailing) {
 				correctLine.createSpan({ cls: 'dial-type-answer-punct', text: wordInfo.trailing });
@@ -350,6 +393,10 @@ export class TypePanel {
 				const userWord = s.userInput[j] ?? '';
 				const isCorrect = userWord.toLowerCase() === s.correct[j];
 
+				if (wordInfo.leading) {
+					line.createSpan({ cls: 'dial-type-context-punct', text: wordInfo.leading });
+				}
+
 				line.createSpan({
 					cls: `dial-type-context-word${isCorrect ? ' dial-type-correct' : ''}`,
 					text: userWord || wordInfo.word,
@@ -376,6 +423,10 @@ export class TypePanel {
 			const wordInfo = s.words[i]!;
 			const wrapper = this.currentEl.createDiv({ cls: 'dial-type-word' });
 			this.wordEls.push(wrapper);
+
+			if (wordInfo.leading) {
+				wrapper.createSpan({ cls: 'dial-type-punct', text: wordInfo.leading });
+			}
 
 			const input = wrapper.createEl('input', {
 				cls: 'dial-type-input',

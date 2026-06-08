@@ -65,10 +65,17 @@ export function tokenize(text: string): string[] {
 		.filter((w) => w.length > 0);
 }
 
-export function extractPunctuation(raw: string): { word: string; trailing: string } {
-	const match = raw.match(/^(\w+)([^\w]*)$/);
+/** Split a raw token into leading punctuation + word + trailing punctuation. */
+export function extractPunctuation(raw: string): {
+	leading: string;
+	word: string;
+	trailing: string;
+} {
+	const match = raw.match(/^([^\w]*)(\w+)([^\w]*)$/);
 	if (match) {
-		return { word: match[1]!, trailing: match[2] ?? '' };
+		return { leading: match[1] ?? '', word: match[2]!, trailing: match[3] ?? '' };
 	}
-	return { word: raw, trailing: '' };
+	// All-punctuation token (e.g. "--", "…", "..") — mergePunctuation() will attach
+	// it to an adjacent word
+	return { leading: raw, word: '', trailing: '' };
 }
