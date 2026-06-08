@@ -1,3 +1,5 @@
+import { Platform } from 'obsidian';
+
 import type { Subtitle, TypeSessionData } from '@/types';
 
 import { extractPunctuation } from '@/modules/type-session/type-session-manager';
@@ -143,10 +145,15 @@ export class TypePanel {
 		this.toolbarEl.empty();
 
 		const s = this.sentences[this.currentIndex];
+		const mod = Platform.isMacOS ? '⌘⇧' : 'Ctrl+Shift+';
+		const enter = Platform.isMacOS ? '↵' : 'Enter';
+		const backspace = Platform.isMacOS ? '⌫' : 'Backspace';
 
 		const showAnswerBtn = this.toolbarEl.createEl('button', {
 			cls: 'dial-type-toolbar-btn',
-			text: this.answerVisible ? 'Hide answer' : 'Show answer',
+			text: this.answerVisible
+				? `Hide answer (${mod}${enter})`
+				: `Show answer (${mod}${enter})`,
 		});
 		showAnswerBtn.addEventListener('click', () => {
 			this.toggleAnswer();
@@ -154,7 +161,7 @@ export class TypePanel {
 
 		const clearBtn = this.toolbarEl.createEl('button', {
 			cls: 'dial-type-toolbar-btn',
-			text: 'Clear',
+			text: `Clear (${mod}${backspace})`,
 		});
 		clearBtn.addEventListener('click', () => {
 			this.clearSentence();
@@ -162,7 +169,7 @@ export class TypePanel {
 
 		const replayBtn = this.toolbarEl.createEl('button', {
 			cls: 'dial-type-toolbar-btn',
-			text: 'Replay',
+			text: `Replay (${mod}C)`,
 		});
 		replayBtn.addEventListener('click', () => {
 			if (s) this.callbacks?.onReplaySentence(s.start, s.end);
@@ -256,6 +263,27 @@ export class TypePanel {
 
 	private bindKeys(): void {
 		this.containerEl.addEventListener('keydown', (e) => {
+			const mod = e.ctrlKey || e.metaKey;
+
+			// ── Modifier shortcuts ────────────────────────────
+			if (mod && e.shiftKey && e.code === 'KeyC') {
+				e.preventDefault();
+				const s = this.sentences[this.currentIndex];
+				if (s) this.callbacks?.onReplaySentence(s.start, s.end);
+				return;
+			}
+			if (mod && e.shiftKey && e.code === 'Enter') {
+				e.preventDefault();
+				this.toggleAnswer();
+				return;
+			}
+			if (mod && e.shiftKey && e.code === 'Backspace') {
+				e.preventDefault();
+				this.clearSentence();
+				return;
+			}
+
+			// ── Navigation shortcuts ─────────────────────────
 			if (e.code === 'Space') {
 				e.preventDefault();
 				this.onSpace();
