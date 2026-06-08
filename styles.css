@@ -173,6 +173,26 @@
 	line-height: 1.6;
 }
 
+/* Type Mode */
+.dial-type-container {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
+.dial-type-panel {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	overflow: hidden;
+}
+
+.dial-type-placeholder {
+	margin: auto;
+	color: var(--text-muted);
+	font-size: 24px;
+}
+
 /* Video Note Modal */
 .dial-input {
 	width: 100%;

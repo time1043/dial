@@ -10,3 +10,19 @@ export interface ABLoopState {
 	b: number | null;
 	active: boolean;
 }
+
+export interface TypeSentenceRecord {
+	subtitleId: number;
+	userInput: string[];
+	correct: string[];
+	completedAt: string | null;
+}
+
+export interface TypeSessionData {
+	id: string;
+	videoPath: string;
+	subtitlePath: string;
+	currentIndex: number;
+	createdAt: string;
+	sentences: TypeSentenceRecord[];
+}

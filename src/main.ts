@@ -7,6 +7,7 @@ import { createVideoNote } from './commands/create-video-note';
 import { insertTimestamp } from './commands/insert-timestamp';
 import { openVideoPlayer, setupSync } from './commands/open-player';
 import { openTrace } from './commands/open-trace';
+import { openTypeSession, resumeTypeSession } from './commands/open-type-session';
 import { togglePlay } from './commands/toggle-play';
 import { AbLoopManager } from './modules/ab-loop/ab-loop-manager';
 import { PositionManager } from './modules/position-manager/position-manager';
@@ -14,6 +15,7 @@ import { getJumpTarget } from './modules/subtitle-navigator/subtitle-navigator';
 import { TraceManager } from './modules/trace-manager/trace-manager';
 import { DEFAULT_SETTINGS, DialSettingTab } from './settings';
 import { SUBTITLE_VIEW_TYPE, SubtitleView } from './ui/subtitle-view';
+import { TYPE_VIEW_TYPE, TypeView } from './ui/type-view';
 import { VIDEO_PLAYER_VIEW_TYPE, VideoPlayerView } from './ui/video-player-view';
 import { applySplitRatio } from './utils/layout';
 import { formatTime } from './utils/time';
@@ -35,6 +37,7 @@ export default class DialPlugin extends Plugin {
 
 		this.registerView(VIDEO_PLAYER_VIEW_TYPE, (leaf) => new VideoPlayerView(leaf));
 		this.registerView(SUBTITLE_VIEW_TYPE, (leaf) => new SubtitleView(leaf));
+		this.registerView(TYPE_VIEW_TYPE, (leaf) => new TypeView(leaf));
 
 		this.addRibbonIcon('play', 'Dial', () => {
 			void openVideoPlayer(this);
@@ -44,6 +47,12 @@ export default class DialPlugin extends Plugin {
 			id: 'open-video-player',
 			name: 'Open video player',
 			callback: () => openVideoPlayer(this),
+		});
+
+		this.addCommand({
+			id: 'open-type-session',
+			name: 'Open type session',
+			callback: () => openTypeSession(this),
 		});
 
 		this.addCommand({
@@ -120,8 +129,14 @@ export default class DialPlugin extends Plugin {
 			}),
 		);
 
-		// Handle obsidian://dial?note=path&seconds=N timestamp links
+		// Handle obsidian://dial?note=path&seconds=N and obsidian://dial?type=id links
 		this.registerObsidianProtocolHandler('dial', async (params) => {
+			// Type session resume
+			if (params.type) {
+				await resumeTypeSession(this, params.type);
+				return;
+			}
+
 			const seconds = Number(params.seconds);
 			if (isNaN(seconds)) return;
 
