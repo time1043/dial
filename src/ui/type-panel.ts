@@ -133,8 +133,8 @@ export class TypePanel {
 	private buildUI(): void {
 		this.contextEl = this.containerEl.createDiv({ cls: 'dial-type-context' });
 		this.currentEl = this.containerEl.createDiv({ cls: 'dial-type-current' });
-		this.toolbarEl = this.containerEl.createDiv({ cls: 'dial-type-toolbar' });
 		this.answerEl = this.containerEl.createDiv({ cls: 'dial-type-answer' });
+		this.toolbarEl = this.containerEl.createDiv({ cls: 'dial-type-toolbar' });
 		this.renderToolbar();
 	}
 
@@ -240,7 +240,6 @@ export class TypePanel {
 
 	private hideAnswer(): void {
 		this.answerVisible = false;
-		this.answerEl?.empty();
 		this.answerEl?.removeClass('dial-type-answer-visible');
 	}
 
@@ -401,7 +400,7 @@ export class TypePanel {
 		this.renderContext();
 		this.renderCurrent();
 		if (!this.answerVisible) {
-			this.answerEl?.empty();
+			this.answerEl?.removeClass('dial-type-answer-visible');
 		}
 		this.focusWord(this.activeWordIndex);
 	}

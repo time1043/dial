@@ -291,11 +291,12 @@
 .dial-type-answer {
 	flex-shrink: 0;
 	padding: 8px 24px 16px;
-	display: none;
+	min-height: 88px;
+	visibility: hidden;
 }
 
 .dial-type-answer.dial-type-answer-visible {
-	display: block;
+	visibility: visible;
 }
 
 .dial-type-answer-line {
