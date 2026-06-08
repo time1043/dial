@@ -60,6 +60,15 @@ export class TypeView extends ItemView {
 			});
 		}
 
+		// Auto-focus input when this tab becomes active
+		this.registerEvent(
+			this.app.workspace.on('active-leaf-change', (leaf) => {
+				if (leaf === this.leaf) {
+					this.panel?.focus();
+				}
+			}),
+		);
+
 		// Re-apply split ratio on workspace restore (refresh) — Obsidian
 		// resets flex ratios when rebuilding the layout from saved state.
 		setTimeout(() => {
