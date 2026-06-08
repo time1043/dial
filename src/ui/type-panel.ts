@@ -8,9 +8,7 @@ export interface TypePanelCallbacks {
 
 interface SentenceState {
 	subtileId: number;
-	/** Each word with its trailing punctuation. */
 	words: { word: string; trailing: string }[];
-	/** Lowercase correct answers. */
 	correct: string[];
 	userInput: string[];
 	completedAt: string | null;
@@ -37,6 +35,7 @@ export class TypePanel {
 		this.containerEl = parent.createDiv({ cls: 'dial-type-panel' });
 		this.buildUI();
 		this.containerEl.setAttribute('tabindex', '-1');
+		this.bindKeys();
 	}
 
 	// ── Public API ───────────────────────────────────────────────
@@ -65,6 +64,7 @@ export class TypePanel {
 
 	goToSentence(index: number): void {
 		if (index < 0 || index >= this.sentences.length) return;
+		this.persistSession();
 		this.currentIndex = index;
 		this.activeWordIndex = 0;
 		this.render();
@@ -86,6 +86,116 @@ export class TypePanel {
 		this.answerEl = this.containerEl.createDiv({ cls: 'dial-type-answer' });
 	}
 
+	// ── Keyboard ─────────────────────────────────────────────────
+
+	private bindKeys(): void {
+		this.containerEl.addEventListener('keydown', (e) => {
+			if (e.code === 'Space') {
+				e.preventDefault();
+				this.onSpace();
+			} else if (e.code === 'Backspace') {
+				this.onBackspace(e);
+			} else if (e.code === 'ArrowRight') {
+				e.preventDefault();
+				this.onArrow(1);
+			} else if (e.code === 'ArrowLeft') {
+				e.preventDefault();
+				this.onArrow(-1);
+			} else if (e.code === 'ArrowUp') {
+				e.preventDefault();
+				this.goToSentence(this.currentIndex - 1);
+			} else if (e.code === 'ArrowDown') {
+				e.preventDefault();
+				this.goToSentence(this.currentIndex + 1);
+			}
+		});
+	}
+
+	private onSpace(): void {
+		const input = this.inputEls[this.activeWordIndex];
+		if (!input) return;
+
+		this.commitWord(this.activeWordIndex);
+
+		if (this.activeWordIndex < this.inputEls.length - 1) {
+			this.focusWord(this.activeWordIndex + 1);
+		} else {
+			this.tryAutoAdvance();
+		}
+	}
+
+	private onBackspace(e: KeyboardEvent): void {
+		const input = this.inputEls[this.activeWordIndex];
+		if (!input) return;
+		// Has text — let browser delete the character
+		if (input.value.length > 0) return;
+		// Empty — jump to previous word
+		e.preventDefault();
+		if (this.activeWordIndex <= 0) return;
+		this.focusWord(this.activeWordIndex - 1);
+	}
+
+	private onArrow(delta: number): void {
+		const next = this.activeWordIndex + delta;
+		if (next >= 0 && next < this.inputEls.length) {
+			this.commitWord(this.activeWordIndex);
+			this.focusWord(next);
+		}
+	}
+
+	// ── Word state ───────────────────────────────────────────────
+
+	private commitWord(index: number): void {
+		const s = this.sentences[this.currentIndex];
+		if (!s) return;
+		const input = this.inputEls[index];
+		if (!input) return;
+
+		const value = input.value.trim();
+		s.userInput[index] = value;
+		this.updateWordVisual(index);
+	}
+
+	private updateWordVisual(index: number): void {
+		const s = this.sentences[this.currentIndex];
+		if (!s) return;
+		const wrapper = this.wordEls[index];
+		if (!wrapper) return;
+
+		const input = s.userInput[index];
+		if (!input) {
+			wrapper.removeClass('dial-type-correct');
+			wrapper.removeClass('dial-type-wrong');
+			return;
+		}
+
+		const isCorrect = input.toLowerCase() === s.correct[index];
+		wrapper.toggleClass('dial-type-correct', isCorrect);
+		wrapper.toggleClass('dial-type-wrong', !isCorrect);
+	}
+
+	// ── Auto-advance ─────────────────────────────────────────────
+
+	private tryAutoAdvance(): void {
+		const s = this.sentences[this.currentIndex];
+		if (!s) return;
+
+		const allCorrect = s.correct.every(
+			(correct, i) => s.userInput[i]?.toLowerCase() === correct,
+		);
+
+		if (!allCorrect) return;
+
+		s.completedAt = new Date().toISOString();
+		this.persistSession();
+
+		if (this.currentIndex < this.sentences.length - 1) {
+			this.currentIndex++;
+			this.activeWordIndex = 0;
+			this.render();
+		}
+	}
+
 	// ── Rendering ────────────────────────────────────────────────
 
 	private render(): void {
@@ -95,7 +205,6 @@ export class TypePanel {
 		this.focusWord(this.activeWordIndex);
 	}
 
-	/** Render up to 2 completed sentences above the current one. */
 	private renderContext(): void {
 		if (!this.contextEl) return;
 		this.contextEl.empty();
@@ -124,7 +233,6 @@ export class TypePanel {
 		}
 	}
 
-	/** Render the current sentence: per-word inputs + punctuation. */
 	private renderCurrent(): void {
 		if (!this.currentEl) return;
 		this.currentEl.empty();
@@ -152,19 +260,16 @@ export class TypePanel {
 			});
 			this.inputEls.push(input);
 
-			// Restore existing input
 			if (s.userInput[i]) {
 				input.value = s.userInput[i]!;
 			}
 
-			// Apply visual state
 			if (s.userInput[i]) {
 				const isCorrect = s.userInput[i]!.toLowerCase() === s.correct[i];
 				wrapper.toggleClass('dial-type-correct', isCorrect);
 				wrapper.toggleClass('dial-type-wrong', !isCorrect);
 			}
 
-			// Trailing punctuation
 			if (wordInfo.trailing) {
 				wrapper.createSpan({ cls: 'dial-type-punct', text: wordInfo.trailing });
 			}
@@ -173,6 +278,9 @@ export class TypePanel {
 			input.addEventListener('focus', () => {
 				this.activeWordIndex = idx;
 			});
+			input.addEventListener('input', () => {
+				this.onWordInput(idx);
+			});
 		}
 	}
 
@@ -180,5 +288,41 @@ export class TypePanel {
 		if (index < 0 || index >= this.inputEls.length) return;
 		this.activeWordIndex = index;
 		this.inputEls[index]?.focus();
+	}
+
+	// ── Persistence ──────────────────────────────────────────────
+
+	private saveCurrentInput(): void {
+		const s = this.sentences[this.currentIndex];
+		if (!s || !this.session) return;
+
+		for (let i = 0; i < this.inputEls.length; i++) {
+			const val = this.inputEls[i]?.value.trim();
+			if (val) s.userInput[i] = val;
+		}
+
+		const record = this.session.sentences[this.currentIndex];
+		if (record) {
+			record.userInput = [...s.userInput];
+			record.completedAt = s.completedAt;
+		}
+		this.session.currentIndex = this.currentIndex;
+	}
+
+	private persistSession(): void {
+		if (!this.session) return;
+		this.saveCurrentInput();
+		this.callbacks?.onSave(this.session);
+	}
+
+	private onWordInput(index: number): void {
+		const s = this.sentences[this.currentIndex];
+		if (!s) return;
+		const input = this.inputEls[index];
+		if (!input) return;
+
+		const value = input.value.trim();
+		s.userInput[index] = value;
+		this.updateWordVisual(index);
 	}
 }
