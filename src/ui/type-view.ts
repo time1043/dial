@@ -12,6 +12,11 @@ export class TypeView extends ItemView {
 	private panel: TypePanel | null = null;
 	private callbacks: TypePanelCallbacks | null = null;
 
+	// Persisted via Obsidian's native getState/setState (workspace.json).
+	// Stored on loadSession and updated on every save via updateSession.
+	private savedSubtitles: Subtitle[] | null = null;
+	private savedSession: TypeSessionData | null = null;
+
 	constructor(leaf: WorkspaceLeaf) {
 		super(leaf);
 	}
@@ -39,6 +44,11 @@ export class TypeView extends ItemView {
 			this.panel.setCallbacks(this.callbacks);
 		}
 
+		// Restore from workspace state (setState runs before onOpen)
+		if (this.savedSubtitles && this.savedSession) {
+			this.panel.load(this.savedSubtitles, this.savedSession);
+		}
+
 		// Re-apply split ratio on workspace restore (refresh) — Obsidian
 		// resets flex ratios when rebuilding the layout from saved state.
 		setTimeout(() => {
@@ -56,6 +66,8 @@ export class TypeView extends ItemView {
 	}
 
 	loadSession(subtitles: Subtitle[], session: TypeSessionData): void {
+		this.savedSubtitles = subtitles;
+		this.savedSession = session;
 		this.panel?.load(subtitles, session);
 	}
 
@@ -67,9 +79,36 @@ export class TypeView extends ItemView {
 		this.panel?.focus();
 	}
 
-	getState(): Record<string, unknown> {
-		return {};
+	hasData(): boolean {
+		return this.savedSubtitles !== null && this.savedSession !== null;
 	}
 
-	async setState(_state: Record<string, unknown>): Promise<void> {}
+	/** Update the saved session snapshot (call from onSave callback). */
+	updateSession(session: TypeSessionData): void {
+		this.savedSession = session;
+	}
+
+	getState(): Record<string, unknown> {
+		if (!this.savedSubtitles || !this.savedSession) return {};
+		return {
+			subtitles: this.savedSubtitles,
+			session: this.savedSession,
+		};
+	}
+
+	async setState(state: Record<string, unknown>): Promise<void> {
+		const { subtitles, session } = state as {
+			subtitles?: Subtitle[];
+			session?: TypeSessionData;
+		};
+		if (subtitles && session) {
+			this.savedSubtitles = subtitles;
+			this.savedSession = session;
+			// If panel already exists (setState after onOpen), load now.
+			// Otherwise onOpen will pick up savedSubtitles/savedSession.
+			if (this.panel) {
+				this.panel.load(subtitles, session);
+			}
+		}
+	}
 }

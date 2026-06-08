@@ -176,7 +176,10 @@ async function openTypeLayout(
 
 	// Wire type → session persistence + subtitle sync
 	tv.setCallbacks({
-		onSave: (s) => void getManager(plugin).save(s),
+		onSave: (s) => {
+			tv.updateSession(s);
+			void getManager(plugin).save(s);
+		},
 		onReplaySentence: (start, end) => {
 			videoView.playRangeOnce(start, end);
 		},
@@ -224,6 +227,10 @@ export async function openTypeSession(plugin: DialPlugin): Promise<void> {
 
 	await openTypeLayout(plugin, paths.videoPath, subtitles, session);
 	await appendSessionLink(plugin, session);
+
+	plugin.activeTypeSessionId = session.id;
+	await plugin.saveSettings();
+
 	new Notice(`Type session created — ${subtitles.length} sentences`);
 }
 
@@ -239,7 +246,137 @@ export async function resumeTypeSession(plugin: DialPlugin, sessionId: string): 
 	if (!subtitles) return;
 
 	await openTypeLayout(plugin, session.videoPath, subtitles, session);
+
+	plugin.activeTypeSessionId = session.id;
+	await plugin.saveSettings();
+
 	new Notice(`Type session resumed — sentence ${session.currentIndex + 1}/${subtitles.length}`);
+}
+
+/**
+ * Restore a type session after Obsidian reload. Called from trySetupSync()
+ * when the workspace has type-mode leaves but they have no data loaded.
+ *
+ * Polls until all three views are initialized (layout-change may fire
+ * before every view's onOpen() completes), then loads session data.
+ *
+ * Returns true if restore succeeded, false if it permanently failed
+ * (session deleted, subtitle file missing, etc.). On permanent failure,
+ * clears activeTypeSessionId so it won't keep retrying.
+ */
+export async function tryRestoreTypeSession(plugin: DialPlugin): Promise<boolean> {
+	// Wait for all required views to be initialized.
+	// On reload, the first layout-change can fire before every leaf's view
+	// is constructed. Poll at 100ms intervals for up to 3 seconds.
+	let typeSubView: TypeSubtitleView | null = null;
+	let typeView: TypeView | null = null;
+	let videoView: VideoPlayerView | null = null;
+
+	for (let attempt = 0; attempt < 30; attempt++) {
+		const subV = plugin.app.workspace.getLeavesOfType(TYPE_SUBTITLE_VIEW_TYPE).first()?.view;
+		const tV = plugin.app.workspace.getLeavesOfType(TYPE_VIEW_TYPE).first()?.view;
+		const vV = plugin.app.workspace.getLeavesOfType(VIDEO_PLAYER_VIEW_TYPE).first()?.view;
+
+		typeSubView = subV instanceof TypeSubtitleView ? subV : null;
+		typeView = tV instanceof TypeView ? tV : null;
+		videoView = vV instanceof VideoPlayerView ? vV : null;
+
+		if (typeSubView && typeView && videoView) break;
+		await new Promise((r) => setTimeout(r, 100));
+	}
+
+	if (!typeSubView || !typeView || !videoView) return false;
+
+	// Already restored — prevent double execution from concurrent calls
+	if (typeSubView.hasData()) return true;
+
+	const mgr = getManager(plugin);
+	const session = await mgr.load(plugin.activeTypeSessionId!);
+	if (!session) {
+		plugin.activeTypeSessionId = null;
+		await plugin.saveSettings();
+		return false;
+	}
+
+	const subtitles = await loadSubtitles(plugin, session.subtitlePath);
+	if (!subtitles) {
+		plugin.activeTypeSessionId = null;
+		await plugin.saveSettings();
+		return false;
+	}
+
+	// Wire video
+	await videoView.loadVideo(session.videoPath, plugin.settings.defaultVolume);
+	videoView.setSubtitles(subtitles);
+	plugin.setSubtitles(subtitles);
+
+	// Wire type subtitle panel
+	if (!typeSubView.hasData()) {
+		typeSubView.setSubtitles(subtitles);
+		typeSubView.setCurrentIndex(session.currentIndex);
+	}
+	typeSubView.setCallbacks({
+		onClick: (index) => {
+			typeView.goToSentence(index);
+		},
+		onSpeedChange: (rate) => {
+			videoView.setPlaybackRate(rate);
+		},
+	});
+
+	// Reveal previously completed sentences
+	for (let i = 0; i < session.sentences.length; i++) {
+		if (session.sentences[i]?.completedAt) {
+			typeSubView.revealSentence(i);
+		}
+	}
+
+	// Wire type page → session persistence + subtitle sync
+	typeView.setCallbacks({
+		onSave: (s) => {
+			typeView.updateSession(s);
+			void mgr.save(s);
+		},
+		onReplaySentence: (start, end) => {
+			videoView.playRangeOnce(start, end);
+		},
+		onSentenceChange: (subtitleId) => {
+			videoView.setABLoop(null, null, false);
+			const idx = subtitles.findIndex((s) => s.id === subtitleId);
+			if (idx >= 0) {
+				typeSubView.setCurrentIndex(idx);
+				videoView.playRangeOnce(subtitles[idx]!.start, subtitles[idx]!.end);
+			}
+		},
+		onSentenceComplete: (index) => {
+			typeSubView.revealSentence(index);
+		},
+	});
+	if (!typeView.hasData()) {
+		typeView.loadSession(subtitles, session);
+	}
+
+	// Position video at current sentence
+	const currentSub = subtitles[session.currentIndex];
+	if (currentSub) {
+		videoView.jumpToTime(currentSub.start);
+	}
+
+	// Sync video subtitle changes → subtitle panel only (not type page)
+	videoView.setSubtitleChangeCallback((id: number) => {
+		const idx = subtitles.findIndex((s) => s.id === id);
+		if (idx >= 0) {
+			typeSubView.setCurrentIndex(idx);
+		}
+	});
+
+	// Re-apply split ratio after DOM settles
+	setTimeout(() => {
+		applySplitRatio(typeView.containerEl, [2, 8]);
+		typeView.focus();
+	}, 200);
+
+	return true;
 }
 
 async function openViewOnce(plugin: DialPlugin, viewType: string, mode: 'tab' | 'split') {

@@ -41,6 +41,10 @@ export class TypeSubtitlePanel {
 		this.callbacks = cb;
 	}
 
+	hasData(): boolean {
+		return this.subtitles.length > 0;
+	}
+
 	setSubtitles(subtitles: Subtitle[]): void {
 		this.subtitles = subtitles;
 		this.renderList();
@@ -70,6 +74,18 @@ export class TypeSubtitlePanel {
 			textEl.textContent = this.subtitles[index].text;
 			textEl.removeClass('dial-type-subtitle-hidden');
 		}
+	}
+
+	getCurrentIndex(): number {
+		return this.currentIndex;
+	}
+
+	getRevealed(): number[] {
+		return [...this.revealed];
+	}
+
+	getSubtitles(): Subtitle[] {
+		return this.subtitles;
 	}
 
 	changeSpeed(delta: number): void {

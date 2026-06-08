@@ -7,7 +7,11 @@ import { createVideoNote } from './commands/create-video-note';
 import { insertTimestamp } from './commands/insert-timestamp';
 import { openVideoPlayer, setupSync } from './commands/open-player';
 import { openTrace } from './commands/open-trace';
-import { openTypeSession, resumeTypeSession } from './commands/open-type-session';
+import {
+	openTypeSession,
+	resumeTypeSession,
+	tryRestoreTypeSession,
+} from './commands/open-type-session';
 import { togglePlay } from './commands/toggle-play';
 import { AbLoopManager } from './modules/ab-loop/ab-loop-manager';
 import { PositionManager } from './modules/position-manager/position-manager';
@@ -31,6 +35,7 @@ export default class DialPlugin extends Plugin {
 	readonly trace = new TraceManager();
 	private subtitles: Subtitle[] = [];
 	activeNotePath: string | null = null;
+	activeTypeSessionId: string | null = null;
 
 	async onload(): Promise<void> {
 		await this.loadPersistedData();
@@ -124,7 +129,10 @@ export default class DialPlugin extends Plugin {
 
 		this.addSettingTab(new DialSettingTab(this.app, this));
 
-		// Re-wire sync after vault reload restores views
+		// Re-wire sync after vault reload restores views.
+		// layout-change may fire before every view's onOpen() completes,
+		// so tryRestoreTypeSession polls internally until views are ready.
+
 		this.registerEvent(
 			this.app.workspace.on('layout-change', () => {
 				this.trySetupSync();
@@ -186,6 +194,13 @@ export default class DialPlugin extends Plugin {
 	}
 
 	private trySetupSync(): void {
+		// Type mode — restore session data into views that have no
+		// getState/setState persistence. Polls internally until all
+		// views are ready, harmless to call multiple times.
+		if (this.activeTypeSessionId) {
+			void tryRestoreTypeSession(this);
+		}
+
 		const videoView = this.getVideoView();
 		if (!(videoView instanceof VideoPlayerView)) return;
 
@@ -228,6 +243,7 @@ export default class DialPlugin extends Plugin {
 			data['settings'] as Partial<DialSettings> | undefined,
 		);
 		this.positions.load((data['positions'] as Record<string, number> | undefined) ?? {});
+		this.activeTypeSessionId = (data['activeTypeSessionId'] as string | null) ?? null;
 	}
 
 	async saveSettings(): Promise<void> {
@@ -245,6 +261,7 @@ export default class DialPlugin extends Plugin {
 		void this.saveData({
 			settings: this.settings,
 			positions: this.positions.getAll(),
+			activeTypeSessionId: this.activeTypeSessionId,
 		});
 	}
 
