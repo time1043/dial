@@ -71,7 +71,7 @@ export function extractPunctuation(raw: string): {
 	word: string;
 	trailing: string;
 } {
-	const match = raw.match(/^([^\w]*)(\w+)([^\w]*)$/);
+	const match = raw.match(/^([^\w]*)(\w+(?:'\w+)*)([^\w]*)$/);
 	if (match) {
 		return { leading: match[1] ?? '', word: match[2]!, trailing: match[3] ?? '' };
 	}
