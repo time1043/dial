@@ -12,8 +12,8 @@ export class TypeView extends ItemView {
 	private panel: TypePanel | null = null;
 	private callbacks: TypePanelCallbacks | null = null;
 
-	// Persisted via Obsidian's native getState/setState (workspace.json).
-	// Stored on loadSession and updated on every save via updateSession.
+	// Subtitles persisted via Obsidian's getState/setState (workspace.json).
+	// Session data lives in plugin storage only — restored by tryRestoreTypeSession.
 	private savedSubtitles: Subtitle[] | null = null;
 	private savedSession: TypeSessionData | null = null;
 
@@ -44,9 +44,20 @@ export class TypeView extends ItemView {
 			this.panel.setCallbacks(this.callbacks);
 		}
 
-		// Restore from workspace state (setState runs before onOpen)
+		// Restore from workspace state (setState runs before onOpen).
+		// Session data may not be available yet — tryRestoreTypeSession
+		// will call loadSession() with the full session from plugin storage.
 		if (this.savedSubtitles && this.savedSession) {
 			this.panel.load(this.savedSubtitles, this.savedSession);
+		} else if (this.savedSubtitles) {
+			this.panel.load(this.savedSubtitles, {
+				id: '',
+				videoPath: '',
+				subtitlePath: '',
+				currentIndex: 0,
+				createdAt: '',
+				sentences: [],
+			});
 		}
 
 		// Re-apply split ratio on workspace restore (refresh) — Obsidian
@@ -89,25 +100,28 @@ export class TypeView extends ItemView {
 	}
 
 	getState(): Record<string, unknown> {
-		if (!this.savedSubtitles || !this.savedSession) return {};
-		return {
-			subtitles: this.savedSubtitles,
-			session: this.savedSession,
-		};
+		if (!this.savedSubtitles) return {};
+		return { subtitles: this.savedSubtitles };
 	}
 
 	async setState(state: Record<string, unknown>): Promise<void> {
-		const { subtitles, session } = state as {
+		const { subtitles } = state as {
 			subtitles?: Subtitle[];
-			session?: TypeSessionData;
 		};
-		if (subtitles && session) {
+		if (subtitles) {
 			this.savedSubtitles = subtitles;
-			this.savedSession = session;
-			// If panel already exists (setState after onOpen), load now.
-			// Otherwise onOpen will pick up savedSubtitles/savedSession.
-			if (this.panel) {
-				this.panel.load(subtitles, session);
+			// Session is not in workspace.json — it comes from plugin
+			// storage via tryRestoreTypeSession. Only set subtitles here
+			// so onOpen can render word placeholders immediately.
+			if (this.panel && !this.savedSession) {
+				this.panel.load(subtitles, {
+					id: '',
+					videoPath: '',
+					subtitlePath: '',
+					currentIndex: 0,
+					createdAt: '',
+					sentences: [],
+				});
 			}
 		}
 	}
