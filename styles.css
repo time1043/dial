@@ -334,6 +334,18 @@
 	color: var(--text-muted);
 }
 
+/* Type Subtitle Panel */
+.dial-type-subtitle-panel {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	overflow: hidden;
+}
+
+.dial-type-subtitle-text.dial-type-subtitle-hidden {
+	display: none;
+}
+
 /* Video Note Modal */
 .dial-input {
 	width: 100%;

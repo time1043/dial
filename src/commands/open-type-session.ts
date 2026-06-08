@@ -5,7 +5,7 @@ import type { Subtitle, TypeSessionData } from '@/types';
 
 import { parseSubtitle } from '@/modules/subtitle-parsers';
 import { TypeSessionManager } from '@/modules/type-session/type-session-manager';
-import { SUBTITLE_VIEW_TYPE, SubtitleView } from '@/ui/subtitle-view';
+import { TYPE_SUBTITLE_VIEW_TYPE, TypeSubtitleView } from '@/ui/type-subtitle-view';
 import { TYPE_VIEW_TYPE, TypeView } from '@/ui/type-view';
 import { VIDEO_PLAYER_VIEW_TYPE, VideoPlayerView } from '@/ui/video-player-view';
 import { applySplitRatio } from '@/utils/layout';
@@ -106,7 +106,7 @@ async function appendSessionLink(plugin: DialPlugin, session: TypeSessionData): 
  * Open the type mode layout and wire video audio.
  *
  * Layout:
- *   left 2 (subtitle + md tabs)  |  right 8 (video + type tabs)
+ *   left 2 (type-subtitle + md tabs)  |  right 8 (video + type tabs)
  */
 async function openTypeLayout(
 	plugin: DialPlugin,
@@ -123,9 +123,13 @@ async function openTypeLayout(
 		return;
 	}
 
-	// 1. Left 2: subtitle view
-	const subtitleView = (await openViewOnce(plugin, SUBTITLE_VIEW_TYPE, 'tab')) as SubtitleView;
-	const subLeaf = plugin.app.workspace.getLeavesOfType(SUBTITLE_VIEW_TYPE)[0]!;
+	// 1. Left 2: type subtitle view
+	const typeSubView = (await openViewOnce(
+		plugin,
+		TYPE_SUBTITLE_VIEW_TYPE,
+		'tab',
+	)) as TypeSubtitleView;
+	const subLeaf = plugin.app.workspace.getLeavesOfType(TYPE_SUBTITLE_VIEW_TYPE)[0]!;
 
 	// 2. Right: split subtitle → video
 	const videoLeaf = plugin.app.workspace.createLeafBySplit(subLeaf, 'vertical');
@@ -149,20 +153,43 @@ async function openTypeLayout(
 	// Load video
 	await videoView.loadVideo(videoPath, plugin.settings.defaultVolume);
 	videoView.setSubtitles(subtitles);
-	subtitleView.setSubtitles(subtitles);
 	plugin.setSubtitles(subtitles);
 
-	// Wire type → session persistence
+	// Wire type subtitle panel
+	typeSubView.setSubtitles(subtitles);
+	typeSubView.setCurrentIndex(session.currentIndex);
+	typeSubView.setCallbacks({
+		onClick: (index) => {
+			tv.goToSentence(index);
+		},
+		onSpeedChange: (rate) => {
+			videoView.setPlaybackRate(rate);
+		},
+	});
+
+	// Reveal previously completed sentences
+	for (let i = 0; i < session.sentences.length; i++) {
+		if (session.sentences[i]?.completedAt) {
+			typeSubView.revealSentence(i);
+		}
+	}
+
+	// Wire type → session persistence + subtitle sync
 	tv.setCallbacks({
 		onSave: (s) => void getManager(plugin).save(s),
 		onReplaySentence: (start, end) => {
 			videoView.playRangeOnce(start, end);
 		},
 		onSentenceChange: (subtitleId) => {
-			// Clear any AB loop — type mode drives playback, not loop
 			videoView.setABLoop(null, null, false);
-			const sub = subtitles.find((s) => s.id === subtitleId);
-			if (sub) videoView.playRangeOnce(sub.start, sub.end);
+			const idx = subtitles.findIndex((s) => s.id === subtitleId);
+			if (idx >= 0) {
+				typeSubView.setCurrentIndex(idx);
+				videoView.playRangeOnce(subtitles[idx]!.start, subtitles[idx]!.end);
+			}
+		},
+		onSentenceComplete: (index) => {
+			typeSubView.revealSentence(index);
 		},
 	});
 	tv.loadSession(subtitles, session);
@@ -175,10 +202,13 @@ async function openTypeLayout(
 		videoView.jumpToTime(currentSub.start);
 	}
 
-	// Wire video subtitle change → type view navigation
+	// Sync video subtitle changes to the subtitle panel only
 	videoView.setSubtitleChangeCallback((id: number) => {
 		const idx = subtitles.findIndex((s) => s.id === id);
-		if (idx >= 0) tv.goToSentence(idx);
+		if (idx >= 0) {
+			typeSubView.setCurrentIndex(idx);
+			// type page drives navigation, not video
+		}
 	});
 }
 

@@ -8,6 +8,7 @@ export interface TypePanelCallbacks {
 	onSave: (session: TypeSessionData) => void;
 	onReplaySentence: (start: number, end: number) => void;
 	onSentenceChange: (subtitleId: number) => void;
+	onSentenceComplete: (index: number) => void;
 }
 
 interface SentenceState {
@@ -109,6 +110,7 @@ export class TypePanel {
 
 	goToSentence(index: number): void {
 		if (index < 0 || index >= this.sentences.length) return;
+		if (index === this.currentIndex) return;
 		this.persistSession();
 		this.currentIndex = index;
 		this.activeWordIndex = 0;
@@ -380,6 +382,8 @@ export class TypePanel {
 		if (!allCorrect) return;
 
 		s.completedAt = new Date().toISOString();
+		const completedIdx = this.currentIndex;
+		this.callbacks?.onSentenceComplete(completedIdx);
 		this.persistSession();
 
 		if (this.currentIndex < this.sentences.length - 1) {

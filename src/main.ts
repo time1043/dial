@@ -15,6 +15,7 @@ import { getJumpTarget } from './modules/subtitle-navigator/subtitle-navigator';
 import { TraceManager } from './modules/trace-manager/trace-manager';
 import { DEFAULT_SETTINGS, DialSettingTab } from './settings';
 import { SUBTITLE_VIEW_TYPE, SubtitleView } from './ui/subtitle-view';
+import { TYPE_SUBTITLE_VIEW_TYPE, TypeSubtitleView } from './ui/type-subtitle-view';
 import { TYPE_VIEW_TYPE, TypeView } from './ui/type-view';
 import { VIDEO_PLAYER_VIEW_TYPE, VideoPlayerView } from './ui/video-player-view';
 import { applySplitRatio } from './utils/layout';
@@ -37,6 +38,7 @@ export default class DialPlugin extends Plugin {
 
 		this.registerView(VIDEO_PLAYER_VIEW_TYPE, (leaf) => new VideoPlayerView(leaf));
 		this.registerView(SUBTITLE_VIEW_TYPE, (leaf) => new SubtitleView(leaf));
+		this.registerView(TYPE_SUBTITLE_VIEW_TYPE, (leaf) => new TypeSubtitleView(leaf));
 		this.registerView(TYPE_VIEW_TYPE, (leaf) => new TypeView(leaf));
 
 		this.addRibbonIcon('play', 'Dial', () => {
