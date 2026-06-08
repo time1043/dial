@@ -185,12 +185,91 @@
 	flex-direction: column;
 	flex: 1;
 	overflow: hidden;
+	outline: none;
 }
 
-.dial-type-placeholder {
-	margin: auto;
+/* Context: completed sentences above current */
+.dial-type-context {
+	flex-shrink: 0;
+	padding: 12px 24px 8px;
+}
+
+.dial-type-context-line {
+	font-size: 18px;
+	line-height: 2.2;
 	color: var(--text-muted);
-	font-size: 24px;
+	opacity: 0.6;
+}
+
+.dial-type-context-word.dial-type-correct {
+	color: var(--text-success);
+}
+
+.dial-type-context-punct {
+	color: var(--text-faint);
+}
+
+/* Current sentence — visual focus */
+.dial-type-current {
+	flex: 1;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	justify-content: center;
+	align-content: center;
+	gap: 12px 16px;
+	padding: 32px 24px;
+}
+
+.dial-type-word {
+	display: inline-flex;
+	align-items: baseline;
+}
+
+.dial-type-current .dial-type-word .dial-type-input {
+	font-size: 48px !important;
+	font-family: var(--font-monospace);
+	letter-spacing: 2px;
+	background: transparent;
+	border: none;
+	border-bottom: 3px solid var(--text-muted);
+	outline: none;
+	padding: 0 4px;
+	height: 60px;
+	line-height: 60px;
+	color: var(--text-normal);
+	text-align: center;
+	caret-color: var(--text-accent);
+	transition: border-color 0.15s;
+}
+
+.dial-type-current .dial-type-word .dial-type-input:focus {
+	border-bottom-color: var(--text-accent);
+}
+
+.dial-type-current .dial-type-word.dial-type-correct .dial-type-input {
+	color: var(--text-success);
+	border-bottom-color: var(--text-success);
+}
+
+.dial-type-current .dial-type-word.dial-type-wrong .dial-type-input {
+	color: var(--text-error);
+	border-bottom-color: var(--text-error);
+}
+
+.dial-type-punct {
+	font-size: 48px;
+	color: var(--text-muted);
+}
+
+/* Answer display */
+.dial-type-answer {
+	flex-shrink: 0;
+	padding: 8px 24px;
+}
+
+.dial-type-answer:empty {
+	display: none;
 }
 
 /* Video Note Modal */
