@@ -91,9 +91,13 @@ async function appendSessionLink(plugin: DialPlugin, session: TypeSessionData): 
 
 	const content = await plugin.app.vault.read(file);
 	const time = new Date(parseInt(session.id, 10) * 1000);
+	const yyyy = time.getFullYear();
+	const mo = String(time.getMonth() + 1).padStart(2, '0');
+	const dd = String(time.getDate()).padStart(2, '0');
 	const hh = String(time.getHours()).padStart(2, '0');
 	const mm = String(time.getMinutes()).padStart(2, '0');
-	const link = `\n- [Type ${hh}:${mm}](obsidian://dial?type=${session.id})\n`;
+	const ss = String(time.getSeconds()).padStart(2, '0');
+	const link = `\n- [Type ${yyyy}-${mo}-${dd} ${hh}:${mm}:${ss}](obsidian://dial?type=${session.id})\n`;
 
 	await plugin.app.vault.modify(file, content + link);
 }
@@ -162,6 +166,14 @@ async function openTypeLayout(
 		},
 	});
 	tv.loadSession(subtitles, session);
+
+	// Position video at the current sentence. Must happen before
+	// layout-change handlers fire, otherwise they'll restore the
+	// previously saved playback position for this video.
+	const currentSub = subtitles[session.currentIndex];
+	if (currentSub) {
+		videoView.jumpToTime(currentSub.start);
+	}
 
 	// Wire video subtitle change → type view navigation
 	videoView.setSubtitleChangeCallback((id: number) => {
