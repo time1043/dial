@@ -51,4 +51,5 @@ Some video files use audio codecs (e.g. AC3, DTS) that are not supported by Obsi
 ```shell
 # ffmpeg -i "C:/Users/28180/Videos/DoctorWho2014ChristmasSpecialLastChristmas.mkv" -c:v copy -c:a aac "C:/Users/28180/Videos/obh/DoctorWho2014ChristmasSpecialLastChristmas.mkv"
 ffmpeg -i DoctorWhoS08E12DeathInHeaven.mp4 -c:v copy -c:a aac ./obh/DoctorWhoS08E12DeathInHeaven.mp4
+ffmpeg -i YesMinisterS01E02TheOfficialVisit.rmvb -c:v libx264 -c:a aac YesMinisterS01E02TheOfficialVisit.mp4
 ```
