@@ -73,16 +73,31 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 
 	const videoRelative = String(frontmatter.video);
 	const subtitleRelative = String(frontmatter.subtitle);
+	const noteFolder = activeFile.parent?.name ?? '';
 
-	// 3. Resolve video path (vault-relative)
-	const videoPath = `${plugin.settings.videoLibraryPath}/${videoRelative}`.replace(/\\/g, '/');
+	// 3. Resolve video path — try direct first, then prepend note folder
+	let videoPath = `${plugin.settings.videoLibraryPath}/${videoRelative}`.replace(/\\/g, '/');
+	if (!plugin.app.vault.getAbstractFileByPath(videoPath) && noteFolder) {
+		videoPath = `${plugin.settings.videoLibraryPath}/${noteFolder}/${videoRelative}`.replace(
+			/\\/g,
+			'/',
+		);
+	}
 
-	// 4. Read subtitle file (vault-relative)
-	const subtitlePath = `${plugin.settings.subtitleLibraryPath}/${subtitleRelative}`.replace(
+	// 4. Resolve subtitle path — same fallback logic
+	let subtitlePath = `${plugin.settings.subtitleLibraryPath}/${subtitleRelative}`.replace(
 		/\\/g,
 		'/',
 	);
-	const subtitleFile = plugin.app.vault.getAbstractFileByPath(subtitlePath);
+	let subtitleFile = plugin.app.vault.getAbstractFileByPath(subtitlePath);
+	if ((!subtitleFile || !(subtitleFile instanceof TFile)) && noteFolder) {
+		subtitlePath =
+			`${plugin.settings.subtitleLibraryPath}/${noteFolder}/${subtitleRelative}`.replace(
+				/\\/g,
+				'/',
+			);
+		subtitleFile = plugin.app.vault.getAbstractFileByPath(subtitlePath);
+	}
 	if (!subtitleFile || !(subtitleFile instanceof TFile)) {
 		new Notice(`Subtitle file not found: ${subtitlePath}`);
 		return;

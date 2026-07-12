@@ -41,15 +41,30 @@ async function resolvePaths(plugin: DialPlugin) {
 		return null;
 	}
 
-	const videoPath = `${plugin.settings.videoLibraryPath}/${String(frontmatter.video)}`.replace(
-		/\\/g,
-		'/',
-	);
-	const subtitlePath =
-		`${plugin.settings.subtitleLibraryPath}/${String(frontmatter.subtitle)}`.replace(
+	const videoRelative = String(frontmatter.video);
+	const subtitleRelative = String(frontmatter.subtitle);
+	const noteFolder = activeFile.parent?.name ?? '';
+
+	// Try direct path first, then prepend note folder
+	let videoPath = `${plugin.settings.videoLibraryPath}/${videoRelative}`.replace(/\\/g, '/');
+	if (!plugin.app.vault.getAbstractFileByPath(videoPath) && noteFolder) {
+		videoPath = `${plugin.settings.videoLibraryPath}/${noteFolder}/${videoRelative}`.replace(
 			/\\/g,
 			'/',
 		);
+	}
+
+	let subtitlePath = `${plugin.settings.subtitleLibraryPath}/${subtitleRelative}`.replace(
+		/\\/g,
+		'/',
+	);
+	if (!plugin.app.vault.getAbstractFileByPath(subtitlePath) && noteFolder) {
+		subtitlePath =
+			`${plugin.settings.subtitleLibraryPath}/${noteFolder}/${subtitleRelative}`.replace(
+				/\\/g,
+				'/',
+			);
+	}
 
 	return { videoPath, subtitlePath, notePath: activeFile.path };
 }
