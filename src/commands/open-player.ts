@@ -74,17 +74,36 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 	const videoRelative = String(frontmatter.video);
 	const subtitleRelative = String(frontmatter.subtitle);
 
-	// 3. Resolve video path (vault-relative)
-	const videoPath = `${plugin.settings.videoLibraryPath}/${videoRelative}`.replace(/\\/g, '/');
-
-	// 4. Read subtitle file (vault-relative)
-	const subtitlePath = `${plugin.settings.subtitleLibraryPath}/${subtitleRelative}`.replace(
+	// 3. Resolve paths — flat first, then mirror note folder structure
+	// e.g. notePath "note/psychology-anthony/xxx.md" → noteSubpath "psychology-anthony/xxx.md"
+	const noteSubpath = activeFile.path.replace(/^[^/]+\//, '');
+	const flatVideoPath = `${plugin.settings.videoLibraryPath}/${videoRelative}`.replace(
 		/\\/g,
 		'/',
 	);
-	const subtitleFile = plugin.app.vault.getAbstractFileByPath(subtitlePath);
+	const flatSubtitlePath = `${plugin.settings.subtitleLibraryPath}/${subtitleRelative}`.replace(
+		/\\/g,
+		'/',
+	);
+	const mirrorVideoPath = `${plugin.settings.videoLibraryPath}/${noteSubpath.replace(/\.md$/, '.mp4')}`.replace(
+		/\\/g,
+		'/',
+	);
+	const mirrorSubtitlePath = `${plugin.settings.subtitleLibraryPath}/${noteSubpath.replace(/\.md$/, '.srt')}`.replace(
+		/\\/g,
+		'/',
+	);
+
+	// Try flat path first, fallback to mirrored structure
+	const videoPath = plugin.app.vault.getAbstractFileByPath(flatVideoPath) ? flatVideoPath : mirrorVideoPath;
+	let subtitleFile = plugin.app.vault.getAbstractFileByPath(flatSubtitlePath);
+	let subtitlePath = flatSubtitlePath;
 	if (!subtitleFile || !(subtitleFile instanceof TFile)) {
-		new Notice(`Subtitle file not found: ${subtitlePath}`);
+		subtitleFile = plugin.app.vault.getAbstractFileByPath(mirrorSubtitlePath);
+		subtitlePath = mirrorSubtitlePath;
+	}
+	if (!subtitleFile || !(subtitleFile instanceof TFile)) {
+		new Notice(`Subtitle file not found: ${flatSubtitlePath}`);
 		return;
 	}
 
