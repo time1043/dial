@@ -52,7 +52,7 @@ export default class DialPlugin extends Plugin {
 
 		this.addCommand({
 			id: 'open-video-player',
-			name: 'Open video player',
+			name: 'Open video player with local video and local subtitle',
 			callback: () => openVideoPlayer(this),
 		});
 
