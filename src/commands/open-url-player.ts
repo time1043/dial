@@ -37,9 +37,18 @@ export async function openUrlPlayerFromActiveNote(plugin: DialPlugin): Promise<v
 	}
 
 	const cache = plugin.app.metadataCache.getFileCache(activeFile);
-	const videoLink: unknown = cache?.frontmatter?.['video-link'];
+	const rawLink: unknown = cache?.frontmatter?.['video-link'];
 
-	if (typeof videoLink !== 'string' || !videoLink.trim()) {
+	// Accepts both a single string and a list; for a list, use the first item.
+	let videoLink: string | undefined;
+	if (typeof rawLink === 'string') {
+		videoLink = rawLink;
+	} else if (Array.isArray(rawLink)) {
+		const first: unknown = rawLink[0];
+		videoLink = typeof first === 'string' ? first : undefined;
+	}
+
+	if (!videoLink || !videoLink.trim()) {
 		new Notice("Active file must have 'video-link' in frontmatter");
 		return;
 	}
