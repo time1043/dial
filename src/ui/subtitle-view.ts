@@ -106,7 +106,13 @@ export class SubtitleView extends ItemView {
 			}
 		};
 		(container as HTMLElement).addEventListener('keydown', this.keyHandler);
-		container.addEventListener('click', () => {
+		container.addEventListener('click', (e) => {
+			// Do not steal focus from interactive elements (e.g. the search box):
+			// the native focus happens before this bubbled click, and focusing
+			// the container here would immediately blur the input.
+			if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+				return;
+			}
 			(container as HTMLElement).focus();
 		});
 
