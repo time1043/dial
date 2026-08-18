@@ -12,6 +12,7 @@ import {
 	resumeTypeSession,
 	tryRestoreTypeSession,
 } from './commands/open-type-session';
+import { openUrlPlayerFromActiveNote } from './commands/open-url-player';
 import { togglePlay } from './commands/toggle-play';
 import { AbLoopManager } from './modules/ab-loop/ab-loop-manager';
 import { PositionManager } from './modules/position-manager/position-manager';
@@ -21,6 +22,7 @@ import { DEFAULT_SETTINGS, DialSettingTab } from './settings';
 import { SUBTITLE_VIEW_TYPE, SubtitleView } from './ui/subtitle-view';
 import { TYPE_SUBTITLE_VIEW_TYPE, TypeSubtitleView } from './ui/type-subtitle-view';
 import { TYPE_VIEW_TYPE, TypeView } from './ui/type-view';
+import { URL_PLAYER_VIEW_TYPE, UrlPlayerView } from './ui/url-player-view';
 import { VIDEO_PLAYER_VIEW_TYPE, VideoPlayerView } from './ui/video-player-view';
 import { applySplitRatio } from './utils/layout';
 import { formatTime } from './utils/time';
@@ -42,6 +44,7 @@ export default class DialPlugin extends Plugin {
 		this.positions.setPersistCallback(() => this.persistAll());
 
 		this.registerView(VIDEO_PLAYER_VIEW_TYPE, (leaf) => new VideoPlayerView(leaf));
+		this.registerView(URL_PLAYER_VIEW_TYPE, (leaf) => new UrlPlayerView(leaf));
 		this.registerView(SUBTITLE_VIEW_TYPE, (leaf) => new SubtitleView(leaf));
 		this.registerView(TYPE_SUBTITLE_VIEW_TYPE, (leaf) => new TypeSubtitleView(leaf));
 		this.registerView(TYPE_VIEW_TYPE, (leaf) => new TypeView(leaf));
@@ -52,8 +55,14 @@ export default class DialPlugin extends Plugin {
 
 		this.addCommand({
 			id: 'open-video-player',
-			name: 'Open video player',
+			name: 'Open video player with local video and local subtitle',
 			callback: () => openVideoPlayer(this),
+		});
+
+		this.addCommand({
+			id: 'open-video-player-url',
+			name: 'Open video player with video URL',
+			callback: () => void openUrlPlayerFromActiveNote(this),
 		});
 
 		this.addCommand({

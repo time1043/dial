@@ -42,25 +42,30 @@ async function resolvePaths(plugin: DialPlugin) {
 	}
 
 	const noteSubpath = activeFile.path.replace(/^[^/]+\//, '');
-	const flatVideoPath = `${plugin.settings.videoLibraryPath}/${String(frontmatter.video)}`.replace(
-		/\\/g,
-		'/',
-	);
-	const flatSubtitlePath = `${plugin.settings.subtitleLibraryPath}/${String(frontmatter.subtitle)}`.replace(
-		/\\/g,
-		'/',
-	);
-	const mirrorVideoPath = `${plugin.settings.videoLibraryPath}/${noteSubpath.replace(/\.md$/, '.mp4')}`.replace(
-		/\\/g,
-		'/',
-	);
-	const mirrorSubtitlePath = `${plugin.settings.subtitleLibraryPath}/${noteSubpath.replace(/\.md$/, '.srt')}`.replace(
-		/\\/g,
-		'/',
-	);
+	const flatVideoPath =
+		`${plugin.settings.videoLibraryPath}/${String(frontmatter.video)}`.replace(/\\/g, '/');
+	const flatSubtitlePath =
+		`${plugin.settings.subtitleLibraryPath}/${String(frontmatter.subtitle)}`.replace(
+			/\\/g,
+			'/',
+		);
+	const mirrorVideoPath =
+		`${plugin.settings.videoLibraryPath}/${noteSubpath.replace(/\.md$/, '.mp4')}`.replace(
+			/\\/g,
+			'/',
+		);
+	const mirrorSubtitlePath =
+		`${plugin.settings.subtitleLibraryPath}/${noteSubpath.replace(/\.md$/, '.srt')}`.replace(
+			/\\/g,
+			'/',
+		);
 
-	const videoPath = plugin.app.vault.getAbstractFileByPath(flatVideoPath) ? flatVideoPath : mirrorVideoPath;
-	const subtitlePath = plugin.app.vault.getAbstractFileByPath(flatSubtitlePath) ? flatSubtitlePath : mirrorSubtitlePath;
+	const videoPath = plugin.app.vault.getAbstractFileByPath(flatVideoPath)
+		? flatVideoPath
+		: mirrorVideoPath;
+	const subtitlePath = plugin.app.vault.getAbstractFileByPath(flatSubtitlePath)
+		? flatSubtitlePath
+		: mirrorSubtitlePath;
 
 	return { videoPath, subtitlePath, notePath: activeFile.path };
 }

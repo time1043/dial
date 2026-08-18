@@ -21,7 +21,7 @@ Both fields are required.
 ## Interaction flow
 
 1. User opens a Dial note (a `.md` with `video` and `subtitle` in frontmatter).
-2. `Ctrl+P` → **Dial: Open video player**.
+2. `Ctrl+P` → **Dial: Open video player with local video and local subtitle**.
 3. Plugin reads the current note's frontmatter.
 4. If `video` or `subtitle` is missing, or the subtitle file is not found → toast error, stay on current note.
 5. Otherwise, open two tabs:
