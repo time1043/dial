@@ -39,6 +39,7 @@ export class SubtitlePanel {
 
 	private searchInput!: HTMLInputElement;
 	private searchCountEl: HTMLElement | null = null;
+	private searchClearEl: HTMLElement | null = null;
 	private searchEmptyEl: HTMLElement | null = null;
 	private searchText = '';
 
@@ -177,6 +178,19 @@ export class SubtitlePanel {
 			this.applySearchFilter();
 		});
 
+		// One-click clear button; visible only while a search is active
+		this.searchClearEl = searchEl.createEl('button', {
+			cls: 'dial-subtitle-search-clear dial-subtitle-hidden',
+			attr: { 'aria-label': 'Clear search' },
+		});
+		setIcon(this.searchClearEl, 'x');
+		this.searchClearEl.addEventListener('click', () => {
+			this.searchInput.value = '';
+			this.searchText = '';
+			this.applySearchFilter();
+			this.searchInput.focus();
+		});
+
 		this.searchCountEl = searchEl.createSpan({
 			cls: 'dial-subtitle-search-count',
 			text: '',
@@ -246,6 +260,8 @@ export class SubtitlePanel {
 			this.searchCountEl.textContent =
 				query === '' ? '' : `${matches}/${this.subtitles.length}`;
 		}
+
+		this.searchClearEl?.toggleClass('dial-subtitle-hidden', query === '');
 
 		if (this.searchEmptyEl) {
 			const showEmpty = query !== '' && matches === 0 && this.subtitles.length > 0;

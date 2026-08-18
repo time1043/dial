@@ -14,7 +14,8 @@ full list.
 3. Only subtitles containing the keyword are shown; the counter on the right
    displays `matches/total`.
 4. Click any visible subtitle to jump the video to that line, as usual.
-5. Clear the search box to bring back the full list.
+5. Click the × button next to the search box to clear the search and restore
+   the full list in one click (focus returns to the search box).
 
 ## Behavior details
 

@@ -170,6 +170,22 @@
 	font-family: var(--font-monospace);
 }
 
+.dial-subtitle-search-clear {
+	padding: 2px 4px;
+	border: none;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	box-shadow: none;
+	height: auto;
+	display: flex;
+	align-items: center;
+}
+
+.dial-subtitle-search-clear:hover {
+	color: var(--text-normal);
+}
+
 .dial-subtitle-empty {
 	padding: 16px 8px;
 	color: var(--text-muted);
@@ -177,7 +193,8 @@
 }
 
 .dial-subtitle-item.dial-subtitle-hidden,
-.dial-subtitle-empty.dial-subtitle-hidden {
+.dial-subtitle-empty.dial-subtitle-hidden,
+.dial-subtitle-search-clear.dial-subtitle-hidden {
 	display: none;
 }
 
