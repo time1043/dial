@@ -37,6 +37,11 @@ export class SubtitlePanel {
 	private speedSlider!: HTMLInputElement;
 	private subtitleContainerEl: HTMLElement | null = null;
 
+	private searchInput!: HTMLInputElement;
+	private searchCountEl: HTMLElement | null = null;
+	private searchEmptyEl: HTMLElement | null = null;
+	private searchText = '';
+
 	private callbacks: SubtitlePanelCallbacks | null = null;
 	private playbackRate = 1;
 
@@ -155,9 +160,37 @@ export class SubtitlePanel {
 			this.callbacks?.onSpeedChange(rate);
 		});
 
+		// Subtitle search bar
+		const searchEl = this.containerEl.createDiv({ cls: 'dial-subtitle-search' });
+
+		this.searchInput = searchEl.createEl('input', {
+			cls: 'dial-subtitle-search-input',
+			type: 'text',
+			attr: {
+				placeholder: 'Search subtitles',
+				'aria-label': 'Search subtitles',
+				spellcheck: 'false',
+			},
+		});
+		this.searchInput.addEventListener('input', () => {
+			this.searchText = this.searchInput.value;
+			this.applySearchFilter();
+		});
+
+		this.searchCountEl = searchEl.createSpan({
+			cls: 'dial-subtitle-search-count',
+			text: '',
+		});
+
 		// Subtitle list
 		this.subtitleContainerEl = this.containerEl.createDiv({
 			cls: 'dial-subtitle-list',
+		});
+
+		// Empty state shown when a search matches nothing
+		this.searchEmptyEl = this.containerEl.createDiv({
+			cls: 'dial-subtitle-empty dial-subtitle-hidden',
+			text: 'No matching subtitles',
 		});
 	}
 
@@ -186,6 +219,37 @@ export class SubtitlePanel {
 			});
 
 			this.subtitleEls.set(sub.id, el);
+		}
+
+		this.applySearchFilter();
+	}
+
+	/**
+	 * Filter the subtitle list by the current search text (case-insensitive).
+	 * Non-matching rows are hidden via CSS instead of being removed, so the
+	 * active highlight and AB loop markers keep working; clearing the search
+	 * box restores the full list.
+	 */
+	private applySearchFilter(): void {
+		const query = this.searchText.trim().toLowerCase();
+		let matches = 0;
+
+		for (const sub of this.subtitles) {
+			const el = this.subtitleEls.get(sub.id);
+			if (!el) continue;
+			const hit = query === '' || sub.text.toLowerCase().includes(query);
+			el.toggleClass('dial-subtitle-hidden', !hit);
+			if (hit) matches++;
+		}
+
+		if (this.searchCountEl) {
+			this.searchCountEl.textContent =
+				query === '' ? '' : `${matches}/${this.subtitles.length}`;
+		}
+
+		if (this.searchEmptyEl) {
+			const showEmpty = query !== '' && matches === 0 && this.subtitles.length > 0;
+			this.searchEmptyEl.toggleClass('dial-subtitle-hidden', !showEmpty);
 		}
 	}
 

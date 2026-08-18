@@ -148,6 +148,38 @@
 	cursor: pointer;
 }
 
+/* Subtitle Search */
+.dial-subtitle-search {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 12px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	flex-shrink: 0;
+}
+
+.dial-subtitle-search-input {
+	flex: 1;
+	min-width: 0;
+}
+
+.dial-subtitle-search-count {
+	font-size: 12px;
+	color: var(--text-muted);
+	white-space: nowrap;
+	font-family: var(--font-monospace);
+}
+
+.dial-subtitle-empty {
+	padding: 16px 8px;
+	color: var(--text-muted);
+	text-align: center;
+}
+
+.dial-subtitle-hidden {
+	display: none;
+}
+
 /* Subtitle List */
 .dial-subtitle-list {
 	flex: 1;
