@@ -176,7 +176,8 @@
 	text-align: center;
 }
 
-.dial-subtitle-hidden {
+.dial-subtitle-item.dial-subtitle-hidden,
+.dial-subtitle-empty.dial-subtitle-hidden {
 	display: none;
 }
 
