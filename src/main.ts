@@ -6,13 +6,13 @@ import type { ABLoopState, Subtitle } from './types';
 import { createVideoNote } from './commands/create-video-note';
 import { insertTimestamp } from './commands/insert-timestamp';
 import { openVideoPlayer, setupSync } from './commands/open-player';
-import { openUrlPlayerFromActiveNote } from './commands/open-url-player';
 import { openTrace } from './commands/open-trace';
 import {
 	openTypeSession,
 	resumeTypeSession,
 	tryRestoreTypeSession,
 } from './commands/open-type-session';
+import { openUrlPlayerFromActiveNote } from './commands/open-url-player';
 import { togglePlay } from './commands/toggle-play';
 import { AbLoopManager } from './modules/ab-loop/ab-loop-manager';
 import { PositionManager } from './modules/position-manager/position-manager';
@@ -22,8 +22,8 @@ import { DEFAULT_SETTINGS, DialSettingTab } from './settings';
 import { SUBTITLE_VIEW_TYPE, SubtitleView } from './ui/subtitle-view';
 import { TYPE_SUBTITLE_VIEW_TYPE, TypeSubtitleView } from './ui/type-subtitle-view';
 import { TYPE_VIEW_TYPE, TypeView } from './ui/type-view';
-import { VIDEO_PLAYER_VIEW_TYPE, VideoPlayerView } from './ui/video-player-view';
 import { URL_PLAYER_VIEW_TYPE, UrlPlayerView } from './ui/url-player-view';
+import { VIDEO_PLAYER_VIEW_TYPE, VideoPlayerView } from './ui/video-player-view';
 import { applySplitRatio } from './utils/layout';
 import { formatTime } from './utils/time';
 

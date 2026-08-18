@@ -22,6 +22,8 @@ export default tseslint.config(
 	globalIgnores([
 		'node_modules',
 		'dist',
+		'dial',
+		'dial.zip',
 		'esbuild.config.mjs',
 		'eslint.config.js',
 		'version-bump.mjs',

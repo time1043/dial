@@ -2,8 +2,8 @@ import { MarkdownView, Notice } from 'obsidian';
 
 import type DialPlugin from '@/main';
 
-import { applySplitRatio } from '@/utils/layout';
 import { URL_PLAYER_VIEW_TYPE, UrlPlayerView } from '@/ui/url-player-view';
+import { applySplitRatio } from '@/utils/layout';
 import { toEmbedUrl } from '@/utils/url-player';
 
 export async function openUrlPlayer(plugin: DialPlugin, rawUrl: string): Promise<void> {

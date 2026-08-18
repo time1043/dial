@@ -85,17 +85,21 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 		/\\/g,
 		'/',
 	);
-	const mirrorVideoPath = `${plugin.settings.videoLibraryPath}/${noteSubpath.replace(/\.md$/, '.mp4')}`.replace(
-		/\\/g,
-		'/',
-	);
-	const mirrorSubtitlePath = `${plugin.settings.subtitleLibraryPath}/${noteSubpath.replace(/\.md$/, '.srt')}`.replace(
-		/\\/g,
-		'/',
-	);
+	const mirrorVideoPath =
+		`${plugin.settings.videoLibraryPath}/${noteSubpath.replace(/\.md$/, '.mp4')}`.replace(
+			/\\/g,
+			'/',
+		);
+	const mirrorSubtitlePath =
+		`${plugin.settings.subtitleLibraryPath}/${noteSubpath.replace(/\.md$/, '.srt')}`.replace(
+			/\\/g,
+			'/',
+		);
 
 	// Try flat path first, fallback to mirrored structure
-	const videoPath = plugin.app.vault.getAbstractFileByPath(flatVideoPath) ? flatVideoPath : mirrorVideoPath;
+	const videoPath = plugin.app.vault.getAbstractFileByPath(flatVideoPath)
+		? flatVideoPath
+		: mirrorVideoPath;
 	let subtitleFile = plugin.app.vault.getAbstractFileByPath(flatSubtitlePath);
 	let subtitlePath = flatSubtitlePath;
 	if (!subtitleFile || !(subtitleFile instanceof TFile)) {
