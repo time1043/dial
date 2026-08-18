@@ -25,9 +25,11 @@ full list.
   the search restores everything.
 - **Empty state**: if a keyword matches nothing, "No matching subtitles" is
   shown below the list.
-- **Keyboard shortcuts**: while typing in the search box, panel shortcuts
-  (space to play/pause, arrows to seek, etc.) are suspended so you can type
-  spaces and letters normally.
+- **Keyboard shortcuts**: press `s` in the subtitle panel to focus the search
+  box (existing text is selected for quick retyping); press `Escape` to leave
+  the search box and return to the panel. While typing in the search box,
+  panel shortcuts (space to play/pause, arrows to seek, etc.) are suspended
+  so you can type spaces and letters normally.
 - Available in both the desktop subtitle view and the mobile video player's
   subtitle panel, since both share the same `SubtitlePanel` component.
 

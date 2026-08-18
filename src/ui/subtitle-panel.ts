@@ -106,6 +106,12 @@ export class SubtitlePanel {
 		this.callbacks?.onSpeedChange(rate);
 	}
 
+	/** Focus the search input and select its content for quick retyping. */
+	focusSearch(): void {
+		this.searchInput.focus();
+		this.searchInput.select();
+	}
+
 	private buildUI(): void {
 		// AB controls
 		const controlsEl = this.containerEl.createDiv({ cls: 'dial-ab-controls' });

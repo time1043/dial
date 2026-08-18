@@ -56,11 +56,21 @@ export class SubtitleView extends ItemView {
 		// Keyboard shortcuts (desktop only)
 		this.keyHandler = (e: KeyboardEvent) => {
 			if (!this.callbacks) return;
+			// Escape leaves the search box and returns focus to the panel
+			if (e.key === 'Escape' && e.target instanceof HTMLInputElement) {
+				e.preventDefault();
+				e.target.blur();
+				(container as HTMLElement).focus();
+				return;
+			}
 			// Skip shortcuts while typing in an input (e.g. the subtitle search box)
 			if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
 				return;
 			}
-			if (e.code === 'Space') {
+			if (e.code === 'KeyS') {
+				e.preventDefault();
+				this.panel?.focusSearch();
+			} else if (e.code === 'Space') {
 				e.preventDefault();
 
 				this.callbacks.onTogglePlay();
