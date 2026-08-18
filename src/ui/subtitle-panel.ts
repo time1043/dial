@@ -203,7 +203,10 @@ export class SubtitlePanel {
 		setIcon(this.searchClearEl, 'x');
 		this.searchClearEl.addEventListener('click', () => {
 			this.clearSearch();
-			this.searchInput.focus();
+			// Intentionally do NOT refocus the input: on mobile this would
+			// re-pop the soft keyboard right after the user dismissed it to
+			// read results. On desktop, the user can press s to refocus or
+			// click the input again.
 		});
 
 		this.searchCountEl = searchEl.createSpan({
