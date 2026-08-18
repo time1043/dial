@@ -1,7 +1,8 @@
-import { Notice } from 'obsidian';
+import { MarkdownView, Notice } from 'obsidian';
 
 import type DialPlugin from '@/main';
 
+import { applySplitRatio } from '@/utils/layout';
 import { URL_PLAYER_VIEW_TYPE, UrlPlayerView } from '@/ui/url-player-view';
 import { toEmbedUrl } from '@/utils/url-player';
 
@@ -9,16 +10,32 @@ export async function openUrlPlayer(plugin: DialPlugin, rawUrl: string): Promise
 	const embedUrl = toEmbedUrl(rawUrl);
 
 	const existing = plugin.app.workspace.getLeavesOfType(URL_PLAYER_VIEW_TYPE);
-	let view: UrlPlayerView;
+	let view: UrlPlayerView | null;
 	if (existing.length > 0) {
 		const leaf = existing[0]!;
 		await plugin.app.workspace.revealLeaf(leaf);
 		view = leaf.view as UrlPlayerView;
 	} else {
-		const leaf = plugin.app.workspace.getLeaf('tab');
-		await leaf.setViewState({ type: URL_PLAYER_VIEW_TYPE, active: true });
-		await plugin.app.workspace.revealLeaf(leaf);
-		view = leaf.view as UrlPlayerView;
+		view = null;
+	}
+
+	if (!view) {
+		// Mirror the local player's layout: active note (md) on the left,
+		// video player on the right, at a 2:8 split.
+		const sourceView = plugin.app.workspace.getActiveViewOfType(MarkdownView);
+		const sourceLeaf = sourceView?.leaf ?? plugin.app.workspace.getLeaf('tab');
+		const videoLeaf = plugin.app.workspace.createLeafBySplit(sourceLeaf, 'vertical');
+		await videoLeaf.setViewState({ type: URL_PLAYER_VIEW_TYPE, active: true });
+		await plugin.app.workspace.revealLeaf(videoLeaf);
+		view = videoLeaf.view as UrlPlayerView;
+
+		const leftContainer = (sourceView ?? videoLeaf.view)?.containerEl;
+		setTimeout(() => {
+			if (leftContainer) {
+				applySplitRatio(leftContainer, [2, 8]);
+			}
+			(leftContainer?.children[1] as HTMLElement | undefined)?.focus();
+		}, 100);
 	}
 
 	view.loadUrl(embedUrl);

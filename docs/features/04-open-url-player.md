@@ -22,7 +22,11 @@ seeking features work the same as with local files.
 2. Open that note as the active file.
 3. `Ctrl+P` → **Dial: Open video player with video URL**.
 4. The command reads `video-link`, converts it to its embeddable form, and
-   opens an `URL video player` view that hosts the platform's native player.
+   opens it in a split layout that mirrors the local player: the active
+   Markdown note stays on the **left** (2), and the `URL video player` view
+   opens on the **right** (8), hosting the platform's native player.
+
+   `video-link` may be a single string or a list; a list uses its first item.
 
 If there is no active note, or the frontmatter has no `video-link`, a notice
 is shown and nothing opens.
