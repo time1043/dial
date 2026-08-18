@@ -11,10 +11,21 @@ seeking features work the same as with local files.
 
 ## How to use
 
-1. `Ctrl+P` → **Dial: Open video player with video URL**.
-2. Paste a video watch URL, e.g. `https://www.bilibili.com/video/BV1zF7A6QEAG/`.
-3. The command converts the URL to its embeddable form and opens an
-   `URL video player` view that hosts the platform's native player.
+1. Add a `video-link` field to your note's frontmatter, e.g.:
+
+   ```yaml
+   ---
+   video-link: https://www.bilibili.com/video/BV1zF7A6QEAG/
+   ---
+   ```
+
+2. Open that note as the active file.
+3. `Ctrl+P` → **Dial: Open video player with video URL**.
+4. The command reads `video-link`, converts it to its embeddable form, and
+   opens an `URL video player` view that hosts the platform's native player.
+
+If there is no active note, or the frontmatter has no `video-link`, a notice
+is shown and nothing opens.
 
 ## Supported hosts
 

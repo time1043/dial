@@ -6,7 +6,7 @@ import type { ABLoopState, Subtitle } from './types';
 import { createVideoNote } from './commands/create-video-note';
 import { insertTimestamp } from './commands/insert-timestamp';
 import { openVideoPlayer, setupSync } from './commands/open-player';
-import { openUrlPlayerPrompt } from './commands/open-url-player';
+import { openUrlPlayerFromActiveNote } from './commands/open-url-player';
 import { openTrace } from './commands/open-trace';
 import {
 	openTypeSession,
@@ -62,7 +62,7 @@ export default class DialPlugin extends Plugin {
 		this.addCommand({
 			id: 'open-video-player-url',
 			name: 'Open video player with video URL',
-			callback: () => openUrlPlayerPrompt(this),
+			callback: () => void openUrlPlayerFromActiveNote(this),
 		});
 
 		this.addCommand({
