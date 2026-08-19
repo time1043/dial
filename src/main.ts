@@ -295,7 +295,7 @@ export default class DialPlugin extends Plugin {
 
 	private syncABToViews(state: ABLoopState): void {
 		const videoView = this.getVideoView();
-		videoView?.setABLoop(state.a, state.b, state.active);
+		videoView?.setABLoopState(state);
 		const subtitleView = this.app.workspace.getLeavesOfType(SUBTITLE_VIEW_TYPE).first()?.view;
 		if (subtitleView instanceof SubtitleView) {
 			subtitleView.setABLoopState(state);
