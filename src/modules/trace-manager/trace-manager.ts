@@ -1,8 +1,12 @@
+import { TFile, type Vault } from 'obsidian';
+
 export interface TraceRow {
 	time: string; // HH:MM
 	notePath: string; // vault-relative path to the md note
 	position: string; // formatted timestamp link
 }
+
+const TRACE_DIR = '_lib/trace';
 
 export class TraceManager {
 	/** Returns `_lib/trace/YYYY-MM.md` for the given date. */
@@ -138,5 +142,57 @@ export class TraceManager {
 			return null;
 		}
 		return [match[1], match[2], match[3]];
+	}
+
+	/**
+	 * Persist a trace row to the month file, creating the directory and file
+	 * if they do not yet exist. This is the single entry point for trace I/O.
+	 */
+	async saveTrace(vault: Vault, notePath: string, seconds: number): Promise<void> {
+		const now = new Date();
+		const date = now.toISOString().slice(0, 10); // YYYY-MM-DD
+		const filePath = this.getMonthFilePath(now);
+
+		const row: TraceRow = {
+			time: this.formatTime(now),
+			notePath,
+			position: this.formatPosition(seconds, notePath),
+		};
+
+		await this.ensureTraceDir(vault);
+
+		let content = '';
+		const existing = vault.getAbstractFileByPath(filePath);
+		if (existing instanceof TFile) {
+			content = await vault.read(existing);
+		}
+
+		const updated = this.addRow(content, date, 'Video Player', row);
+
+		if (existing instanceof TFile) {
+			await vault.modify(existing, updated);
+		} else {
+			await vault.create(filePath, updated);
+		}
+	}
+
+	/**
+	 * Ensure the trace directory and the current month file exist.
+	 * Returns the file (created if necessary).
+	 */
+	async ensureTraceFile(vault: Vault): Promise<TFile> {
+		await this.ensureTraceDir(vault);
+		const filePath = this.getMonthFilePath(new Date());
+		const existing = vault.getAbstractFileByPath(filePath);
+		if (existing instanceof TFile) {
+			return existing;
+		}
+		return await vault.create(filePath, '');
+	}
+
+	private async ensureTraceDir(vault: Vault): Promise<void> {
+		if (!vault.getAbstractFileByPath(TRACE_DIR)) {
+			await vault.createFolder(TRACE_DIR);
+		}
 	}
 }
