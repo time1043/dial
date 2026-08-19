@@ -146,19 +146,35 @@ export class SubtitlePanel {
 				.trim() ||
 			getComputedStyle(document.body).getPropertyValue('--background-primary').trim();
 
+		// Some Android webviews (e.g. Honor's MagicOS fork) report the LAYOUT
+		// viewport through visualViewport.height — it never shrinks when the
+		// soft keyboard opens. window.innerHeight does shrink there (Obsidian
+		// mobile uses adjustResize), so take the smaller of the two: whichever
+		// source is honest wins.
+		const visibleHeight = (): number => {
+			const vv = window.visualViewport?.height ?? Infinity;
+			const inner = window.innerHeight > 0 ? window.innerHeight : Infinity;
+			return Math.min(vv, inner);
+		};
+
 		const apply = () => {
-			if (!window.visualViewport) return;
-			container.style.setProperty('--dial-mobile-h', `${window.visualViewport.height}px`);
+			const h = visibleHeight();
+			if (!Number.isFinite(h) || h <= 0) return;
+			container.style.setProperty('--dial-mobile-h', `${h}px`);
 		};
 		this.mobileViewportHandler = apply;
 		apply();
 		if (themeBg) container.style.setProperty('--dial-mobile-bg', themeBg);
+		// visualViewport.resize does not always fire for soft-keyboard changes
+		// on those webviews; the window resize event is the reliable backup.
 		window.visualViewport?.addEventListener('resize', apply);
+		window.addEventListener('resize', apply);
 	}
 
 	private endMobileSearchLayout(): void {
 		if (this.mobileViewportHandler) {
 			window.visualViewport?.removeEventListener('resize', this.mobileViewportHandler);
+			window.removeEventListener('resize', this.mobileViewportHandler);
 			this.mobileViewportHandler = null;
 		}
 		const closest = this.searchInput.closest('.dial-video-container');

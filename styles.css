@@ -64,6 +64,9 @@
 
 .dial-video-mobile .dial-subtitle-panel {
 	flex: 1;
+	/* Same flex+overflow quirk as .dial-subtitle-list: allow the panel to
+	   actually take the container's remaining height on buggy webviews. */
+	min-height: 0;
 	overflow: hidden;
 	display: flex;
 	flex-direction: column;
@@ -221,6 +224,10 @@
 /* Subtitle List */
 .dial-subtitle-list {
 	flex: 1;
+	/* Without an explicit min-height, some Android webviews keep the flex
+	   item at its content height instead of letting it grow/shrink into the
+	   free space (flex + overflow quirk), leaving a huge empty gap below. */
+	min-height: 0;
 	overflow-y: auto;
 	padding: 8px;
 }
