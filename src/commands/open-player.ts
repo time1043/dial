@@ -10,44 +10,6 @@ import { applySplitRatio } from '@/utils/layout';
 import { formatTime } from '@/utils/time';
 import { openOrReuseLeaf, resolveMediaPaths } from '@/vault/paths';
 
-async function recordTrace(
-	plugin: DialPlugin,
-	videoPath: string,
-	notePath: string,
-	seconds: number,
-): Promise<void> {
-	const trace = plugin.trace;
-	const now = new Date();
-	const date = now.toISOString().slice(0, 10); // YYYY-MM-DD
-	const filePath = trace.getMonthFilePath(now);
-	const dirPath = '_lib/trace';
-
-	const row = {
-		time: trace.formatTime(now),
-		notePath,
-		position: trace.formatPosition(seconds, notePath),
-	};
-
-	// Ensure directory exists
-	if (!plugin.app.vault.getAbstractFileByPath(dirPath)) {
-		await plugin.app.vault.createFolder(dirPath);
-	}
-
-	let content = '';
-	const existing = plugin.app.vault.getAbstractFileByPath(filePath);
-	if (existing instanceof TFile) {
-		content = await plugin.app.vault.read(existing);
-	}
-
-	const updated = trace.addRow(content, date, 'Video Player', row);
-
-	if (existing instanceof TFile) {
-		await plugin.app.vault.modify(existing, updated);
-	} else {
-		await plugin.app.vault.create(filePath, updated);
-	}
-}
-
 export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 	// 1. Resolve media paths (flat library path, then mirrored note folder).
 	const paths = await resolveMediaPaths(plugin);
@@ -94,7 +56,7 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 
 		// Trace: record video opened
 		plugin.activeNotePath = notePath;
-		void recordTrace(plugin, videoPath, notePath, 0);
+		void plugin.trace.saveTrace(plugin.app.vault, notePath, 0);
 
 		// Wire video → subtitle highlight
 		videoView.setSubtitleChangeCallback((id: number) => {
@@ -135,7 +97,7 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 			const path = videoView.getVideoPath();
 			if (path) {
 				plugin.positions.save(path, time);
-				void recordTrace(plugin, path, notePath, time);
+				void plugin.trace.saveTrace(plugin.app.vault, notePath, time);
 			}
 		});
 
@@ -171,7 +133,7 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 
 		// Trace: record video opened
 		plugin.activeNotePath = notePath;
-		void recordTrace(plugin, videoPath, notePath, 0);
+		void plugin.trace.saveTrace(plugin.app.vault, notePath, 0);
 
 		setupSync(plugin, videoView, subtitleView, notePath);
 
@@ -263,7 +225,7 @@ export function setupSync(
 		if (path) {
 			plugin.positions.save(path, time);
 			if (notePath) {
-				void recordTrace(plugin, path, notePath, time);
+				void plugin.trace.saveTrace(plugin.app.vault, notePath, time);
 			}
 		}
 	});
