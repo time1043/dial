@@ -6,12 +6,27 @@ import { SubtitlePanel } from './subtitle-panel';
 
 export const VIDEO_PLAYER_VIEW_TYPE = 'dial-video-player';
 
+/**
+ * Delegation interface for AB loop operations on mobile.
+ *
+ * On mobile, the SubtitlePanel is created inside VideoPlayerView's onOpen(),
+ * so AB loop button presses are handled inline. This interface lets the
+ * caller (open-player.ts) route those operations through AbLoopManager
+ * so the manager stays the single source of truth.
+ */
+export interface ABLoopHandler {
+	onSetA: (time: number) => ABLoopState;
+	onSetB: (time: number) => ABLoopState;
+	onClearAB: () => ABLoopState;
+}
+
 export class VideoPlayerView extends ItemView {
 	private videoEl: HTMLVideoElement | null = null;
 	private videoPath: string | null = null;
 	private subtitles: Subtitle[] = [];
 	private currentSubtitleId: number = -1;
-	private abLoop: ABLoopState = { a: null, b: null, active: false };
+	private abLoopState: ABLoopState = { a: null, b: null, active: false };
+	private abLoopHandler: ABLoopHandler | null = null;
 	private playOnceEnd: number | null = null;
 	private onTimeUpdate: ((time: number) => void) | null = null;
 	private onSubtitleChange: ((id: number) => void) | null = null;
@@ -68,9 +83,13 @@ export class VideoPlayerView extends ItemView {
 			}
 
 			// AB loop enforcement: seek back to A when outside A-B range
-			if (this.abLoop.active && this.abLoop.a !== null && this.abLoop.b !== null) {
-				if (time < this.abLoop.a || time >= this.abLoop.b) {
-					this.videoEl.currentTime = this.abLoop.a;
+			if (
+				this.abLoopState.active &&
+				this.abLoopState.a !== null &&
+				this.abLoopState.b !== null
+			) {
+				if (time < this.abLoopState.a || time >= this.abLoopState.b) {
+					this.videoEl.currentTime = this.abLoopState.a;
 				}
 			}
 		});
@@ -94,19 +113,33 @@ export class VideoPlayerView extends ItemView {
 					this.play();
 				},
 				onSetA: (time) => {
-					const state = { a: time, b: null, active: false };
-					this.abLoop = state;
-					return state;
+					if (this.abLoopHandler) {
+						this.abLoopState = this.abLoopHandler.onSetA(time);
+						return this.abLoopState;
+					}
+					// Fallback when no handler is wired (should not happen in production)
+					this.abLoopState = { a: time, b: null, active: false };
+					return this.abLoopState;
 				},
 				onSetB: (time) => {
-					const state = { a: this.abLoop.a, b: time, active: true };
-					this.abLoop = state;
-					return state;
+					if (this.abLoopHandler) {
+						this.abLoopState = this.abLoopHandler.onSetB(time);
+						return this.abLoopState;
+					}
+					this.abLoopState = {
+						a: this.abLoopState.a,
+						b: time,
+						active: true,
+					};
+					return this.abLoopState;
 				},
 				onClearAB: () => {
-					const state = { a: null, b: null, active: false };
-					this.abLoop = state;
-					return state;
+					if (this.abLoopHandler) {
+						this.abLoopState = this.abLoopHandler.onClearAB();
+						return this.abLoopState;
+					}
+					this.abLoopState = { a: null, b: null, active: false };
+					return this.abLoopState;
 				},
 				onGetCurrentTime: () => this.getCurrentTime(),
 				onTogglePlay: () => this.togglePlay(),
@@ -208,8 +241,18 @@ export class VideoPlayerView extends ItemView {
 		}
 	}
 
-	setABLoop(a: number | null, b: number | null, active: boolean): void {
-		this.abLoop = { a, b, active };
+	setABLoopState(state: ABLoopState): void {
+		this.abLoopState = state;
+		this.panel?.setABLoopState(state);
+	}
+
+	/**
+	 * Set the handler that routes mobile AB loop operations through
+	 * AbLoopManager. Without this, mobile AB loop buttons mutate local
+	 * state only, diverging from the manager.
+	 */
+	setABLoopHandler(handler: ABLoopHandler | null): void {
+		this.abLoopHandler = handler;
 	}
 
 	/** Play from start to end once, then pause. */
