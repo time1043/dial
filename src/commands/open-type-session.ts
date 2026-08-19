@@ -9,6 +9,7 @@ import { TYPE_SUBTITLE_VIEW_TYPE, TypeSubtitleView } from '@/ui/type-subtitle-vi
 import { TYPE_VIEW_TYPE, TypeView } from '@/ui/type-view';
 import { VIDEO_PLAYER_VIEW_TYPE, VideoPlayerView } from '@/ui/video-player-view';
 import { applySplitRatio } from '@/utils/layout';
+import { openOrReuseLeaf, resolveMediaPaths } from '@/vault/paths';
 
 const sessionManager = new WeakMap<DialPlugin, TypeSessionManager>();
 
@@ -19,55 +20,6 @@ function getManager(plugin: DialPlugin): TypeSessionManager {
 		sessionManager.set(plugin, mgr);
 	}
 	return mgr;
-}
-
-async function resolvePaths(plugin: DialPlugin) {
-	if (!plugin.settings.videoLibraryPath) {
-		new Notice('Please set the video library path in plugin settings.');
-		return null;
-	}
-
-	const activeFile = plugin.app.workspace.getActiveFile();
-	if (!activeFile) {
-		new Notice('No active file');
-		return null;
-	}
-
-	const cache = plugin.app.metadataCache.getFileCache(activeFile);
-	const frontmatter = cache?.frontmatter;
-
-	if (!frontmatter?.video || !frontmatter?.subtitle) {
-		new Notice("Active file must have 'video' and 'subtitle' in frontmatter");
-		return null;
-	}
-
-	const noteSubpath = activeFile.path.replace(/^[^/]+\//, '');
-	const flatVideoPath =
-		`${plugin.settings.videoLibraryPath}/${String(frontmatter.video)}`.replace(/\\/g, '/');
-	const flatSubtitlePath =
-		`${plugin.settings.subtitleLibraryPath}/${String(frontmatter.subtitle)}`.replace(
-			/\\/g,
-			'/',
-		);
-	const mirrorVideoPath =
-		`${plugin.settings.videoLibraryPath}/${noteSubpath.replace(/\.md$/, '.mp4')}`.replace(
-			/\\/g,
-			'/',
-		);
-	const mirrorSubtitlePath =
-		`${plugin.settings.subtitleLibraryPath}/${noteSubpath.replace(/\.md$/, '.srt')}`.replace(
-			/\\/g,
-			'/',
-		);
-
-	const videoPath = plugin.app.vault.getAbstractFileByPath(flatVideoPath)
-		? flatVideoPath
-		: mirrorVideoPath;
-	const subtitlePath = plugin.app.vault.getAbstractFileByPath(flatSubtitlePath)
-		? flatSubtitlePath
-		: mirrorSubtitlePath;
-
-	return { videoPath, subtitlePath, notePath: activeFile.path };
 }
 
 async function loadSubtitles(plugin: DialPlugin, subtitlePath: string): Promise<Subtitle[] | null> {
@@ -140,7 +92,7 @@ async function openTypeLayout(
 	}
 
 	// 1. Left 2: type subtitle view
-	const typeSubView = (await openViewOnce(
+	const typeSubView = (await openOrReuseLeaf(
 		plugin,
 		TYPE_SUBTITLE_VIEW_TYPE,
 		'tab',
@@ -200,7 +152,7 @@ async function openTypeLayout(
 			videoView.playRangeOnce(start, end);
 		},
 		onSentenceChange: (subtitleId) => {
-			videoView.setABLoop(null, null, false);
+			videoView.setABLoopState({ a: null, b: null, active: false });
 			const idx = subtitles.findIndex((s) => s.id === subtitleId);
 			if (idx >= 0) {
 				typeSubView.setCurrentIndex(idx);
@@ -232,7 +184,7 @@ async function openTypeLayout(
 }
 
 export async function openTypeSession(plugin: DialPlugin): Promise<void> {
-	const paths = await resolvePaths(plugin);
+	const paths = await resolveMediaPaths(plugin);
 	if (!paths) return;
 
 	const subtitles = await loadSubtitles(plugin, paths.subtitlePath);
@@ -357,7 +309,7 @@ export async function tryRestoreTypeSession(plugin: DialPlugin): Promise<boolean
 			videoView.playRangeOnce(start, end);
 		},
 		onSentenceChange: (subtitleId) => {
-			videoView.setABLoop(null, null, false);
+			videoView.setABLoopState({ a: null, b: null, active: false });
 			const idx = subtitles.findIndex((s) => s.id === subtitleId);
 			if (idx >= 0) {
 				typeSubView.setCurrentIndex(idx);
@@ -393,17 +345,4 @@ export async function tryRestoreTypeSession(plugin: DialPlugin): Promise<boolean
 	}, 200);
 
 	return true;
-}
-
-async function openViewOnce(plugin: DialPlugin, viewType: string, mode: 'tab' | 'split') {
-	const existing = plugin.app.workspace.getLeavesOfType(viewType);
-	if (existing.length > 0) {
-		await plugin.app.workspace.revealLeaf(existing[0]!);
-		return existing[0]!.view;
-	}
-
-	const leaf = plugin.app.workspace.getLeaf(mode);
-	await leaf.setViewState({ type: viewType, active: true });
-	await plugin.app.workspace.revealLeaf(leaf);
-	return leaf.view;
 }
