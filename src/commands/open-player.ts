@@ -105,6 +105,32 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 			videoView.setPlayState(isPlaying);
 		});
 
+		// Route mobile AB loop buttons through AbLoopManager (single source of truth)
+		videoView.setABLoopHandler({
+			onSetA: (time) => {
+				const state = plugin.abLoop.setPointA(time);
+				videoView.setABLoopState(state);
+				new Notice(`A: ${formatTime(time)}`);
+				return state;
+			},
+			onSetB: (time) => {
+				const { state, error } = plugin.abLoop.setPointB(time);
+				if (error) {
+					new Notice(error);
+				} else {
+					videoView.setABLoopState(state);
+					new Notice(`Loop: ${formatTime(state.a!)} → ${formatTime(state.b!)}`);
+				}
+				return state;
+			},
+			onClearAB: () => {
+				const state = plugin.abLoop.clear();
+				videoView.setABLoopState(state);
+				new Notice('Loop cleared');
+				return state;
+			},
+		});
+
 		videoView.setSavePositionCallback((time: number) => {
 			const path = videoView.getVideoPath();
 			if (path) {
@@ -182,7 +208,7 @@ export function setupSync(
 		},
 		onSetA: (time: number) => {
 			const state = plugin.abLoop.setPointA(time);
-			videoView.setABLoop(state.a, state.b, state.active);
+			videoView.setABLoopState(state);
 			new Notice(`A: ${formatTime(time)}`);
 			return state;
 		},
@@ -191,14 +217,14 @@ export function setupSync(
 			if (error) {
 				new Notice(error);
 			} else {
-				videoView.setABLoop(state.a, state.b, state.active);
+				videoView.setABLoopState(state);
 				new Notice(`Loop: ${formatTime(state.a!)} → ${formatTime(state.b!)}`);
 			}
 			return state;
 		},
 		onClearAB: () => {
 			const state = plugin.abLoop.clear();
-			videoView.setABLoop(state.a, state.b, state.active);
+			videoView.setABLoopState(state);
 			new Notice('Loop cleared');
 			return state;
 		},
