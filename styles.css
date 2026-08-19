@@ -42,10 +42,13 @@
 	flex: none;
 }
 
-/* On mobile, when the user focuses the search input, hide the video so
-   the search bar and matches get the full available height (minus the
-   soft keyboard). The video reappears automatically when focus is lost. */
-.dial-video-mobile:has(.dial-subtitle-search-input:focus) .dial-video {
+/* On mobile, when the user focuses the search input, hide the video, AB
+   controls, and speed controls so the search bar and matches get the full
+   available height (minus the soft keyboard) with nothing else competing
+   for vertical space. The video reappears automatically when focus is lost. */
+.dial-video-mobile:has(.dial-subtitle-search-input:focus) .dial-video,
+.dial-video-mobile:has(.dial-subtitle-search-input:focus) .dial-ab-controls,
+.dial-video-mobile:has(.dial-subtitle-search-input:focus) .dial-speed-controls {
 	display: none;
 }
 

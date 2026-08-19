@@ -33,11 +33,14 @@ full list.
   While typing in the search box, panel shortcuts (space to play/pause, arrows
   to seek, etc.) are suspended so you can type spaces and letters normally,
   and `d` is typed as a letter rather than clearing the box.
-- **Mobile**: focusing the search box temporarily hides the video so the
-  search bar and matches get the full screen height (minus the soft
-  keyboard); the video reappears when focus is lost. Clicking the × clear
-  button intentionally does **not** refocus the input, so the keyboard
-  stays dismissed after clearing — tap the input again to retype.
+- **Mobile**: focusing the search box temporarily hides the video, AB
+  controls, and speed controls so the search bar and matches get the full
+  available screen height (minus the soft keyboard); everything reappears
+  when focus is lost. This avoids content being pushed up by the keyboard
+  — the search bar sits at the very top of the visible area with nothing
+  above it. Clicking the × clear button intentionally does **not** refocus
+  the input, so the keyboard stays dismissed after clearing — tap the
+  input again to retype.
 - Available in both the desktop subtitle view and the mobile video player's
   subtitle panel, since both share the same `SubtitlePanel` component.
 
