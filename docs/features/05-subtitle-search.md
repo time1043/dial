@@ -15,7 +15,8 @@ full list.
    displays `matches/total`.
 4. Click any visible subtitle to jump the video to that line, as usual.
 5. Click the × button next to the search box to clear the search and restore
-   the full list in one click (focus returns to the search box).
+   the full list in one click (the input is not refocused, so the soft
+   keyboard stays dismissed on mobile).
 
 ## Behavior details
 
@@ -32,6 +33,15 @@ full list.
   While typing in the search box, panel shortcuts (space to play/pause, arrows
   to seek, etc.) are suspended so you can type spaces and letters normally,
   and `d` is typed as a letter rather than clearing the box.
+- **Mobile**: focusing the search box lifts the whole subtitle panel into a
+  full-screen overlay pinned just below the view header; the video, AB
+  controls, and speed controls are hidden, and the soft keyboard can only
+  overlap the panel's bottom edge, so the search bar and the scrollable
+  match list always own everything above the keyboard. Tapping a match
+  jumps the video and automatically drops the overlay (and the keyboard)
+  so the jump is visible; tapping the × clear button keeps the keyboard
+  dismissed so results stay readable. Everything reappears when focus is
+  lost.
 - Available in both the desktop subtitle view and the mobile video player's
   subtitle panel, since both share the same `SubtitlePanel` component.
 

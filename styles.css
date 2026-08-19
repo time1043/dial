@@ -42,8 +42,38 @@
 	flex: none;
 }
 
+/* Mobile search mode: while the search box is focused, the whole subtitle
+   panel is lifted out of the layout flow and pinned to the viewport. JS
+   sets an inline `top` so it stays just below the view header; `bottom: 0`
+   spans it to the viewport bottom, so the soft keyboard can only overlap
+   its lower edge — everything above the keyboard is search bar plus the
+   scrollable match list. This works no matter what the webview reports
+   for viewport height (visualViewport / innerHeight / 100dvh are all
+   unreliable on some Android webviews, e.g. Honor's MagicOS fork). */
+.dial-video-mobile .dial-subtitle-panel.dial-mobile-search-overlay {
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: var(--layer-modal, 20);
+	background: var(--background-primary);
+}
+
+/* On mobile, when the user focuses the search input, hide the video, AB
+   controls, and speed controls so the search bar and matches get the full
+   available height (minus the soft keyboard) with nothing else competing
+   for vertical space. Everything reappears automatically when focus is lost. */
+.dial-video-mobile:has(.dial-subtitle-search-input:focus) .dial-video,
+.dial-video-mobile:has(.dial-subtitle-search-input:focus) .dial-ab-controls,
+.dial-video-mobile:has(.dial-subtitle-search-input:focus) .dial-speed-controls {
+	display: none;
+}
+
 .dial-video-mobile .dial-subtitle-panel {
 	flex: 1;
+	/* Same flex+overflow quirk as .dial-subtitle-list: allow the panel to
+	   actually take the container's remaining height on buggy webviews. */
+	min-height: 0;
 	overflow: hidden;
 	display: flex;
 	flex-direction: column;
@@ -201,6 +231,10 @@
 /* Subtitle List */
 .dial-subtitle-list {
 	flex: 1;
+	/* Without an explicit min-height, some Android webviews keep the flex
+	   item at its content height instead of letting it grow/shrink into the
+	   free space (flex + overflow quirk), leaving a huge empty gap below. */
+	min-height: 0;
 	overflow-y: auto;
 	padding: 8px;
 }

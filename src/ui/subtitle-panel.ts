@@ -46,6 +46,8 @@ export class SubtitlePanel {
 	private callbacks: SubtitlePanelCallbacks | null = null;
 	private playbackRate = 1;
 
+	private mobileLayoutAbortController: AbortController | null = null;
+
 	constructor(parent: HTMLElement) {
 		this.containerEl = parent.createDiv({ cls: 'dial-subtitle-panel' });
 		this.buildUI();
@@ -123,6 +125,48 @@ export class SubtitlePanel {
 		this.applySearchFilter();
 	}
 
+	/**
+	 * Mobile-only: while the search box is focused, lift the whole subtitle
+	 * panel out of the layout flow and pin it to the viewport (inline `top`
+	 * keeps it just below the view header; CSS class does the rest). The
+	 * soft keyboard can then only ever overlap the panel's bottom edge, so
+	 * the search bar and the scrollable match list always own everything
+	 * above the keyboard.
+	 *
+	 * This deliberately avoids every viewport-height API (visualViewport,
+	 * innerHeight, 100dvh): on some Android webviews (e.g. Honor's MagicOS
+	 * fork) they report the layout viewport instead of the visible one and
+	 * never fire resize for keyboard changes, which left the list collapsed
+	 * to a single row in earlier attempts.
+	 */
+	private beginMobileSearchLayout(): void {
+		const closest = this.searchInput.closest('.dial-video-container');
+		if (!(closest instanceof HTMLElement)) return;
+
+		const rect = this.containerEl.getBoundingClientRect();
+		if (rect.top > 0) {
+			this.containerEl.style.top = `${rect.top}px`;
+		}
+		this.containerEl.addClass('dial-mobile-search-overlay');
+	}
+
+	private endMobileSearchLayout(): void {
+		this.containerEl.removeClass('dial-mobile-search-overlay');
+		this.containerEl.style.removeProperty('top');
+	}
+
+	/** True while the mobile full-screen search overlay is active. */
+	isMobileSearchOverlayActive(): boolean {
+		return this.containerEl.hasClass('dial-mobile-search-overlay');
+	}
+
+	/** Clean up all focus/blur listeners and restore the normal layout. */
+	detachMobileLayout(): void {
+		this.mobileLayoutAbortController?.abort();
+		this.mobileLayoutAbortController = null;
+		this.endMobileSearchLayout();
+	}
+
 	private buildUI(): void {
 		// AB controls
 		const controlsEl = this.containerEl.createDiv({ cls: 'dial-ab-controls' });
@@ -195,6 +239,18 @@ export class SubtitlePanel {
 			this.applySearchFilter();
 		});
 
+		// Mobile-only: while the search box is focused, pin the panel to the
+		// viewport as a full-height overlay (see beginMobileSearchLayout) so
+		// the soft keyboard can only overlap its bottom edge. On desktop the
+		// panel has no .dial-video-container ancestor and this is a no-op.
+		this.mobileLayoutAbortController = new AbortController();
+		this.searchInput.addEventListener('focus', () => this.beginMobileSearchLayout(), {
+			signal: this.mobileLayoutAbortController.signal,
+		});
+		this.searchInput.addEventListener('blur', () => this.endMobileSearchLayout(), {
+			signal: this.mobileLayoutAbortController.signal,
+		});
+
 		// One-click clear button; visible only while a search is active
 		this.searchClearEl = searchEl.createEl('button', {
 			cls: 'dial-subtitle-search-clear dial-subtitle-hidden',
@@ -203,7 +259,10 @@ export class SubtitlePanel {
 		setIcon(this.searchClearEl, 'x');
 		this.searchClearEl.addEventListener('click', () => {
 			this.clearSearch();
-			this.searchInput.focus();
+			// Intentionally do NOT refocus the input: on mobile this would
+			// re-pop the soft keyboard right after the user dismissed it to
+			// read results. On desktop, the user can press s to refocus or
+			// click the input again.
 		});
 
 		this.searchCountEl = searchEl.createSpan({
@@ -245,6 +304,12 @@ export class SubtitlePanel {
 
 			el.addEventListener('click', () => {
 				this.callbacks?.onSubtitleClick(sub);
+				// On mobile, tapping a match also drops the full-screen search
+				// overlay and dismisses the keyboard, so the user can watch the
+				// video jump to that line. On desktop this is a no-op.
+				if (this.isMobileSearchOverlayActive()) {
+					this.searchInput.blur();
+				}
 			});
 
 			this.subtitleEls.set(sub.id, el);
