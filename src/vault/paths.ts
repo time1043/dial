@@ -1,3 +1,5 @@
+import type { View } from 'obsidian';
+
 import { Notice, TFile } from 'obsidian';
 
 import type DialPlugin from '@/main';
@@ -98,4 +100,28 @@ export async function resolveMediaPaths(plugin: DialPlugin): Promise<ResolvedMed
 	}
 
 	return { videoPath, subtitlePath, notePath: activeFile.path };
+}
+
+/**
+ * Open a view of `viewType`, reusing an existing leaf if one is already
+ * open (otherwise create a new leaf in `mode`).
+ *
+ * Replaces the previously duplicated `openView` / `openViewOnce` helpers
+ * that lived in the individual command files.
+ */
+export async function openOrReuseLeaf(
+	plugin: DialPlugin,
+	viewType: string,
+	mode: 'tab' | 'split',
+): Promise<View> {
+	const existing = plugin.app.workspace.getLeavesOfType(viewType);
+	if (existing.length > 0) {
+		await plugin.app.workspace.revealLeaf(existing[0]!);
+		return existing[0]!.view;
+	}
+
+	const leaf = plugin.app.workspace.getLeaf(mode);
+	await leaf.setViewState({ type: viewType, active: true });
+	await plugin.app.workspace.revealLeaf(leaf);
+	return leaf.view;
 }
