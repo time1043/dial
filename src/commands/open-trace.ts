@@ -1,19 +1,9 @@
-import { ItemView, TFile, WorkspaceLeaf } from 'obsidian';
+import { ItemView, WorkspaceLeaf } from 'obsidian';
 
 import type DialPlugin from '@/main';
 
 export async function openTrace(plugin: DialPlugin): Promise<void> {
-	const filePath = plugin.trace.getMonthFilePath(new Date());
-
-	// Ensure file exists
-	let file = plugin.app.vault.getAbstractFileByPath(filePath);
-	if (!file) {
-		const dirPath = '_lib/trace';
-		if (!plugin.app.vault.getAbstractFileByPath(dirPath)) {
-			await plugin.app.vault.createFolder(dirPath);
-		}
-		file = await plugin.app.vault.create(filePath, '');
-	}
+	const file = await plugin.trace.ensureTraceFile(plugin.app.vault);
 
 	// Collect main area leaves BEFORE opening trace
 	const oldLeaves: WorkspaceLeaf[] = [];
@@ -25,11 +15,9 @@ export async function openTrace(plugin: DialPlugin): Promise<void> {
 	});
 
 	// Open trace file in a new leaf
-	if (file instanceof TFile) {
-		const leaf = plugin.app.workspace.getLeaf('tab');
-		await leaf.openFile(file);
-		await plugin.app.workspace.revealLeaf(leaf);
-	}
+	const leaf = plugin.app.workspace.getLeaf('tab');
+	await leaf.openFile(file);
+	await plugin.app.workspace.revealLeaf(leaf);
 
 	// Close old leaves (skip the active leaf that now holds the trace file)
 	const activeView = plugin.app.workspace.getActiveViewOfType(ItemView);
