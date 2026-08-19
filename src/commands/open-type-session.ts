@@ -152,7 +152,7 @@ async function openTypeLayout(
 			videoView.playRangeOnce(start, end);
 		},
 		onSentenceChange: (subtitleId) => {
-			videoView.setABLoop(null, null, false);
+			videoView.setABLoopState({ a: null, b: null, active: false });
 			const idx = subtitles.findIndex((s) => s.id === subtitleId);
 			if (idx >= 0) {
 				typeSubView.setCurrentIndex(idx);
@@ -309,7 +309,7 @@ export async function tryRestoreTypeSession(plugin: DialPlugin): Promise<boolean
 			videoView.playRangeOnce(start, end);
 		},
 		onSentenceChange: (subtitleId) => {
-			videoView.setABLoop(null, null, false);
+			videoView.setABLoopState({ a: null, b: null, active: false });
 			const idx = subtitles.findIndex((s) => s.id === subtitleId);
 			if (idx >= 0) {
 				typeSubView.setCurrentIndex(idx);

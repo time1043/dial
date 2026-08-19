@@ -182,7 +182,7 @@ export function setupSync(
 		},
 		onSetA: (time: number) => {
 			const state = plugin.abLoop.setPointA(time);
-			videoView.setABLoop(state.a, state.b, state.active);
+			videoView.setABLoopState(state);
 			new Notice(`A: ${formatTime(time)}`);
 			return state;
 		},
@@ -191,14 +191,14 @@ export function setupSync(
 			if (error) {
 				new Notice(error);
 			} else {
-				videoView.setABLoop(state.a, state.b, state.active);
+				videoView.setABLoopState(state);
 				new Notice(`Loop: ${formatTime(state.a!)} → ${formatTime(state.b!)}`);
 			}
 			return state;
 		},
 		onClearAB: () => {
 			const state = plugin.abLoop.clear();
-			videoView.setABLoop(state.a, state.b, state.active);
+			videoView.setABLoopState(state);
 			new Notice('Loop cleared');
 			return state;
 		},

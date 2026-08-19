@@ -11,7 +11,7 @@ export class VideoPlayerView extends ItemView {
 	private videoPath: string | null = null;
 	private subtitles: Subtitle[] = [];
 	private currentSubtitleId: number = -1;
-	private abLoop: ABLoopState = { a: null, b: null, active: false };
+	private abLoopState: ABLoopState = { a: null, b: null, active: false };
 	private playOnceEnd: number | null = null;
 	private onTimeUpdate: ((time: number) => void) | null = null;
 	private onSubtitleChange: ((id: number) => void) | null = null;
@@ -68,9 +68,13 @@ export class VideoPlayerView extends ItemView {
 			}
 
 			// AB loop enforcement: seek back to A when outside A-B range
-			if (this.abLoop.active && this.abLoop.a !== null && this.abLoop.b !== null) {
-				if (time < this.abLoop.a || time >= this.abLoop.b) {
-					this.videoEl.currentTime = this.abLoop.a;
+			if (
+				this.abLoopState.active &&
+				this.abLoopState.a !== null &&
+				this.abLoopState.b !== null
+			) {
+				if (time < this.abLoopState.a || time >= this.abLoopState.b) {
+					this.videoEl.currentTime = this.abLoopState.a;
 				}
 			}
 		});
@@ -95,17 +99,17 @@ export class VideoPlayerView extends ItemView {
 				},
 				onSetA: (time) => {
 					const state = { a: time, b: null, active: false };
-					this.abLoop = state;
+					this.abLoopState = state;
 					return state;
 				},
 				onSetB: (time) => {
-					const state = { a: this.abLoop.a, b: time, active: true };
-					this.abLoop = state;
+					const state = { a: this.abLoopState.a, b: time, active: true };
+					this.abLoopState = state;
 					return state;
 				},
 				onClearAB: () => {
 					const state = { a: null, b: null, active: false };
-					this.abLoop = state;
+					this.abLoopState = state;
 					return state;
 				},
 				onGetCurrentTime: () => this.getCurrentTime(),
@@ -208,8 +212,8 @@ export class VideoPlayerView extends ItemView {
 		}
 	}
 
-	setABLoop(a: number | null, b: number | null, active: boolean): void {
-		this.abLoop = { a, b, active };
+	setABLoopState(state: ABLoopState): void {
+		this.abLoopState = state;
 	}
 
 	/** Play from start to end once, then pause. */
