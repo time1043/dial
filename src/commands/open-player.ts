@@ -1,5 +1,3 @@
-import type { View } from 'obsidian';
-
 import { Notice, Platform, TFile } from 'obsidian';
 
 import type DialPlugin from '@/main';
@@ -10,16 +8,7 @@ import { SUBTITLE_VIEW_TYPE, SubtitleView } from '@/ui/subtitle-view';
 import { VIDEO_PLAYER_VIEW_TYPE, VideoPlayerView } from '@/ui/video-player-view';
 import { applySplitRatio } from '@/utils/layout';
 import { formatTime } from '@/utils/time';
-
-// Extract the file extension (including the leading dot) from a filename.
-// Falls back to `fallback` when there is no usable extension.
-function getFileExtension(filename: string, fallback: string): string {
-	const idx = filename.lastIndexOf('.');
-	if (idx <= 0 || idx >= filename.length - 1) {
-		return fallback;
-	}
-	return filename.slice(idx);
-}
+import { openOrReuseLeaf, resolveMediaPaths } from '@/vault/paths';
 
 async function recordTrace(
 	plugin: DialPlugin,
@@ -60,76 +49,19 @@ async function recordTrace(
 }
 
 export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
-	// 1. Validate settings
-	if (!plugin.settings.videoLibraryPath) {
-		new Notice('Please set the video library path in plugin settings.');
+	// 1. Resolve media paths (flat library path, then mirrored note folder).
+	const paths = await resolveMediaPaths(plugin);
+	if (!paths) return;
+	const { videoPath, subtitlePath, notePath } = paths;
+
+	const subtitleTFile = plugin.app.vault.getAbstractFileByPath(subtitlePath);
+	if (!(subtitleTFile instanceof TFile)) {
+		new Notice('Subtitle file not found.');
 		return;
 	}
-
-	// 2. Read frontmatter
-	const activeFile = plugin.app.workspace.getActiveFile();
-	if (!activeFile) {
-		new Notice('No active file');
-		return;
-	}
-
-	const cache = plugin.app.metadataCache.getFileCache(activeFile);
-	const frontmatter = cache?.frontmatter;
-
-	if (!frontmatter?.video || !frontmatter?.subtitle) {
-		new Notice("Active file must have 'video' and 'subtitle' in frontmatter");
-		return;
-	}
-
-	const videoRelative = String(frontmatter.video);
-	const subtitleRelative = String(frontmatter.subtitle);
-
-	// Derive the file extensions from the frontmatter so the mirrored path
-	// matches the actual video/subtitle format (e.g. .mkv, .webm, .vtt)
-	// instead of being hardcoded to .mp4 / .srt.
-	const videoExt = getFileExtension(videoRelative, '.mp4');
-	const subtitleExt = getFileExtension(subtitleRelative, '.srt');
-
-	// 3. Resolve paths — flat first, then mirror note folder structure
-	// e.g. notePath "note/psychology-anthony/xxx.md" → noteSubpath "psychology-anthony/xxx.md"
-	const noteSubpath = activeFile.path.replace(/^[^/]+\//, '');
-	const flatVideoPath = `${plugin.settings.videoLibraryPath}/${videoRelative}`.replace(
-		/\\/g,
-		'/',
-	);
-	const flatSubtitlePath = `${plugin.settings.subtitleLibraryPath}/${subtitleRelative}`.replace(
-		/\\/g,
-		'/',
-	);
-	const mirrorVideoPath =
-		`${plugin.settings.videoLibraryPath}/${noteSubpath.replace(/\.md$/, videoExt)}`.replace(
-			/\\/g,
-			'/',
-		);
-	const mirrorSubtitlePath =
-		`${plugin.settings.subtitleLibraryPath}/${noteSubpath.replace(/\.md$/, subtitleExt)}`.replace(
-			/\\/g,
-			'/',
-		);
-
-	// Try flat path first, fallback to mirrored structure
-	const videoPath = plugin.app.vault.getAbstractFileByPath(flatVideoPath)
-		? flatVideoPath
-		: mirrorVideoPath;
-	let subtitleFile = plugin.app.vault.getAbstractFileByPath(flatSubtitlePath);
-	let subtitlePath = flatSubtitlePath;
-	if (!subtitleFile || !(subtitleFile instanceof TFile)) {
-		subtitleFile = plugin.app.vault.getAbstractFileByPath(mirrorSubtitlePath);
-		subtitlePath = mirrorSubtitlePath;
-	}
-	if (!subtitleFile || !(subtitleFile instanceof TFile)) {
-		new Notice(`Subtitle file not found: ${flatSubtitlePath}`);
-		return;
-	}
-
 	let subtitleBuffer: ArrayBuffer;
 	try {
-		subtitleBuffer = await plugin.app.vault.readBinary(subtitleFile);
+		subtitleBuffer = await plugin.app.vault.readBinary(subtitleTFile);
 	} catch {
 		new Notice('Failed to read subtitle file.');
 		return;
@@ -161,7 +93,6 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 		plugin.setSubtitles(subtitles);
 
 		// Trace: record video opened
-		const notePath = activeFile.path;
 		plugin.activeNotePath = notePath;
 		void recordTrace(plugin, videoPath, notePath, 0);
 
@@ -188,7 +119,11 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 		}
 	} else {
 		// Desktop: split layout — left (md + subtitles) | right (video)
-		const subtitleView = (await openView(plugin, SUBTITLE_VIEW_TYPE, 'tab')) as SubtitleView;
+		const subtitleView = (await openOrReuseLeaf(
+			plugin,
+			SUBTITLE_VIEW_TYPE,
+			'tab',
+		)) as SubtitleView;
 		const subLeaf = plugin.app.workspace.getLeavesOfType(SUBTITLE_VIEW_TYPE)[0]!;
 		const videoLeaf = plugin.app.workspace.createLeafBySplit(subLeaf, 'vertical');
 		await videoLeaf.setViewState({ type: VIDEO_PLAYER_VIEW_TYPE });
@@ -209,7 +144,6 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 		plugin.setSubtitles(subtitles);
 
 		// Trace: record video opened
-		const notePath = activeFile.path;
 		plugin.activeNotePath = notePath;
 		void recordTrace(plugin, videoPath, notePath, 0);
 
@@ -222,26 +156,6 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 	}
 
 	new Notice(`Loaded ${subtitles.length} subtitles`);
-}
-
-async function openView(
-	plugin: DialPlugin,
-	viewType: string,
-	mode: 'tab' | 'split',
-): Promise<View> {
-	const existing = plugin.app.workspace.getLeavesOfType(viewType);
-	if (existing.length > 0) {
-		await plugin.app.workspace.revealLeaf(existing[0]!);
-		return existing[0]!.view;
-	}
-
-	const leaf = plugin.app.workspace.getLeaf(mode);
-	await leaf.setViewState({
-		type: viewType,
-		active: true,
-	});
-	await plugin.app.workspace.revealLeaf(leaf);
-	return leaf.view;
 }
 
 export function setupSync(
