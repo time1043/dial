@@ -45,11 +45,18 @@
 /* On mobile, when the user focuses the search input, hide the video, AB
    controls, and speed controls so the search bar and matches get the full
    available height (minus the soft keyboard) with nothing else competing
-   for vertical space. The video reappears automatically when focus is lost. */
+   for vertical space. Also drop the container's black video background
+   (the black exists only to frame the video player; once hidden it just
+   shows through the transparent panel and looks ugly). Everything
+   reappears automatically when focus is lost. */
 .dial-video-mobile:has(.dial-subtitle-search-input:focus) .dial-video,
 .dial-video-mobile:has(.dial-subtitle-search-input:focus) .dial-ab-controls,
 .dial-video-mobile:has(.dial-subtitle-search-input:focus) .dial-speed-controls {
 	display: none;
+}
+
+.dial-video-mobile:has(.dial-subtitle-search-input:focus) {
+	background: var(--background-primary);
 }
 
 .dial-video-mobile .dial-subtitle-panel {
