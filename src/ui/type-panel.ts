@@ -2,7 +2,7 @@ import { Platform } from 'obsidian';
 
 import type { Subtitle, TypeSessionData } from '@/types';
 
-import { extractPunctuation } from '@/modules/type-session/type-session-manager';
+import { parseWords } from '@/modules/type-session/word-parser';
 
 export interface TypePanelCallbacks {
 	onSave: (session: TypeSessionData) => void;
@@ -19,40 +19,6 @@ interface SentenceState {
 	correct: string[];
 	userInput: string[];
 	completedAt: string | null;
-}
-
-type ParsedWord = { leading: string; word: string; trailing: string };
-
-/** Merge all-punctuation tokens (word === '') into adjacent word tokens. */
-function mergePunctuation(tokens: ParsedWord[]): ParsedWord[] {
-	const merged: ParsedWord[] = [];
-	let pendingLeading = '';
-
-	for (const t of tokens) {
-		if (t.word === '') {
-			// All-punctuation token — attach as punctuation of adjacent words
-			const punct = t.leading;
-			if (merged.length > 0) {
-				merged[merged.length - 1]!.trailing += punct;
-			} else {
-				pendingLeading += punct;
-			}
-		} else {
-			merged.push({
-				leading: pendingLeading + t.leading,
-				word: t.word,
-				trailing: t.trailing,
-			});
-			pendingLeading = '';
-		}
-	}
-
-	// Stray punctuation at the very end
-	if (pendingLeading && merged.length > 0) {
-		merged[merged.length - 1]!.trailing += pendingLeading;
-	}
-
-	return merged;
 }
 
 export class TypePanel {
@@ -87,8 +53,7 @@ export class TypePanel {
 		this.session = session;
 		this.sentences = subtitles.map((sub, i) => {
 			const record = session.sentences[i];
-			const rawWords = sub.text.split(/\s+/).filter((w) => w.length > 0);
-			const words = mergePunctuation(rawWords.map((w) => extractPunctuation(w)));
+			const words = parseWords(sub.text);
 			const correct = words.map((w) => w.word.toLowerCase());
 
 			return {
