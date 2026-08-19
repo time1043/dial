@@ -4,6 +4,8 @@ import type { ABLoopState, Subtitle } from '@/types';
 
 import { formatTime } from '@/utils/time';
 
+import { SubtitleSearchController } from './subtitle-search';
+
 function formatSpeed(rate: number): string {
 	return rate % 1 === 0 ? `${rate}x` : `${rate.toFixed(2)}x`;
 }
@@ -37,16 +39,10 @@ export class SubtitlePanel {
 	private speedSlider!: HTMLInputElement;
 	private subtitleContainerEl: HTMLElement | null = null;
 
-	private searchInput!: HTMLInputElement;
-	private searchCountEl: HTMLElement | null = null;
-	private searchClearEl: HTMLElement | null = null;
-	private searchEmptyEl: HTMLElement | null = null;
-	private searchText = '';
+	private search!: SubtitleSearchController;
 
 	private callbacks: SubtitlePanelCallbacks | null = null;
 	private playbackRate = 1;
-
-	private mobileLayoutAbortController: AbortController | null = null;
 
 	constructor(parent: HTMLElement) {
 		this.containerEl = parent.createDiv({ cls: 'dial-subtitle-panel' });
@@ -110,61 +106,22 @@ export class SubtitlePanel {
 
 	/** Focus the search input and select its content for quick retyping. */
 	focusSearch(): void {
-		this.searchInput.focus();
-		this.searchInput.select();
+		this.search.focus();
 	}
 
-	/**
-	 * Clear the search query and restore the full list.
-	 * Does not move focus on its own; the clear button calls this and then
-	 * refocuses the input.
-	 */
+	/** Clear the search query and restore the full list. */
 	clearSearch(): void {
-		this.searchInput.value = '';
-		this.searchText = '';
-		this.applySearchFilter();
-	}
-
-	/**
-	 * Mobile-only: while the search box is focused, lift the whole subtitle
-	 * panel out of the layout flow and pin it to the viewport (inline `top`
-	 * keeps it just below the view header; CSS class does the rest). The
-	 * soft keyboard can then only ever overlap the panel's bottom edge, so
-	 * the search bar and the scrollable match list always own everything
-	 * above the keyboard.
-	 *
-	 * This deliberately avoids every viewport-height API (visualViewport,
-	 * innerHeight, 100dvh): on some Android webviews (e.g. Honor's MagicOS
-	 * fork) they report the layout viewport instead of the visible one and
-	 * never fire resize for keyboard changes, which left the list collapsed
-	 * to a single row in earlier attempts.
-	 */
-	private beginMobileSearchLayout(): void {
-		const closest = this.searchInput.closest('.dial-video-container');
-		if (!(closest instanceof HTMLElement)) return;
-
-		const rect = this.containerEl.getBoundingClientRect();
-		if (rect.top > 0) {
-			this.containerEl.style.top = `${rect.top}px`;
-		}
-		this.containerEl.addClass('dial-mobile-search-overlay');
-	}
-
-	private endMobileSearchLayout(): void {
-		this.containerEl.removeClass('dial-mobile-search-overlay');
-		this.containerEl.style.removeProperty('top');
+		this.search.clear();
 	}
 
 	/** True while the mobile full-screen search overlay is active. */
 	isMobileSearchOverlayActive(): boolean {
-		return this.containerEl.hasClass('dial-mobile-search-overlay');
+		return this.search.isMobileOverlayActive();
 	}
 
 	/** Clean up all focus/blur listeners and restore the normal layout. */
 	detachMobileLayout(): void {
-		this.mobileLayoutAbortController?.abort();
-		this.mobileLayoutAbortController = null;
-		this.endMobileSearchLayout();
+		this.search.detachMobileLayout();
 	}
 
 	private buildUI(): void {
@@ -222,63 +179,15 @@ export class SubtitlePanel {
 			this.callbacks?.onSpeedChange(rate);
 		});
 
-		// Subtitle search bar
-		const searchEl = this.containerEl.createDiv({ cls: 'dial-subtitle-search' });
-
-		this.searchInput = searchEl.createEl('input', {
-			cls: 'dial-subtitle-search-input',
-			type: 'text',
-			attr: {
-				placeholder: 'Search subtitles',
-				'aria-label': 'Search subtitles',
-				spellcheck: 'false',
-			},
-		});
-		this.searchInput.addEventListener('input', () => {
-			this.searchText = this.searchInput.value;
-			this.applySearchFilter();
-		});
-
-		// Mobile-only: while the search box is focused, pin the panel to the
-		// viewport as a full-height overlay (see beginMobileSearchLayout) so
-		// the soft keyboard can only overlap its bottom edge. On desktop the
-		// panel has no .dial-video-container ancestor and this is a no-op.
-		this.mobileLayoutAbortController = new AbortController();
-		this.searchInput.addEventListener('focus', () => this.beginMobileSearchLayout(), {
-			signal: this.mobileLayoutAbortController.signal,
-		});
-		this.searchInput.addEventListener('blur', () => this.endMobileSearchLayout(), {
-			signal: this.mobileLayoutAbortController.signal,
-		});
-
-		// One-click clear button; visible only while a search is active
-		this.searchClearEl = searchEl.createEl('button', {
-			cls: 'dial-subtitle-search-clear dial-subtitle-hidden',
-			attr: { 'aria-label': 'Clear search' },
-		});
-		setIcon(this.searchClearEl, 'x');
-		this.searchClearEl.addEventListener('click', () => {
-			this.clearSearch();
-			// Intentionally do NOT refocus the input: on mobile this would
-			// re-pop the soft keyboard right after the user dismissed it to
-			// read results. On desktop, the user can press s to refocus or
-			// click the input again.
-		});
-
-		this.searchCountEl = searchEl.createSpan({
-			cls: 'dial-subtitle-search-count',
-			text: '',
+		// Subtitle search bar (delegated to SubtitleSearchController)
+		this.search = new SubtitleSearchController(this.containerEl, {
+			getSubtitles: () => this.subtitles,
+			getSubtitleEls: () => this.subtitleEls,
 		});
 
 		// Subtitle list
 		this.subtitleContainerEl = this.containerEl.createDiv({
 			cls: 'dial-subtitle-list',
-		});
-
-		// Empty state shown when a search matches nothing
-		this.searchEmptyEl = this.containerEl.createDiv({
-			cls: 'dial-subtitle-empty dial-subtitle-hidden',
-			text: 'No matching subtitles',
 		});
 	}
 
@@ -307,46 +216,15 @@ export class SubtitlePanel {
 				// On mobile, tapping a match also drops the full-screen search
 				// overlay and dismisses the keyboard, so the user can watch the
 				// video jump to that line. On desktop this is a no-op.
-				if (this.isMobileSearchOverlayActive()) {
-					this.searchInput.blur();
+				if (this.search.isMobileOverlayActive()) {
+					this.search.blurInput();
 				}
 			});
 
 			this.subtitleEls.set(sub.id, el);
 		}
 
-		this.applySearchFilter();
-	}
-
-	/**
-	 * Filter the subtitle list by the current search text (case-insensitive).
-	 * Non-matching rows are hidden via CSS instead of being removed, so the
-	 * active highlight and AB loop markers keep working; clearing the search
-	 * box restores the full list.
-	 */
-	private applySearchFilter(): void {
-		const query = this.searchText.trim().toLowerCase();
-		let matches = 0;
-
-		for (const sub of this.subtitles) {
-			const el = this.subtitleEls.get(sub.id);
-			if (!el) continue;
-			const hit = query === '' || sub.text.toLowerCase().includes(query);
-			el.toggleClass('dial-subtitle-hidden', !hit);
-			if (hit) matches++;
-		}
-
-		if (this.searchCountEl) {
-			this.searchCountEl.textContent =
-				query === '' ? '' : `${matches}/${this.subtitles.length}`;
-		}
-
-		this.searchClearEl?.toggleClass('dial-subtitle-hidden', query === '');
-
-		if (this.searchEmptyEl) {
-			const showEmpty = query !== '' && matches === 0 && this.subtitles.length > 0;
-			this.searchEmptyEl.toggleClass('dial-subtitle-hidden', !showEmpty);
-		}
+		this.search.applyFilter();
 	}
 
 	private updateLoopHighlight(): void {
