@@ -56,7 +56,21 @@ export class SubtitleView extends ItemView {
 		// Keyboard shortcuts (desktop only)
 		this.keyHandler = (e: KeyboardEvent) => {
 			if (!this.callbacks) return;
-			if (e.code === 'Space') {
+			// Escape leaves the search box and returns focus to the panel
+			if (e.key === 'Escape' && e.target instanceof HTMLInputElement) {
+				e.preventDefault();
+				e.target.blur();
+				(container as HTMLElement).focus();
+				return;
+			}
+			// Skip shortcuts while typing in an input (e.g. the subtitle search box)
+			if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+				return;
+			}
+			if (e.code === 'KeyS') {
+				e.preventDefault();
+				this.panel?.focusSearch();
+			} else if (e.code === 'Space') {
 				e.preventDefault();
 
 				this.callbacks.onTogglePlay();
@@ -102,7 +116,13 @@ export class SubtitleView extends ItemView {
 			}
 		};
 		(container as HTMLElement).addEventListener('keydown', this.keyHandler);
-		container.addEventListener('click', () => {
+		container.addEventListener('click', (e) => {
+			// Do not steal focus from interactive elements in the search bar
+			// (input and clear button): native focus happens before this
+			// bubbled click, and focusing the container here would blur them.
+			if (e.target instanceof HTMLElement && e.target.closest('.dial-subtitle-search')) {
+				return;
+			}
 			(container as HTMLElement).focus();
 		});
 
