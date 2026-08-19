@@ -46,6 +46,9 @@ export class SubtitlePanel {
 	private callbacks: SubtitlePanelCallbacks | null = null;
 	private playbackRate = 1;
 
+	private mobileLayoutAbortController: AbortController | null = null;
+	private mobileViewportHandler: (() => void) | null = null;
+
 	constructor(parent: HTMLElement) {
 		this.containerEl = parent.createDiv({ cls: 'dial-subtitle-panel' });
 		this.buildUI();
@@ -123,6 +126,55 @@ export class SubtitlePanel {
 		this.applySearchFilter();
 	}
 
+	/**
+	 * Mobile-only: while the search box is focused, pin the container's
+	 * height to the visible viewport (which shrinks when the soft keyboard
+	 * appears) and replace the black video background with the theme color.
+	 * Uses the visualViewport API because `100dvh` and CSS variable
+	 * substitution are unreliable in some mobile webviews.
+	 */
+	private beginMobileSearchLayout(): void {
+		const closest = this.searchInput.closest('.dial-video-container');
+		const container = closest instanceof HTMLElement ? closest : null;
+		if (!container) return;
+
+		// Resolve the theme background to a literal color string, so we don't
+		// depend on `var(...)` resolving inside an inline style on some webviews.
+		const themeBg =
+			getComputedStyle(document.documentElement)
+				.getPropertyValue('--background-primary')
+				.trim() ||
+			getComputedStyle(document.body).getPropertyValue('--background-primary').trim();
+
+		const apply = () => {
+			if (!window.visualViewport) return;
+			container.style.setProperty('--dial-mobile-h', `${window.visualViewport.height}px`);
+		};
+		this.mobileViewportHandler = apply;
+		apply();
+		if (themeBg) container.style.setProperty('--dial-mobile-bg', themeBg);
+		window.visualViewport?.addEventListener('resize', apply);
+	}
+
+	private endMobileSearchLayout(): void {
+		if (this.mobileViewportHandler) {
+			window.visualViewport?.removeEventListener('resize', this.mobileViewportHandler);
+			this.mobileViewportHandler = null;
+		}
+		const closest = this.searchInput.closest('.dial-video-container');
+		const container = closest instanceof HTMLElement ? closest : null;
+		if (!container) return;
+		container.style.removeProperty('--dial-mobile-h');
+		container.style.removeProperty('--dial-mobile-bg');
+	}
+
+	/** Clean up all focus/blur + visualViewport listeners. Call from onClose. */
+	detachMobileLayout(): void {
+		this.mobileLayoutAbortController?.abort();
+		this.mobileLayoutAbortController = null;
+		this.endMobileSearchLayout();
+	}
+
 	private buildUI(): void {
 		// AB controls
 		const controlsEl = this.containerEl.createDiv({ cls: 'dial-ab-controls' });
@@ -193,6 +245,18 @@ export class SubtitlePanel {
 		this.searchInput.addEventListener('input', () => {
 			this.searchText = this.searchInput.value;
 			this.applySearchFilter();
+		});
+
+		// Mobile-only: react to the soft keyboard via the visualViewport API so
+		// the list fills the visible area. CSS `:has(:focus)` / `100dvh` are
+		// unreliable on some iOS webviews, so we set the container height and
+		// theme background directly from JS when the search box is focused.
+		this.mobileLayoutAbortController = new AbortController();
+		this.searchInput.addEventListener('focus', () => this.beginMobileSearchLayout(), {
+			signal: this.mobileLayoutAbortController.signal,
+		});
+		this.searchInput.addEventListener('blur', () => this.endMobileSearchLayout(), {
+			signal: this.mobileLayoutAbortController.signal,
 		});
 
 		// One-click clear button; visible only while a search is active

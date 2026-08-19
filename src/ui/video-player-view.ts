@@ -117,6 +117,8 @@ export class VideoPlayerView extends ItemView {
 
 	async onClose(): Promise<void> {
 		this.savePositionImmediate();
+		this.panel?.detachMobileLayout();
+		this.panel = null;
 		this.videoEl = null;
 	}
 

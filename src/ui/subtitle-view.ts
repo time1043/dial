@@ -147,6 +147,7 @@ export class SubtitleView extends ItemView {
 			(container as HTMLElement | undefined)?.removeEventListener('keydown', this.keyHandler);
 			this.keyHandler = null;
 		}
+		this.panel?.detachMobileLayout();
 		this.panel = null;
 	}
 

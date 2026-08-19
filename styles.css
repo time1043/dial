@@ -42,28 +42,24 @@
 	flex: none;
 }
 
+/* Mobile: container reads its size and background from CSS custom
+   properties set by JS when the search box is focused (see
+   SubtitlePanel.beginMobileSearchLayout). The 100dvh / var() trick did
+   not work reliably on some mobile webviews, so JS drives the dynamic
+   values directly. Defaults preserve the original mobile layout. */
+.dial-video-mobile {
+	height: var(--dial-mobile-h, 100%);
+	background: var(--dial-mobile-bg, #000);
+}
+
 /* On mobile, when the user focuses the search input, hide the video, AB
    controls, and speed controls so the search bar and matches get the full
    available height (minus the soft keyboard) with nothing else competing
-   for vertical space. Also drop the container's black video background
-   (the black exists only to frame the video player; once hidden it just
-   shows through the transparent panel and looks ugly). Everything
-   reappears automatically when focus is lost. */
+   for vertical space. Everything reappears automatically when focus is lost. */
 .dial-video-mobile:has(.dial-subtitle-search-input:focus) .dial-video,
 .dial-video-mobile:has(.dial-subtitle-search-input:focus) .dial-ab-controls,
 .dial-video-mobile:has(.dial-subtitle-search-input:focus) .dial-speed-controls {
 	display: none;
-}
-
-.dial-video-mobile:has(.dial-subtitle-search-input:focus) {
-	background: var(--background-primary);
-	/* Use the dynamic viewport height so the container shrinks with the soft
-	   keyboard. `height: 100%` resolves against the layout viewport on iOS,
-	   which does NOT resize when the keyboard appears, so the list would be
-	   hidden behind the keyboard. `100dvh` tracks the visible viewport.
-	   The `100%` fallback covers older webviews without dvh support. */
-	height: 100%;
-	height: 100dvh;
 }
 
 .dial-video-mobile .dial-subtitle-panel {
