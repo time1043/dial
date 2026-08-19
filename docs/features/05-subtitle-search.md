@@ -27,9 +27,11 @@ full list.
   shown below the list.
 - **Keyboard shortcuts**: press `s` in the subtitle panel to focus the search
   box (existing text is selected for quick retyping); press `Escape` to leave
-  the search box and return to the panel. While typing in the search box,
-  panel shortcuts (space to play/pause, arrows to seek, etc.) are suspended
-  so you can type spaces and letters normally.
+  the search box and return to the panel; press `d` while the panel (not the
+  search box) has focus to clear the search box — equivalent to the × button.
+  While typing in the search box, panel shortcuts (space to play/pause, arrows
+  to seek, etc.) are suspended so you can type spaces and letters normally,
+  and `d` is typed as a letter rather than clearing the box.
 - Available in both the desktop subtitle view and the mobile video player's
   subtitle panel, since both share the same `SubtitlePanel` component.
 

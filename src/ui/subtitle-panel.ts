@@ -112,6 +112,17 @@ export class SubtitlePanel {
 		this.searchInput.select();
 	}
 
+	/**
+	 * Clear the search query and restore the full list.
+	 * Does not move focus on its own; the clear button calls this and then
+	 * refocuses the input.
+	 */
+	clearSearch(): void {
+		this.searchInput.value = '';
+		this.searchText = '';
+		this.applySearchFilter();
+	}
+
 	private buildUI(): void {
 		// AB controls
 		const controlsEl = this.containerEl.createDiv({ cls: 'dial-ab-controls' });
@@ -191,9 +202,7 @@ export class SubtitlePanel {
 		});
 		setIcon(this.searchClearEl, 'x');
 		this.searchClearEl.addEventListener('click', () => {
-			this.searchInput.value = '';
-			this.searchText = '';
-			this.applySearchFilter();
+			this.clearSearch();
 			this.searchInput.focus();
 		});
 
