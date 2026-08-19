@@ -11,6 +11,16 @@ import { VIDEO_PLAYER_VIEW_TYPE, VideoPlayerView } from '@/ui/video-player-view'
 import { applySplitRatio } from '@/utils/layout';
 import { formatTime } from '@/utils/time';
 
+// Extract the file extension (including the leading dot) from a filename.
+// Falls back to `fallback` when there is no usable extension.
+function getFileExtension(filename: string, fallback: string): string {
+	const idx = filename.lastIndexOf('.');
+	if (idx <= 0 || idx >= filename.length - 1) {
+		return fallback;
+	}
+	return filename.slice(idx);
+}
+
 async function recordTrace(
 	plugin: DialPlugin,
 	videoPath: string,
@@ -74,6 +84,12 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 	const videoRelative = String(frontmatter.video);
 	const subtitleRelative = String(frontmatter.subtitle);
 
+	// Derive the file extensions from the frontmatter so the mirrored path
+	// matches the actual video/subtitle format (e.g. .mkv, .webm, .vtt)
+	// instead of being hardcoded to .mp4 / .srt.
+	const videoExt = getFileExtension(videoRelative, '.mp4');
+	const subtitleExt = getFileExtension(subtitleRelative, '.srt');
+
 	// 3. Resolve paths — flat first, then mirror note folder structure
 	// e.g. notePath "note/psychology-anthony/xxx.md" → noteSubpath "psychology-anthony/xxx.md"
 	const noteSubpath = activeFile.path.replace(/^[^/]+\//, '');
@@ -86,12 +102,12 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 		'/',
 	);
 	const mirrorVideoPath =
-		`${plugin.settings.videoLibraryPath}/${noteSubpath.replace(/\.md$/, '.mp4')}`.replace(
+		`${plugin.settings.videoLibraryPath}/${noteSubpath.replace(/\.md$/, videoExt)}`.replace(
 			/\\/g,
 			'/',
 		);
 	const mirrorSubtitlePath =
-		`${plugin.settings.subtitleLibraryPath}/${noteSubpath.replace(/\.md$/, '.srt')}`.replace(
+		`${plugin.settings.subtitleLibraryPath}/${noteSubpath.replace(/\.md$/, subtitleExt)}`.replace(
 			/\\/g,
 			'/',
 		);
