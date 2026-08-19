@@ -47,7 +47,6 @@ export class SubtitlePanel {
 	private playbackRate = 1;
 
 	private mobileLayoutAbortController: AbortController | null = null;
-	private mobileViewportHandler: (() => void) | null = null;
 
 	constructor(parent: HTMLElement) {
 		this.containerEl = parent.createDiv({ cls: 'dial-subtitle-panel' });
@@ -127,64 +126,41 @@ export class SubtitlePanel {
 	}
 
 	/**
-	 * Mobile-only: while the search box is focused, pin the container's
-	 * height to the visible viewport (which shrinks when the soft keyboard
-	 * appears) and replace the black video background with the theme color.
-	 * Uses the visualViewport API because `100dvh` and CSS variable
-	 * substitution are unreliable in some mobile webviews.
+	 * Mobile-only: while the search box is focused, lift the whole subtitle
+	 * panel out of the layout flow and pin it to the viewport (inline `top`
+	 * keeps it just below the view header; CSS class does the rest). The
+	 * soft keyboard can then only ever overlap the panel's bottom edge, so
+	 * the search bar and the scrollable match list always own everything
+	 * above the keyboard.
+	 *
+	 * This deliberately avoids every viewport-height API (visualViewport,
+	 * innerHeight, 100dvh): on some Android webviews (e.g. Honor's MagicOS
+	 * fork) they report the layout viewport instead of the visible one and
+	 * never fire resize for keyboard changes, which left the list collapsed
+	 * to a single row in earlier attempts.
 	 */
 	private beginMobileSearchLayout(): void {
 		const closest = this.searchInput.closest('.dial-video-container');
-		const container = closest instanceof HTMLElement ? closest : null;
-		if (!container) return;
+		if (!(closest instanceof HTMLElement)) return;
 
-		// Resolve the theme background to a literal color string, so we don't
-		// depend on `var(...)` resolving inside an inline style on some webviews.
-		const themeBg =
-			getComputedStyle(document.documentElement)
-				.getPropertyValue('--background-primary')
-				.trim() ||
-			getComputedStyle(document.body).getPropertyValue('--background-primary').trim();
-
-		// Some Android webviews (e.g. Honor's MagicOS fork) report the LAYOUT
-		// viewport through visualViewport.height — it never shrinks when the
-		// soft keyboard opens. window.innerHeight does shrink there (Obsidian
-		// mobile uses adjustResize), so take the smaller of the two: whichever
-		// source is honest wins.
-		const visibleHeight = (): number => {
-			const vv = window.visualViewport?.height ?? Infinity;
-			const inner = window.innerHeight > 0 ? window.innerHeight : Infinity;
-			return Math.min(vv, inner);
-		};
-
-		const apply = () => {
-			const h = visibleHeight();
-			if (!Number.isFinite(h) || h <= 0) return;
-			container.style.setProperty('--dial-mobile-h', `${h}px`);
-		};
-		this.mobileViewportHandler = apply;
-		apply();
-		if (themeBg) container.style.setProperty('--dial-mobile-bg', themeBg);
-		// visualViewport.resize does not always fire for soft-keyboard changes
-		// on those webviews; the window resize event is the reliable backup.
-		window.visualViewport?.addEventListener('resize', apply);
-		window.addEventListener('resize', apply);
+		const rect = this.containerEl.getBoundingClientRect();
+		if (rect.top > 0) {
+			this.containerEl.style.top = `${rect.top}px`;
+		}
+		this.containerEl.addClass('dial-mobile-search-overlay');
 	}
 
 	private endMobileSearchLayout(): void {
-		if (this.mobileViewportHandler) {
-			window.visualViewport?.removeEventListener('resize', this.mobileViewportHandler);
-			window.removeEventListener('resize', this.mobileViewportHandler);
-			this.mobileViewportHandler = null;
-		}
-		const closest = this.searchInput.closest('.dial-video-container');
-		const container = closest instanceof HTMLElement ? closest : null;
-		if (!container) return;
-		container.style.removeProperty('--dial-mobile-h');
-		container.style.removeProperty('--dial-mobile-bg');
+		this.containerEl.removeClass('dial-mobile-search-overlay');
+		this.containerEl.style.removeProperty('top');
 	}
 
-	/** Clean up all focus/blur + visualViewport listeners. Call from onClose. */
+	/** True while the mobile full-screen search overlay is active. */
+	isMobileSearchOverlayActive(): boolean {
+		return this.containerEl.hasClass('dial-mobile-search-overlay');
+	}
+
+	/** Clean up all focus/blur listeners and restore the normal layout. */
 	detachMobileLayout(): void {
 		this.mobileLayoutAbortController?.abort();
 		this.mobileLayoutAbortController = null;
@@ -263,10 +239,10 @@ export class SubtitlePanel {
 			this.applySearchFilter();
 		});
 
-		// Mobile-only: react to the soft keyboard via the visualViewport API so
-		// the list fills the visible area. CSS `:has(:focus)` / `100dvh` are
-		// unreliable on some iOS webviews, so we set the container height and
-		// theme background directly from JS when the search box is focused.
+		// Mobile-only: while the search box is focused, pin the panel to the
+		// viewport as a full-height overlay (see beginMobileSearchLayout) so
+		// the soft keyboard can only overlap its bottom edge. On desktop the
+		// panel has no .dial-video-container ancestor and this is a no-op.
 		this.mobileLayoutAbortController = new AbortController();
 		this.searchInput.addEventListener('focus', () => this.beginMobileSearchLayout(), {
 			signal: this.mobileLayoutAbortController.signal,
@@ -328,6 +304,12 @@ export class SubtitlePanel {
 
 			el.addEventListener('click', () => {
 				this.callbacks?.onSubtitleClick(sub);
+				// On mobile, tapping a match also drops the full-screen search
+				// overlay and dismisses the keyboard, so the user can watch the
+				// video jump to that line. On desktop this is a no-op.
+				if (this.isMobileSearchOverlayActive()) {
+					this.searchInput.blur();
+				}
 			});
 
 			this.subtitleEls.set(sub.id, el);

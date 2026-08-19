@@ -42,14 +42,21 @@
 	flex: none;
 }
 
-/* Mobile: container reads its size and background from CSS custom
-   properties set by JS when the search box is focused (see
-   SubtitlePanel.beginMobileSearchLayout). The 100dvh / var() trick did
-   not work reliably on some mobile webviews, so JS drives the dynamic
-   values directly. Defaults preserve the original mobile layout. */
-.dial-video-mobile {
-	height: var(--dial-mobile-h, 100%);
-	background: var(--dial-mobile-bg, #000);
+/* Mobile search mode: while the search box is focused, the whole subtitle
+   panel is lifted out of the layout flow and pinned to the viewport. JS
+   sets an inline `top` so it stays just below the view header; `bottom: 0`
+   spans it to the viewport bottom, so the soft keyboard can only overlap
+   its lower edge — everything above the keyboard is search bar plus the
+   scrollable match list. This works no matter what the webview reports
+   for viewport height (visualViewport / innerHeight / 100dvh are all
+   unreliable on some Android webviews, e.g. Honor's MagicOS fork). */
+.dial-video-mobile .dial-subtitle-panel.dial-mobile-search-overlay {
+	position: fixed;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: var(--layer-modal, 20);
+	background: var(--background-primary);
 }
 
 /* On mobile, when the user focuses the search input, hide the video, AB
