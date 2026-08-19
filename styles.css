@@ -57,6 +57,13 @@
 
 .dial-video-mobile:has(.dial-subtitle-search-input:focus) {
 	background: var(--background-primary);
+	/* Use the dynamic viewport height so the container shrinks with the soft
+	   keyboard. `height: 100%` resolves against the layout viewport on iOS,
+	   which does NOT resize when the keyboard appears, so the list would be
+	   hidden behind the keyboard. `100dvh` tracks the visible viewport.
+	   The `100%` fallback covers older webviews without dvh support. */
+	height: 100%;
+	height: 100dvh;
 }
 
 .dial-video-mobile .dial-subtitle-panel {
