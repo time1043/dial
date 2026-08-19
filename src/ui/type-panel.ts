@@ -4,6 +4,8 @@ import type { Subtitle, TypeSessionData } from '@/types';
 
 import { parseWords } from '@/modules/type-session/word-parser';
 
+import { TypeAnswerRenderer } from './type-answer-renderer';
+
 export interface TypePanelCallbacks {
 	onSave: (session: TypeSessionData) => void;
 	onReplaySentence: (start: number, end: number) => void;
@@ -31,7 +33,7 @@ export class TypePanel {
 	private contextEl: HTMLElement | null = null;
 	private currentEl: HTMLElement | null = null;
 	private toolbarEl: HTMLElement | null = null;
-	private answerEl: HTMLElement | null = null;
+	private answerRenderer: TypeAnswerRenderer | null = null;
 	private answerVisible = false;
 
 	private wordEls: HTMLElement[] = [];
@@ -80,7 +82,7 @@ export class TypePanel {
 		this.currentIndex = index;
 		this.activeWordIndex = 0;
 		this.answerVisible = false;
-		this.hideAnswer();
+		this.answerRenderer?.hide();
 		this.render();
 		this.renderToolbar();
 		const s = this.sentences[this.currentIndex];
@@ -100,7 +102,7 @@ export class TypePanel {
 	private buildUI(): void {
 		this.contextEl = this.containerEl.createDiv({ cls: 'dial-type-context' });
 		this.currentEl = this.containerEl.createDiv({ cls: 'dial-type-current' });
-		this.answerEl = this.containerEl.createDiv({ cls: 'dial-type-answer' });
+		this.answerRenderer = new TypeAnswerRenderer(this.containerEl);
 		this.toolbarEl = this.containerEl.createDiv({ cls: 'dial-type-toolbar' });
 		this.renderToolbar();
 	}
@@ -146,68 +148,18 @@ export class TypePanel {
 	private toggleAnswer(): void {
 		this.answerVisible = !this.answerVisible;
 		if (this.answerVisible) {
-			this.showAnswer();
+			const s = this.sentences[this.currentIndex];
+			if (s) {
+				this.answerRenderer?.show({
+					words: s.words,
+					correct: s.correct,
+					userInput: s.userInput,
+				});
+			}
 		} else {
-			this.hideAnswer();
+			this.answerRenderer?.hide();
 		}
 		this.renderToolbar();
-	}
-
-	// ── Show answer ───────────────────────────────────────────────
-
-	private showAnswer(): void {
-		const s = this.sentences[this.currentIndex];
-		if (!s || !this.answerEl) return;
-
-		this.answerEl.empty();
-		this.answerEl.addClass('dial-type-answer-visible');
-
-		// User input line
-		const userLine = this.answerEl.createDiv({ cls: 'dial-type-answer-line' });
-		userLine.createSpan({ cls: 'dial-type-answer-label', text: 'You typed: ' });
-		for (let i = 0; i < s.words.length; i++) {
-			const wordInfo = s.words[i]!;
-			const userWord = s.userInput[i] ?? '';
-			const isCorrect = userWord.toLowerCase() === s.correct[i];
-			const cls = userWord
-				? isCorrect
-					? 'dial-type-answer-correct'
-					: 'dial-type-answer-wrong'
-				: 'dial-type-answer-missing';
-
-			if (wordInfo.leading) {
-				userLine.createSpan({ cls: 'dial-type-answer-punct', text: wordInfo.leading });
-			}
-			userLine.createSpan({ cls, text: userWord || '___' });
-			if (wordInfo.trailing) {
-				userLine.createSpan({ cls: 'dial-type-answer-punct', text: wordInfo.trailing });
-			}
-			userLine.createSpan({ text: ' ' });
-		}
-
-		// Correct answer line
-		const correctLine = this.answerEl.createDiv({ cls: 'dial-type-answer-line' });
-		correctLine.createSpan({ cls: 'dial-type-answer-label', text: 'Correct:   ' });
-		for (let i = 0; i < s.words.length; i++) {
-			const wordInfo = s.words[i]!;
-			const userWord = s.userInput[i] ?? '';
-			const isCorrect = userWord.toLowerCase() === s.correct[i];
-			const cls = userWord && !isCorrect ? 'dial-type-answer-correct-word' : '';
-
-			if (wordInfo.leading) {
-				correctLine.createSpan({ cls: 'dial-type-answer-punct', text: wordInfo.leading });
-			}
-			correctLine.createSpan({ cls, text: wordInfo.word });
-			if (wordInfo.trailing) {
-				correctLine.createSpan({ cls: 'dial-type-answer-punct', text: wordInfo.trailing });
-			}
-			correctLine.createSpan({ text: ' ' });
-		}
-	}
-
-	private hideAnswer(): void {
-		this.answerVisible = false;
-		this.answerEl?.removeClass('dial-type-answer-visible');
 	}
 
 	// ── Clear sentence ────────────────────────────────────────────
@@ -219,7 +171,7 @@ export class TypePanel {
 		s.userInput = [];
 		s.completedAt = null;
 		this.answerVisible = false;
-		this.hideAnswer();
+		this.answerRenderer?.hide();
 		this.renderCurrent();
 		this.renderToolbar();
 		this.focusWord(0);
@@ -355,7 +307,7 @@ export class TypePanel {
 			this.currentIndex++;
 			this.activeWordIndex = 0;
 			this.answerVisible = false;
-			this.hideAnswer();
+			this.answerRenderer?.hide();
 			this.render();
 			this.renderToolbar();
 			const next = this.sentences[this.currentIndex];
@@ -369,7 +321,7 @@ export class TypePanel {
 		this.renderContext();
 		this.renderCurrent();
 		if (!this.answerVisible) {
-			this.answerEl?.removeClass('dial-type-answer-visible');
+			this.answerRenderer?.hide();
 		}
 		this.focusWord(this.activeWordIndex);
 	}
