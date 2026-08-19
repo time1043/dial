@@ -105,47 +105,55 @@ export class VideoPlayerView extends ItemView {
 
 		// Mobile: embed full subtitle panel below video
 		if (Platform.isMobile) {
-			(container as HTMLElement).addClass('dial-video-mobile');
-			this.panel = new SubtitlePanel(container as HTMLElement);
-			this.panel.setCallbacks({
-				onSubtitleClick: (sub) => {
-					this.jumpToTime(sub.start);
-					this.play();
-				},
-				onSetA: (time) => {
-					if (this.abLoopHandler) {
-						this.abLoopState = this.abLoopHandler.onSetA(time);
-						return this.abLoopState;
-					}
-					// Fallback when no handler is wired (should not happen in production)
-					this.abLoopState = { a: time, b: null, active: false };
-					return this.abLoopState;
-				},
-				onSetB: (time) => {
-					if (this.abLoopHandler) {
-						this.abLoopState = this.abLoopHandler.onSetB(time);
-						return this.abLoopState;
-					}
-					this.abLoopState = {
-						a: this.abLoopState.a,
-						b: time,
-						active: true,
-					};
-					return this.abLoopState;
-				},
-				onClearAB: () => {
-					if (this.abLoopHandler) {
-						this.abLoopState = this.abLoopHandler.onClearAB();
-						return this.abLoopState;
-					}
-					this.abLoopState = { a: null, b: null, active: false };
-					return this.abLoopState;
-				},
-				onGetCurrentTime: () => this.getCurrentTime(),
-				onTogglePlay: () => this.togglePlay(),
-				onSpeedChange: (rate) => this.setPlaybackRate(rate),
-			});
+			this.setupMobilePanel(container as HTMLElement);
 		}
+	}
+
+	/**
+	 * Create the embedded SubtitlePanel for mobile and wire its callbacks.
+	 * AB loop operations delegate through {@link abLoopHandler} so the
+	 * AbLoopManager stays the single source of truth.
+	 */
+	private setupMobilePanel(container: HTMLElement): void {
+		container.addClass('dial-video-mobile');
+		this.panel = new SubtitlePanel(container);
+		this.panel.setCallbacks({
+			onSubtitleClick: (sub) => {
+				this.jumpToTime(sub.start);
+				this.play();
+			},
+			onSetA: (time) => {
+				if (this.abLoopHandler) {
+					this.abLoopState = this.abLoopHandler.onSetA(time);
+					return this.abLoopState;
+				}
+				this.abLoopState = { a: time, b: null, active: false };
+				return this.abLoopState;
+			},
+			onSetB: (time) => {
+				if (this.abLoopHandler) {
+					this.abLoopState = this.abLoopHandler.onSetB(time);
+					return this.abLoopState;
+				}
+				this.abLoopState = {
+					a: this.abLoopState.a,
+					b: time,
+					active: true,
+				};
+				return this.abLoopState;
+			},
+			onClearAB: () => {
+				if (this.abLoopHandler) {
+					this.abLoopState = this.abLoopHandler.onClearAB();
+					return this.abLoopState;
+				}
+				this.abLoopState = { a: null, b: null, active: false };
+				return this.abLoopState;
+			},
+			onGetCurrentTime: () => this.getCurrentTime(),
+			onTogglePlay: () => this.togglePlay(),
+			onSpeedChange: (rate) => this.setPlaybackRate(rate),
+		});
 	}
 
 	async onClose(): Promise<void> {
