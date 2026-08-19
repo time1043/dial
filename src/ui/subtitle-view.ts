@@ -70,6 +70,11 @@ export class SubtitleView extends ItemView {
 			if (e.code === 'KeyS') {
 				e.preventDefault();
 				this.panel?.focusSearch();
+			} else if (e.code === 'KeyD') {
+				// Clear the search while the panel (not the search box) has
+				// focus: with the search box focused, d types the letter.
+				e.preventDefault();
+				this.panel?.clearSearch();
 			} else if (e.code === 'Space') {
 				e.preventDefault();
 
