@@ -37,6 +37,9 @@ describe('DEFAULT_SETTINGS', () => {
 			videoLibraryPath: '_lib/videos',
 			subtitleLibraryPath: '_lib/subtitles',
 			defaultVolume: 1,
+			loopMode: 'none',
+			folderOrderMode: 'tree',
+			autoPlay: true,
 		});
 	});
 });
