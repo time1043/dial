@@ -12,6 +12,7 @@ import { openUrlPlayerFromActiveNote } from './commands/open-url-player';
 import { togglePlay } from './commands/toggle-play';
 import { getVideoView, syncABToViews, trySetupSync } from './core/sync-orchestrator';
 import { AbLoopManager } from './modules/ab-loop/ab-loop-manager';
+import { resolveFolderPlaylist } from './modules/episode-navigator';
 import { PositionManager } from './modules/position-manager/position-manager';
 import { getJumpTarget } from './modules/subtitle-navigator/subtitle-navigator';
 import { TraceManager } from './modules/trace-manager/trace-manager';
@@ -226,6 +227,44 @@ export default class DialPlugin extends Plugin {
 		if (view) {
 			view.setLoopMode(mode);
 		}
+	}
+
+	/**
+	 * Advance to the next episode when the current video finishes naturally.
+	 *
+	 * Only `folder` mode is wired so far — `all` is not implemented. The
+	 * teardown (detaching the old video leaf) happens here rather than inside
+	 * the video view's own `ended` handler because the caller defers this with
+	 * `setTimeout`, so we are safely outside the event that owns the leaf.
+	 *
+	 * Sequence: resolve playlist → reset AB loop → detach old video leaf →
+	 * make the next note the active file → re-open the player (which reuses
+	 * the subtitle leaf and creates a fresh video leaf).
+	 */
+	async advanceToNextNote(): Promise<void> {
+		// 'all' mode is not implemented yet.
+		if (this.settings.loopMode !== 'folder') return;
+
+		const current = this.activeNotePath;
+		if (!current) return;
+
+		const playlist = await resolveFolderPlaylist(this, current, this.settings.folderOrderMode);
+		if (!playlist) return; // resolver already explained via Notice
+		if (playlist.currentIndex < 0) return; // current note not in playlist
+
+		const nextPath = playlist.notes[(playlist.currentIndex + 1) % playlist.notes.length];
+		if (!nextPath || nextPath === current) return; // single-item folder: handled later
+
+		// Reset AB loop so stale points don't carry into the next episode.
+		syncABToViews(this, this.abLoop.clear());
+
+		// Detach the old video leaf; its onClose persists the position.
+		this.app.workspace.getLeavesOfType(VIDEO_PLAYER_VIEW_TYPE)[0]?.detach();
+
+		// Make the next note the active file so resolveMediaPaths reads the
+		// correct frontmatter, then re-open the player.
+		await this.app.workspace.openLinkText(nextPath, '', false);
+		await openVideoPlayer(this);
 	}
 
 	private persistAll(): void {

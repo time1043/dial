@@ -53,6 +53,7 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 		await videoView.loadVideo(videoPath, plugin.settings.defaultVolume);
 		videoView.setSubtitles(subtitles);
 		videoView.setLoopMode(plugin.settings.loopMode);
+		wireVideoEnd(plugin, videoView);
 		plugin.setSubtitles(subtitles);
 
 		// Trace: record video opened
@@ -130,6 +131,7 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 		await videoView.loadVideo(videoPath, plugin.settings.defaultVolume);
 		videoView.setSubtitles(subtitles);
 		videoView.setLoopMode(plugin.settings.loopMode);
+		wireVideoEnd(plugin, videoView);
 		subtitleView.setSubtitles(subtitles);
 		plugin.setSubtitles(subtitles);
 
@@ -146,6 +148,19 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 	}
 
 	new Notice(`Loaded ${subtitles.length} subtitles`);
+}
+
+/**
+ * Wire the video-end callback that drives folder/all advance. The teardown
+ * is deferred with setTimeout so it runs outside the video element's own
+ * `ended` handler — detaching a leaf while inside the event that owns it is
+ * a timing hazard. Harmless for none/single modes, whose handleVideoEnd
+ * never calls onVideoEnd.
+ */
+export function wireVideoEnd(plugin: DialPlugin, videoView: VideoPlayerView): void {
+	videoView.setVideoEndCallback(() => {
+		setTimeout(() => void plugin.advanceToNextNote(), 0);
+	});
 }
 
 export function setupSync(
