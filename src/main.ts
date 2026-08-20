@@ -357,6 +357,11 @@ export default class DialPlugin extends Plugin {
 		if (savedTime !== null) {
 			videoView.jumpToTime(savedTime);
 		}
+
+		// Auto-play the next episode if enabled (independent of focus).
+		if (this.settings.autoPlay) {
+			videoView.play();
+		}
 	}
 
 	/**

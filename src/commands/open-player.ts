@@ -108,6 +108,11 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 		if (savedTime !== null) {
 			videoView.jumpToTime(savedTime);
 		}
+
+		// Auto-play if enabled.
+		if (plugin.settings.autoPlay) {
+			videoView.play();
+		}
 	} else {
 		// Desktop: split layout — left (md + subtitles) | right (video)
 		const subtitleView = (await openOrReuseLeaf(
@@ -146,6 +151,11 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 		const savedTime = plugin.positions.restore(videoPath);
 		if (savedTime !== null) {
 			videoView.jumpToTime(savedTime);
+		}
+
+		// Auto-play if enabled (independent of subtitle-panel focus).
+		if (plugin.settings.autoPlay) {
+			videoView.play();
 		}
 	}
 

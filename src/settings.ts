@@ -9,6 +9,7 @@ export interface DialSettings {
 	defaultVolume: number;
 	loopMode: LoopMode;
 	folderOrderMode: FolderOrderMode;
+	autoPlay: boolean;
 }
 
 export const DEFAULT_SETTINGS: DialSettings = {
@@ -116,9 +117,9 @@ export class DialSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.folderOrderMode)
 					.onChange(async (value) => {
 						const mode = value as FolderOrderMode;
-					this.plugin.settings.folderOrderMode = mode;
-					await this.plugin.saveSettings();
-				}),
+						this.plugin.settings.folderOrderMode = mode;
+						await this.plugin.saveSettings();
+					}),
 			);
 
 		new Setting(containerEl)
@@ -128,12 +129,10 @@ export class DialSettingTab extends PluginSettingTab {
 					'advances to the next episode in loop mode.',
 			)
 			.addToggle((toggle) =>
-				toggle
-					.setValue(this.plugin.settings.autoPlay)
-					.onChange(async (value) => {
-						this.plugin.settings.autoPlay = value;
-						await this.plugin.saveSettings();
-					}),
+				toggle.setValue(this.plugin.settings.autoPlay).onChange(async (value) => {
+					this.plugin.settings.autoPlay = value;
+					await this.plugin.saveSettings();
+				}),
 			);
 	}
 }
