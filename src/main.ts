@@ -35,6 +35,11 @@ export default class DialPlugin extends Plugin {
 	private subtitles: Subtitle[] = [];
 	activeNotePath: string | null = null;
 	activeTypeSessionId: string | null = null;
+	/**
+	 * Guards the single-episode fallback Notice so a one-item folder does not
+	 * re-notify on every loop. Reset whenever a new video is opened.
+	 */
+	singleLoopNotified = false;
 
 	async onload(): Promise<void> {
 		await this.loadPersistedData();
@@ -252,8 +257,15 @@ export default class DialPlugin extends Plugin {
 		if (!playlist) return; // resolver already explained via Notice
 		if (playlist.currentIndex < 0) return; // current note not in playlist
 
+		// Single-item folder: to save resources, do not tear down and reopen —
+		// honor "loop" semantics by replaying the current video instead.
+		if (playlist.notes.length <= 1) {
+			this.loopCurrentEpisode();
+			return;
+		}
+
 		const nextPath = playlist.notes[(playlist.currentIndex + 1) % playlist.notes.length];
-		if (!nextPath || nextPath === current) return; // single-item folder: handled later
+		if (!nextPath || nextPath === current) return;
 
 		// Reset AB loop so stale points don't carry into the next episode.
 		syncABToViews(this, this.abLoop.clear());
@@ -265,6 +277,22 @@ export default class DialPlugin extends Plugin {
 		// correct frontmatter, then re-open the player.
 		await this.app.workspace.openLinkText(nextPath, '', false);
 		await openVideoPlayer(this);
+	}
+
+	/**
+	 * Single-episode fallback: replay the current video from the start and
+	 * notify once (per open) that the folder has only one episode.
+	 */
+	private loopCurrentEpisode(): void {
+		const view = getVideoView(this);
+		if (view) {
+			view.jumpToTime(0);
+			view.play();
+		}
+		if (!this.singleLoopNotified) {
+			this.singleLoopNotified = true;
+			new Notice('Only one episode in this folder — looping single episode.');
+		}
 	}
 
 	private persistAll(): void {

@@ -58,6 +58,7 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 
 		// Trace: record video opened
 		plugin.activeNotePath = notePath;
+		plugin.singleLoopNotified = false;
 		void plugin.trace.saveTrace(plugin.app.vault, notePath, 0);
 
 		// Wire video → subtitle highlight
@@ -137,6 +138,7 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 
 		// Trace: record video opened
 		plugin.activeNotePath = notePath;
+		plugin.singleLoopNotified = false;
 		void plugin.trace.saveTrace(plugin.app.vault, notePath, 0);
 
 		setupSync(plugin, videoView, subtitleView, notePath);
