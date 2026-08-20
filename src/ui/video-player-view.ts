@@ -31,6 +31,7 @@ export class VideoPlayerView extends ItemView {
 	private loopMode: LoopMode = 'none';
 	private onVideoEnd: (() => void) | null = null;
 	private onNearEnd: (() => void) | null = null;
+	private onFinished: (() => void) | null = null;
 	private nearEndFired = false;
 	private onTimeUpdate: ((time: number) => void) | null = null;
 	private onSubtitleChange: ((id: number) => void) | null = null;
@@ -308,6 +309,11 @@ export class VideoPlayerView extends ItemView {
 	 *   can tear down the current views and open the next note.
 	 */
 	private handleVideoEnd(): void {
+		// A natural end means the episode is finished: drop its resume point so
+		// reopening (or looping into) it starts from the beginning rather than
+		// stalling at the end or chaining through finished episodes.
+		this.onFinished?.();
+
 		switch (this.loopMode) {
 			case 'single':
 				if (this.videoEl) {
@@ -341,6 +347,19 @@ export class VideoPlayerView extends ItemView {
 	/** Register the callback fired ~5s before the video ends (to preview the next episode). */
 	setNearEndCallback(cb: (() => void) | null): void {
 		this.onNearEnd = cb;
+	}
+
+	/**
+	 * Register the callback fired on natural end, regardless of loop mode. The
+	 * plugin uses this to clear the resume position.
+	 */
+	setOnFinishedCallback(cb: (() => void) | null): void {
+		this.onFinished = cb;
+	}
+
+	/** True when the video has reached its natural end (ready to restart). */
+	isEnded(): boolean {
+		return this.videoEl?.ended ?? false;
 	}
 
 	getCurrentTime(): number {
