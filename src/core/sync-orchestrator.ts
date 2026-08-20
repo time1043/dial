@@ -67,3 +67,9 @@ export function getVideoView(plugin: DialPlugin): VideoPlayerView | null {
 	const view = plugin.app.workspace.getLeavesOfType(VIDEO_PLAYER_VIEW_TYPE).first()?.view;
 	return view instanceof VideoPlayerView ? view : null;
 }
+
+/** Get the active SubtitleView, or null if none is open (e.g. on mobile). */
+export function getSubtitleView(plugin: DialPlugin): SubtitleView | null {
+	const view = plugin.app.workspace.getLeavesOfType(SUBTITLE_VIEW_TYPE).first()?.view;
+	return view instanceof SubtitleView ? view : null;
+}

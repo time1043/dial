@@ -52,10 +52,13 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 
 		await videoView.loadVideo(videoPath, plugin.settings.defaultVolume);
 		videoView.setSubtitles(subtitles);
+		videoView.setLoopMode(plugin.settings.loopMode);
+		wireVideoEnd(plugin, videoView);
 		plugin.setSubtitles(subtitles);
 
 		// Trace: record video opened
 		plugin.activeNotePath = notePath;
+		plugin.singleLoopNotified = false;
 		void plugin.trace.saveTrace(plugin.app.vault, notePath, 0);
 
 		// Wire video → subtitle highlight
@@ -105,6 +108,11 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 		if (savedTime !== null) {
 			videoView.jumpToTime(savedTime);
 		}
+
+		// Auto-play if enabled.
+		if (plugin.settings.autoPlay) {
+			videoView.play();
+		}
 	} else {
 		// Desktop: split layout — left (md + subtitles) | right (video)
 		const subtitleView = (await openOrReuseLeaf(
@@ -128,11 +136,14 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 		// Wire everything up
 		await videoView.loadVideo(videoPath, plugin.settings.defaultVolume);
 		videoView.setSubtitles(subtitles);
+		videoView.setLoopMode(plugin.settings.loopMode);
+		wireVideoEnd(plugin, videoView);
 		subtitleView.setSubtitles(subtitles);
 		plugin.setSubtitles(subtitles);
 
 		// Trace: record video opened
 		plugin.activeNotePath = notePath;
+		plugin.singleLoopNotified = false;
 		void plugin.trace.saveTrace(plugin.app.vault, notePath, 0);
 
 		setupSync(plugin, videoView, subtitleView, notePath);
@@ -141,9 +152,30 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 		if (savedTime !== null) {
 			videoView.jumpToTime(savedTime);
 		}
+
+		// Auto-play if enabled (independent of subtitle-panel focus).
+		if (plugin.settings.autoPlay) {
+			videoView.play();
+		}
 	}
 
 	new Notice(`Loaded ${subtitles.length} subtitles`);
+}
+
+/**
+ * Wire the video-end callback that drives folder/all advance. The teardown
+ * is deferred with setTimeout so it runs outside the video element's own
+ * `ended` handler — detaching a leaf while inside the event that owns it is
+ * a timing hazard. Harmless for none/single modes, whose handleVideoEnd
+ * never calls onVideoEnd.
+ */
+export function wireVideoEnd(plugin: DialPlugin, videoView: VideoPlayerView): void {
+	videoView.setVideoEndCallback(() => {
+		// Defer so teardown runs outside the video element's own `ended` handler.
+		setTimeout(() => void plugin.advanceToNextNote(), 0);
+	});
+	// Feature: preview the next episode ~5s before the end.
+	videoView.setNearEndCallback(() => void plugin.notifyNextEpisode());
 }
 
 export function setupSync(

@@ -33,15 +33,24 @@ export function getFileExtension(filename: string, fallback: string): string {
  * Returns null (after showing a Notice) when prerequisites are missing
  * or the subtitle asset cannot be located.
  */
-export async function resolveMediaPaths(plugin: DialPlugin): Promise<ResolvedMediaPaths | null> {
+export async function resolveMediaPaths(
+	plugin: DialPlugin,
+	notePathOverride?: string,
+): Promise<ResolvedMediaPaths | null> {
 	if (!plugin.settings.videoLibraryPath) {
 		new Notice('Please set the video library path in plugin settings.');
 		return null;
 	}
 
-	const activeFile = plugin.app.workspace.getActiveFile();
+	let activeFile: TFile | null = null;
+	if (notePathOverride) {
+		const file = plugin.app.vault.getAbstractFileByPath(notePathOverride);
+		if (file instanceof TFile) activeFile = file;
+	} else {
+		activeFile = plugin.app.workspace.getActiveFile();
+	}
 	if (!activeFile) {
-		new Notice('No active file');
+		new Notice(notePathOverride ? 'Next episode note not found.' : 'No active file');
 		return null;
 	}
 
