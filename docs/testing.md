@@ -3,9 +3,9 @@
 Dial uses [vitest 4](https://vitest.dev) with two **projects**, each matched to a
 source-coupling tier so nothing is over- or under-tested.
 
-| Project | Environment | Covers |
-| ------- | ----------- | ------ |
-| `unit` | node | pure logic with no DOM and no `obsidian` runtime |
+| Project   | Environment         | Covers                                                                                               |
+| --------- | ------------------- | ---------------------------------------------------------------------------------------------------- |
+| `unit`    | node                | pure logic with no DOM and no `obsidian` runtime                                                     |
 | `browser` | playwright/chromium | UI controllers that call Obsidian's `HTMLElement` extensions (`createDiv`, `empty`, `addClass`, ...) |
 
 ## Run the tests
@@ -47,18 +47,23 @@ branches on the aggregate). Add a source file to `coverage.include` in
 Pick the project by what the code under test touches:
 
 - **No DOM, no `obsidian` import** → `tests/unit/...` (node env). Example:
-  `formatTime`, `parseSrt`, `AbLoopManager`.
+  `formatTime`, `parseSrt`, `AbLoopManager`, `toEmbedUrl`, `getJumpTarget`.
 - **Uses Obsidian `HTMLElement` extensions** (`createDiv`, `createSpan`,
   `empty`, `addClass`, ...) → `tests/browser/...`. The
   `tests/helpers/obsidian-dom-polyfill.ts` setup file (loaded via the browser
   project's `setupFiles`) patches those methods onto `HTMLElement.prototype`
   so controllers render against a real DOM.
 - **Imports from `obsidian` at runtime** (commands, `main`, settings tab,
-  `sync-orchestrator`, `vault/paths.resolveMediaPaths`) → mock `obsidian` with
-  `tests/helpers/mock-obsidian.ts` (`vi.mock('obsidian', () => mockObsidian())`)
-  before importing the code under test. The `obsidian` npm package is
-  **types-only** (`main: ""`), so any transitive `import 'obsidian'` explodes
-  at runtime without the mock.
+  `sync-orchestrator`, `vault/paths.resolveMediaPaths`, anything pulling in
+  `TFile` / `Notice` / `setIcon`) → no per-test setup needed: both projects
+  alias `obsidian` → `tests/helpers/obsidian-stub.ts` (no-op stubs), so
+  transitive `import 'obsidian'` resolves automatically. The `obsidian` npm
+  package is **types-only** (`main: ""`), so without the alias it would fail
+  to resolve at runtime. For a test that needs specific `obsidian` behavior,
+  override with `vi.mock('obsidian', () => ...)` — this works in the node
+  project, but **not** in the browser project (vi.mock can't intercept
+  unresolvable packages there), so prefer the alias stub for browser tests.
+
 
 Shared sample data lives in `tests/fixtures/` (`sample.srt`, `subtitles.ts`).
 
