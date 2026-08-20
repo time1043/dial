@@ -263,7 +263,12 @@ export default class DialPlugin extends Plugin {
 		const current = this.activeNotePath;
 		if (!current) return;
 
-		const playlist = await resolveFolderPlaylist(this, current, this.settings.folderOrderMode);
+		const playlist = await resolveFolderPlaylist(
+			this,
+			current,
+			this.settings.folderOrderMode,
+			this.settings.folderLoopDepth,
+		);
 		if (!playlist) return;
 		if (playlist.currentIndex < 0) return;
 
@@ -395,7 +400,12 @@ export default class DialPlugin extends Plugin {
 		if (this.settings.loopMode !== 'folder') return;
 		const current = this.activeNotePath;
 		if (!current) return;
-		const playlist = await resolveFolderPlaylist(this, current, this.settings.folderOrderMode);
+		const playlist = await resolveFolderPlaylist(
+			this,
+			current,
+			this.settings.folderOrderMode,
+			this.settings.folderLoopDepth,
+		);
 		if (!playlist) return;
 		if (playlist.currentIndex < 0) {
 			new Notice('Current note is not in the folder playlist.');

@@ -1,4 +1,4 @@
-import { Notice, TFile } from 'obsidian';
+import { Notice, TFile, TFolder } from 'obsidian';
 
 import type DialPlugin from '@/main';
 
@@ -9,10 +9,11 @@ const ANY_HEADING = /^#/;
 const LIST_ITEM = /^\s*[-*+]\s+\[\[([^\]]+)\]\]/;
 
 /**
- * Build the folder playlist from an index.md file in the current note's
- * folder. The file must contain a `# List` heading followed by an unordered
- * list of wikilinks; the list order is the playback order, and the current
- * note is located by resolving each link against the metadata cache.
+ * Build the folder playlist from an index.md file in the loop-scope folder
+ * `root` (the folder resolved from the configured folder-loop depth). The file
+ * must contain a `# List` heading followed by an unordered list of wikilinks;
+ * the list order is the playback order, and the current note is located by
+ * resolving each link against the metadata cache.
  *
  * Returns null (after a Notice) when index.md is missing, the heading or
  * list is absent/malformed, or the current note is not listed.
@@ -20,16 +21,12 @@ const LIST_ITEM = /^\s*[-*+]\s+\[\[([^\]]+)\]\]/;
 export async function resolveIndexPlaylist(
 	plugin: DialPlugin,
 	currentNotePath: string,
+	root: TFolder,
 ): Promise<FolderPlaylist | null> {
-	const currentFile = plugin.app.vault.getAbstractFileByPath(currentNotePath);
-	if (!(currentFile instanceof TFile)) return null;
-	const parent = currentFile.parent;
-	if (!parent) return null;
-
-	const indexPath = parent.path ? `${parent.path}/index.md` : 'index.md';
+	const indexPath = root.path ? `${root.path}/index.md` : 'index.md';
 	const indexFile = plugin.app.vault.getAbstractFileByPath(indexPath);
 	if (!(indexFile instanceof TFile)) {
-		new Notice(`No index.md found in folder "${parent.name}".`);
+		new Notice(`No index.md found in folder "${root.name}".`);
 		return null;
 	}
 
@@ -37,13 +34,13 @@ export async function resolveIndexPlaylist(
 	try {
 		content = await plugin.app.vault.read(indexFile);
 	} catch {
-		new Notice(`Failed to read index.md in folder "${parent.name}".`);
+		new Notice(`Failed to read index.md in folder "${root.name}".`);
 		return null;
 	}
 
 	const linktexts = parseListLinks(content);
 	if (linktexts.length === 0) {
-		new Notice(`index.md has no "# List" items in folder "${parent.name}".`);
+		new Notice(`index.md has no "# List" items in folder "${root.name}".`);
 		return null;
 	}
 
@@ -62,13 +59,13 @@ export async function resolveIndexPlaylist(
 	}
 
 	if (notes.length === 0) {
-		new Notice(`No resolvable links in index.md in folder "${parent.name}".`);
+		new Notice(`No resolvable links in index.md in folder "${root.name}".`);
 		return null;
 	}
 
 	const currentIndex = notes.indexOf(currentNotePath);
 	if (currentIndex < 0) {
-		new Notice(`Current note is not listed in index.md in folder "${parent.name}".`);
+		new Notice(`Current note is not listed in index.md in folder "${root.name}".`);
 		return null;
 	}
 

@@ -9,6 +9,7 @@ export interface DialSettings {
 	defaultVolume: number;
 	loopMode: LoopMode;
 	folderOrderMode: FolderOrderMode;
+	folderLoopDepth: number;
 	autoPlay: boolean;
 }
 
@@ -18,6 +19,7 @@ export const DEFAULT_SETTINGS: DialSettings = {
 	defaultVolume: 1,
 	loopMode: 'folder',
 	folderOrderMode: 'tree',
+	folderLoopDepth: 1,
 	autoPlay: true,
 };
 
@@ -118,6 +120,25 @@ export class DialSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						const mode = value as FolderOrderMode;
 						this.plugin.settings.folderOrderMode = mode;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName('Folder loop depth')
+			.setDesc(
+				'How many folder levels up from the current note define the loop ' +
+					'scope in "Loop current folder" mode. 1 = the note\'s own folder; ' +
+					'2 = its parent folder (and everything beneath it); and so on. ' +
+					'All playable notes within that scope are included. Defaults to 1.',
+			)
+			.addText((text) =>
+				text
+					.setPlaceholder('1')
+					.setValue(String(this.plugin.settings.folderLoopDepth))
+					.onChange(async (value) => {
+						const depth = Math.max(1, Math.floor(Number(value)) || 1);
+						this.plugin.settings.folderLoopDepth = depth;
 						await this.plugin.saveSettings();
 					}),
 			);

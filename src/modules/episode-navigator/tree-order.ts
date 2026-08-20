@@ -1,13 +1,15 @@
-import { TFile } from 'obsidian';
+import { TFile, TFolder } from 'obsidian';
 
 import type DialPlugin from '@/main';
 
 import type { FolderPlaylist } from './index';
 
 /**
- * Build the folder playlist from the file tree: direct-child markdown notes
- * that carry `video` and `subtitle` frontmatter, sorted by vault path. The
- * current note is located by path so the caller can pick the next entry.
+ * Build the folder playlist from the file tree under `root`: every markdown
+ * note that carries `video` + `subtitle` frontmatter, anywhere in `root`'s
+ * subtree, sorted by vault path. `root` is the loop-scope folder resolved
+ * from the configured folder-loop depth, so a depth of 2 (for example) walks
+ * every descendant folder rather than just the note's immediate parent.
  *
  * Non-video notes (including index.md, which has no media frontmatter) are
  * filtered out, so they never become advance targets.
@@ -15,20 +17,27 @@ import type { FolderPlaylist } from './index';
 export function resolveTreePlaylist(
 	plugin: DialPlugin,
 	currentNotePath: string,
+	root: TFolder,
 ): FolderPlaylist | null {
-	const currentFile = plugin.app.vault.getAbstractFileByPath(currentNotePath);
-	if (!(currentFile instanceof TFile)) return null;
-
-	const parent = currentFile.parent;
-	if (!parent) return null;
-
-	const notes = parent.children
-		.filter((child): child is TFile => child instanceof TFile && child.extension === 'md')
-		.filter((file) => hasMediaFrontmatter(plugin, file))
-		.map((file) => file.path)
-		.sort((a, b) => a.localeCompare(b));
-
+	const notes = collectPlayableNotes(root, plugin).sort((a, b) => a.localeCompare(b));
 	return { notes, currentIndex: notes.indexOf(currentNotePath) };
+}
+
+/** Recursively gather media-note paths under a folder (depth-first). */
+function collectPlayableNotes(folder: TFolder, plugin: DialPlugin): string[] {
+	const out: string[] = [];
+	for (const child of folder.children) {
+		if (child instanceof TFolder) {
+			out.push(...collectPlayableNotes(child, plugin));
+		} else if (
+			child instanceof TFile &&
+			child.extension === 'md' &&
+			hasMediaFrontmatter(plugin, child)
+		) {
+			out.push(child.path);
+		}
+	}
+	return out;
 }
 
 /** A note is playable when its frontmatter declares both video and subtitle. */
