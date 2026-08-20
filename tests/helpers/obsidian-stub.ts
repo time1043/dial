@@ -36,6 +36,8 @@ export class ItemView {
 
 export class WorkspaceLeaf {}
 
+export const Platform = { isMobile: false, isDesktop: true };
+
 export class Setting {
 	constructor(_container: HTMLElement) {}
 	setName() {
