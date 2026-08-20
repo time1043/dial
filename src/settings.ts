@@ -17,6 +17,7 @@ export const DEFAULT_SETTINGS: DialSettings = {
 	defaultVolume: 1,
 	loopMode: 'none',
 	folderOrderMode: 'tree',
+	autoPlay: true,
 };
 
 export function trimTrailingSlash(path: string): string {
@@ -115,7 +116,22 @@ export class DialSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.folderOrderMode)
 					.onChange(async (value) => {
 						const mode = value as FolderOrderMode;
-						this.plugin.settings.folderOrderMode = mode;
+					this.plugin.settings.folderOrderMode = mode;
+					await this.plugin.saveSettings();
+				}),
+			);
+
+		new Setting(containerEl)
+			.setName('Auto-play on open')
+			.setDesc(
+				'Start playback automatically when the player opens, and when it ' +
+					'advances to the next episode in loop mode.',
+			)
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.autoPlay)
+					.onChange(async (value) => {
+						this.plugin.settings.autoPlay = value;
 						await this.plugin.saveSettings();
 					}),
 			);
