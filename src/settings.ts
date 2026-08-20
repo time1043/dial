@@ -14,7 +14,7 @@ export const DEFAULT_SETTINGS: DialSettings = {
 	defaultVolume: 1,
 };
 
-function trimTrailingSlash(path: string): string {
+export function trimTrailingSlash(path: string): string {
 	return path.replace(/[/\\]+$/, '');
 }
 
