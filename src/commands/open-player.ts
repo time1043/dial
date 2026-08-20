@@ -52,6 +52,7 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 
 		await videoView.loadVideo(videoPath, plugin.settings.defaultVolume);
 		videoView.setSubtitles(subtitles);
+		videoView.setLoopMode(plugin.settings.loopMode);
 		plugin.setSubtitles(subtitles);
 
 		// Trace: record video opened
@@ -128,6 +129,7 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
 		// Wire everything up
 		await videoView.loadVideo(videoPath, plugin.settings.defaultVolume);
 		videoView.setSubtitles(subtitles);
+		videoView.setLoopMode(plugin.settings.loopMode);
 		subtitleView.setSubtitles(subtitles);
 		plugin.setSubtitles(subtitles);
 

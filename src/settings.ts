@@ -1,17 +1,20 @@
 import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
 
 import type DialPlugin from './main';
+import type { LoopMode } from './types';
 
 export interface DialSettings {
 	videoLibraryPath: string;
 	subtitleLibraryPath: string;
 	defaultVolume: number;
+	loopMode: LoopMode;
 }
 
 export const DEFAULT_SETTINGS: DialSettings = {
 	videoLibraryPath: '_lib/videos',
 	subtitleLibraryPath: '_lib/subtitles',
 	defaultVolume: 1,
+	loopMode: 'none',
 };
 
 export function trimTrailingSlash(path: string): string {
@@ -71,6 +74,27 @@ export class DialSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 						this.plugin.applyVolume(this.plugin.settings.defaultVolume);
 						new Notice(`Default volume: ${value}%`);
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName('Loop mode')
+			.setDesc(
+				'Behavior when the current video finishes. ' +
+					'Folder and all-files modes are coming soon — selecting them has no effect yet.',
+			)
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOption('none', 'Play once (no loop)')
+					.addOption('single', 'Loop single episode')
+					.addOption('folder', 'Loop current folder (coming soon)')
+					.addOption('all', 'Loop all files (coming soon)')
+					.setValue(this.plugin.settings.loopMode)
+					.onChange(async (value) => {
+						const mode = value as LoopMode;
+						this.plugin.settings.loopMode = mode;
+						await this.plugin.saveSettings();
+						this.plugin.applyLoopMode(mode);
 					}),
 			);
 	}

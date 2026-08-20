@@ -1,6 +1,6 @@
 import { ItemView, Notice, Platform, TFile, WorkspaceLeaf } from 'obsidian';
 
-import type { ABLoopState, Subtitle } from '@/types';
+import type { ABLoopState, LoopMode, Subtitle } from '@/types';
 
 import { SubtitlePanel } from './subtitle-panel';
 
@@ -28,6 +28,8 @@ export class VideoPlayerView extends ItemView {
 	private abLoopState: ABLoopState = { a: null, b: null, active: false };
 	private abLoopHandler: ABLoopHandler | null = null;
 	private playOnceEnd: number | null = null;
+	private loopMode: LoopMode = 'none';
+	private onVideoEnd: (() => void) | null = null;
 	private onTimeUpdate: ((time: number) => void) | null = null;
 	private onSubtitleChange: ((id: number) => void) | null = null;
 	private onPlayStateChange: ((isPlaying: boolean) => void) | null = null;
@@ -101,6 +103,14 @@ export class VideoPlayerView extends ItemView {
 
 		this.videoEl.addEventListener('play', () => {
 			this.onPlayStateChange?.(true);
+		});
+
+		// Loop / end-of-video orchestration.
+		// `ended` only fires on natural end — AB loop (which seeks before the
+		// end) and playRangeOnce (which pauses before the end) never reach it,
+		// so this handler does not conflict with those features.
+		this.videoEl.addEventListener('ended', () => {
+			this.handleVideoEnd();
 		});
 
 		// Mobile: embed full subtitle panel below video
@@ -269,6 +279,45 @@ export class VideoPlayerView extends ItemView {
 		this.playOnceEnd = end;
 		this.videoEl.currentTime = start;
 		void this.videoEl.play();
+	}
+
+	/**
+	 * Decide what happens when the video reaches its natural end.
+	 *
+	 * - `none`   : do nothing (native pause-at-end behavior).
+	 * - `single` : seek back to 0 and replay the same video.
+	 * - `folder` / `all` : hand off to the plugin via {@link onVideoEnd} so it
+	 *   can tear down the current views and open the next note.
+	 */
+	private handleVideoEnd(): void {
+		switch (this.loopMode) {
+			case 'single':
+				if (this.videoEl) {
+					this.videoEl.currentTime = 0;
+					void this.videoEl.play();
+				}
+				break;
+			case 'folder':
+			case 'all':
+				this.onVideoEnd?.();
+				break;
+			case 'none':
+			default:
+				break;
+		}
+	}
+
+	/** Update the loop mode; applied to the currently loaded video immediately. */
+	setLoopMode(mode: LoopMode): void {
+		this.loopMode = mode;
+	}
+
+	/**
+	 * Register the callback invoked on natural end when loop mode is `folder`
+	 * or `all`. Not wired yet — folder/all orchestration is not implemented.
+	 */
+	setVideoEndCallback(cb: (() => void) | null): void {
+		this.onVideoEnd = cb;
 	}
 
 	getCurrentTime(): number {

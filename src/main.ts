@@ -1,7 +1,7 @@
 import { Notice, Plugin, TFile } from 'obsidian';
 
 import type { DialSettings } from './settings';
-import type { Subtitle } from './types';
+import type { LoopMode, Subtitle } from './types';
 
 import { createVideoNote } from './commands/create-video-note';
 import { insertTimestamp } from './commands/insert-timestamp';
@@ -218,6 +218,13 @@ export default class DialPlugin extends Plugin {
 		const view = getVideoView(this);
 		if (view) {
 			view.setVolume(volume);
+		}
+	}
+
+	applyLoopMode(mode: LoopMode): void {
+		const view = getVideoView(this);
+		if (view) {
+			view.setLoopMode(mode);
 		}
 	}
 
