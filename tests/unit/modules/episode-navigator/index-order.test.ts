@@ -22,7 +22,8 @@ interface FakeFolder {
 }
 
 function makeFile(path: string, parent: FakeFolder): TFile {
-	const f = new TFile(path);
+	const f = new TFile();
+	f.path = path;
 	(f as unknown as { parent: FakeFolder }).parent = parent;
 	return f;
 }
