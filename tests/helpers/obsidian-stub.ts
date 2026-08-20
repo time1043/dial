@@ -24,6 +24,8 @@ export class TFolder {
 
 export class Plugin {}
 
+export class App {}
+
 export class ItemView {
 	containerEl: HTMLElement =
 		typeof document !== 'undefined' ? document.createElement('div') : ({} as HTMLElement);

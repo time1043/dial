@@ -64,7 +64,6 @@ Pick the project by what the code under test touches:
   project, but **not** in the browser project (vi.mock can't intercept
   unresolvable packages there), so prefer the alias stub for browser tests.
 
-
 Shared sample data lives in `tests/fixtures/` (`sample.srt`, `subtitles.ts`).
 
 ## Config notes

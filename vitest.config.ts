@@ -70,7 +70,9 @@ export default defineConfig({
 			include: [
 				'src/utils/time.ts',
 				'src/utils/url-player.ts',
+				'src/utils/layout.ts',
 				'src/modules/subtitle-parsers/srt-parser.ts',
+				'src/modules/subtitle-parsers/index.ts',
 				'src/modules/ab-loop/ab-loop-manager.ts',
 				'src/modules/subtitle-navigator/subtitle-navigator.ts',
 				'src/modules/position-manager/position-manager.ts',
