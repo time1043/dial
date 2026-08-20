@@ -50,3 +50,34 @@ describe('PositionManager', () => {
 		expect(m.getAll()).toEqual({ a: 1, b: 2 });
 	});
 });
+
+describe('PositionManager.clear', () => {
+	it('drops a saved position so restore returns null', () => {
+		const m = new PositionManager();
+		m.save('video/a.mp4', 42);
+		m.clear('video/a.mp4');
+		expect(m.restore('video/a.mp4')).toBeNull();
+	});
+
+	it('leaves other keys intact when clearing one', () => {
+		const m = new PositionManager();
+		m.save('keep', 1);
+		m.save('drop', 2);
+		m.clear('drop');
+		expect(m.restore('keep')).toBe(1);
+		expect(m.restore('drop')).toBeNull();
+	});
+
+	it('fires the persist callback on clear', () => {
+		const cb = vi.fn();
+		const m = new PositionManager();
+		m.setPersistCallback(cb);
+		m.clear('video/a.mp4');
+		expect(cb).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not throw when clearing an unknown key', () => {
+		const m = new PositionManager();
+		expect(() => m.clear('missing')).not.toThrow();
+	});
+});
