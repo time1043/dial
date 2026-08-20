@@ -176,6 +176,13 @@ export function wireVideoEnd(plugin: DialPlugin, videoView: VideoPlayerView): vo
 	});
 	// Feature: preview the next episode ~5s before the end.
 	videoView.setNearEndCallback(() => void plugin.notifyNextEpisode());
+	// Clear the resume position when a video finishes naturally, so reopening
+	// it (or looping into it) starts from the beginning instead of stalling at
+	// the end or chaining through finished episodes.
+	videoView.setOnFinishedCallback(() => {
+		const path = videoView.getVideoPath();
+		if (path) plugin.positions.clear(path);
+	});
 }
 
 export function setupSync(
