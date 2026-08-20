@@ -19,6 +19,12 @@ export class PositionManager {
 		return this.positions[key] ?? null;
 	}
 
+	/** Drop the saved position for a video, e.g. after it finishes naturally. */
+	clear(key: string): void {
+		delete this.positions[key];
+		this.onPersist?.();
+	}
+
 	load(positions: Record<string, number>): void {
 		this.positions = positions;
 	}

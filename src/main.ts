@@ -197,14 +197,18 @@ export default class DialPlugin extends Plugin {
 	}
 
 	onunload(): void {
-		// Save playback position for all open video views
+		// Persist playback position for all open video views. A video that has
+		// already ended is treated as finished — clear its resume point so it
+		// restarts from the beginning next time instead of stalling at the end.
 		for (const leaf of this.app.workspace.getLeavesOfType(VIDEO_PLAYER_VIEW_TYPE)) {
 			const view = leaf.view;
 			if (view instanceof VideoPlayerView) {
 				const path = view.getVideoPath();
-				const time = view.getCurrentTime();
-				if (path) {
-					this.positions.save(path, time);
+				if (!path) continue;
+				if (view.isEnded()) {
+					this.positions.clear(path);
+				} else {
+					this.positions.save(path, view.getCurrentTime());
 				}
 			}
 		}
@@ -299,10 +303,12 @@ export default class DialPlugin extends Plugin {
 			return;
 		}
 
-		// Persist the outgoing episode's position before swapping media.
+		// The outgoing episode finished — drop its resume point rather than
+		// stamping it with the end time, so it restarts from the beginning next
+		// time. handleVideoEnd already cleared it; this guards the swap path.
 		const oldPath = videoView.getVideoPath();
 		if (oldPath) {
-			this.positions.save(oldPath, videoView.getCurrentTime());
+			this.positions.clear(oldPath);
 			if (this.activeNotePath) {
 				void this.trace.saveTrace(
 					this.app.vault,
