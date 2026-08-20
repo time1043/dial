@@ -19,9 +19,19 @@ export default tseslint.config(
 		},
 	},
 	...obsidianmd.configs.recommended,
+	// Test files and the vitest config run in Node, not the Obsidian
+	// renderer, so the obsidianmd "no Node builtins" rule does not apply.
+	{
+		files: ['tests/**/*.ts', 'vitest.config.ts'],
+		rules: {
+			'import/no-nodejs-modules': 'off',
+		},
+	},
 	globalIgnores([
 		'node_modules',
 		'dist',
+		'coverage',
+		'lcov.info',
 		'dial',
 		'dial.zip',
 		'esbuild.config.mjs',
