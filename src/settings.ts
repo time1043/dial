@@ -1,13 +1,14 @@
 import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
 
 import type DialPlugin from './main';
-import type { LoopMode } from './types';
+import type { FolderOrderMode, LoopMode } from './types';
 
 export interface DialSettings {
 	videoLibraryPath: string;
 	subtitleLibraryPath: string;
 	defaultVolume: number;
 	loopMode: LoopMode;
+	folderOrderMode: FolderOrderMode;
 }
 
 export const DEFAULT_SETTINGS: DialSettings = {
@@ -15,6 +16,7 @@ export const DEFAULT_SETTINGS: DialSettings = {
 	subtitleLibraryPath: '_lib/subtitles',
 	defaultVolume: 1,
 	loopMode: 'none',
+	folderOrderMode: 'tree',
 };
 
 export function trimTrailingSlash(path: string): string {
@@ -81,13 +83,13 @@ export class DialSettingTab extends PluginSettingTab {
 			.setName('Loop mode')
 			.setDesc(
 				'Behavior when the current video finishes. ' +
-					'Folder and all-files modes are coming soon — selecting them has no effect yet.',
+					'All-files mode is coming soon — selecting it has no effect yet.',
 			)
 			.addDropdown((dropdown) =>
 				dropdown
 					.addOption('none', 'Play once (no loop)')
 					.addOption('single', 'Loop single episode')
-					.addOption('folder', 'Loop current folder (coming soon)')
+					.addOption('folder', 'Loop current folder')
 					.addOption('all', 'Loop all files (coming soon)')
 					.setValue(this.plugin.settings.loopMode)
 					.onChange(async (value) => {
@@ -95,6 +97,26 @@ export class DialSettingTab extends PluginSettingTab {
 						this.plugin.settings.loopMode = mode;
 						await this.plugin.saveSettings();
 						this.plugin.applyLoopMode(mode);
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName('Folder order mode')
+			.setDesc(
+				'How the next episode is chosen in "Loop current folder" mode. ' +
+					'"File tree order" follows the folder sorted by path; ' +
+					'"Index.md list" follows the order declared in an index.md file ' +
+					'in the same folder under a "# List" heading.',
+			)
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOption('tree', 'File tree order')
+					.addOption('index', 'Index.md list')
+					.setValue(this.plugin.settings.folderOrderMode)
+					.onChange(async (value) => {
+						const mode = value as FolderOrderMode;
+						this.plugin.settings.folderOrderMode = mode;
+						await this.plugin.saveSettings();
 					}),
 			);
 	}

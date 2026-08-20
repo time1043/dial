@@ -25,6 +25,16 @@ export interface ABLoopState {
  */
 export type LoopMode = 'none' | 'single' | 'folder' | 'all';
 
+/**
+ * How the next episode is determined within "Loop current folder" mode.
+ *
+ * - `tree`  : follow the file-tree order of the note's folder (notes with
+ *             `video`/`subtitle` frontmatter, sorted by path).
+ * - `index` : follow the order declared in an `index.md` file placed in the
+ *             same folder, under a `# List` heading of unordered wikilinks.
+ */
+export type FolderOrderMode = 'tree' | 'index';
+
 export interface TypeSentenceRecord {
 	subtitleId: number;
 	userInput: string[];
