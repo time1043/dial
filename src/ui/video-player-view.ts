@@ -30,6 +30,8 @@ export class VideoPlayerView extends ItemView {
 	private playOnceEnd: number | null = null;
 	private loopMode: LoopMode = 'none';
 	private onVideoEnd: (() => void) | null = null;
+	private onNearEnd: (() => void) | null = null;
+	private nearEndFired = false;
 	private onTimeUpdate: ((time: number) => void) | null = null;
 	private onSubtitleChange: ((id: number) => void) | null = null;
 	private onPlayStateChange: ((isPlaying: boolean) => void) | null = null;
@@ -94,6 +96,19 @@ export class VideoPlayerView extends ItemView {
 					this.videoEl.currentTime = this.abLoopState.a;
 				}
 			}
+
+			// Near-end notification: announce the next episode ~5s before the end.
+			// Re-armed on play/seek/load so each play-through notifies once.
+			if (
+				!this.nearEndFired &&
+				this.videoEl.duration &&
+				isFinite(this.videoEl.duration) &&
+				time > 0 &&
+				this.videoEl.duration - time <= 5
+			) {
+				this.nearEndFired = true;
+				this.onNearEnd?.();
+			}
 		});
 
 		this.videoEl.addEventListener('pause', () => {
@@ -102,6 +117,7 @@ export class VideoPlayerView extends ItemView {
 		});
 
 		this.videoEl.addEventListener('play', () => {
+			this.nearEndFired = false;
 			this.onPlayStateChange?.(true);
 		});
 
@@ -176,6 +192,7 @@ export class VideoPlayerView extends ItemView {
 	async loadVideo(path: string, volume = 1): Promise<void> {
 		if (!this.videoEl) return;
 		this.videoPath = path;
+		this.nearEndFired = false;
 		try {
 			const file = this.app.vault.getAbstractFileByPath(path);
 			if (!(file instanceof TFile)) {
@@ -244,6 +261,7 @@ export class VideoPlayerView extends ItemView {
 	jumpToTime(time: number): void {
 		if (!this.videoEl) return;
 		this.videoEl.currentTime = time;
+		this.nearEndFired = false;
 	}
 
 	play(): void {
@@ -314,10 +332,15 @@ export class VideoPlayerView extends ItemView {
 
 	/**
 	 * Register the callback invoked on natural end when loop mode is `folder`
-	 * or `all`. Not wired yet — folder/all orchestration is not implemented.
+	 * or `all`. Wired in open-player.ts to drive episode advance.
 	 */
 	setVideoEndCallback(cb: (() => void) | null): void {
 		this.onVideoEnd = cb;
+	}
+
+	/** Register the callback fired ~5s before the video ends (to preview the next episode). */
+	setNearEndCallback(cb: (() => void) | null): void {
+		this.onNearEnd = cb;
 	}
 
 	getCurrentTime(): number {

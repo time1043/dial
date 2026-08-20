@@ -295,6 +295,31 @@ export default class DialPlugin extends Plugin {
 		}
 	}
 
+	/**
+	 * Preview the next episode ~5s before the current one ends (wired to the
+	 * video view's near-end callback). Resolves the same playlist used by
+	 * advanceToNextNote so the preview matches what will actually play.
+	 */
+	async notifyNextEpisode(): Promise<void> {
+		if (this.settings.loopMode !== 'folder') return;
+		const current = this.activeNotePath;
+		if (!current) return;
+		const playlist = await resolveFolderPlaylist(this, current, this.settings.folderOrderMode);
+		if (!playlist) return;
+		if (playlist.currentIndex < 0) {
+			new Notice('Current note is not in the folder playlist.');
+			return;
+		}
+		const nameOf = (p: string): string => p.split('/').pop() ?? p;
+		if (playlist.notes.length <= 1) {
+			new Notice(`Next up: "${nameOf(current)}" (only one episode — single loop)`);
+			return;
+		}
+		const isLast = playlist.currentIndex === playlist.notes.length - 1;
+		const nextPath = playlist.notes[(playlist.currentIndex + 1) % playlist.notes.length]!;
+		new Notice(`Next up: "${nameOf(nextPath)}"` + (isLast ? ' (wraps to start)' : ''));
+	}
+
 	private persistAll(): void {
 		void this.saveData({
 			settings: this.settings,

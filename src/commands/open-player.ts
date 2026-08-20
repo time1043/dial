@@ -161,8 +161,11 @@ export async function openVideoPlayer(plugin: DialPlugin): Promise<void> {
  */
 export function wireVideoEnd(plugin: DialPlugin, videoView: VideoPlayerView): void {
 	videoView.setVideoEndCallback(() => {
+		// Defer so teardown runs outside the video element's own `ended` handler.
 		setTimeout(() => void plugin.advanceToNextNote(), 0);
 	});
+	// Feature: preview the next episode ~5s before the end.
+	videoView.setNearEndCallback(() => void plugin.notifyNextEpisode());
 }
 
 export function setupSync(
