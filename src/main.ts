@@ -10,11 +10,17 @@ import { openTrace } from './commands/open-trace';
 import { openTypeSession, resumeTypeSession } from './commands/open-type-session';
 import { openUrlPlayerFromActiveNote } from './commands/open-url-player';
 import { togglePlay } from './commands/toggle-play';
-import { getVideoView, syncABToViews, trySetupSync } from './core/sync-orchestrator';
+import {
+	getSubtitleView,
+	getVideoView,
+	syncABToViews,
+	trySetupSync,
+} from './core/sync-orchestrator';
 import { AbLoopManager } from './modules/ab-loop/ab-loop-manager';
 import { resolveFolderPlaylist } from './modules/episode-navigator';
 import { PositionManager } from './modules/position-manager/position-manager';
 import { getJumpTarget } from './modules/subtitle-navigator/subtitle-navigator';
+import { parseSubtitle } from './modules/subtitle-parsers';
 import { TraceManager } from './modules/trace-manager/trace-manager';
 import { DEFAULT_SETTINGS, DialSettingTab } from './settings';
 import { SUBTITLE_VIEW_TYPE, SubtitleView } from './ui/subtitle-view';
@@ -23,6 +29,7 @@ import { TYPE_VIEW_TYPE, TypeView } from './ui/type-view';
 import { URL_PLAYER_VIEW_TYPE, UrlPlayerView } from './ui/url-player-view';
 import { VIDEO_PLAYER_VIEW_TYPE, VideoPlayerView } from './ui/video-player-view';
 import { formatTime } from './utils/time';
+import { resolveMediaPaths } from './vault/paths';
 
 export default class DialPlugin extends Plugin {
 	settings: DialSettings = DEFAULT_SETTINGS;
@@ -238,24 +245,23 @@ export default class DialPlugin extends Plugin {
 	 * Advance to the next episode when the current video finishes naturally.
 	 *
 	 * Only `folder` mode is wired so far — `all` is not implemented. The
-	 * teardown (detaching the old video leaf) happens here rather than inside
-	 * the video view's own `ended` handler because the caller defers this with
-	 * `setTimeout`, so we are safely outside the event that owns the leaf.
+	 * teardown is deferred via setTimeout in wireVideoEnd, so this runs
+	 * outside the video element's own `ended` handler.
 	 *
-	 * Sequence: resolve playlist → reset AB loop → detach old video leaf →
-	 * make the next note the active file → re-open the player (which reuses
-	 * the subtitle leaf and creates a fresh video leaf).
+	 * The next episode is swapped into the existing views in place (see
+	 * openNextEpisode) rather than torn down and re-opened. That avoids both
+	 * the layout flicker and the active-note navigation bug that the old
+	 * openLinkText-based approach suffered from.
 	 */
 	async advanceToNextNote(): Promise<void> {
-		// 'all' mode is not implemented yet.
 		if (this.settings.loopMode !== 'folder') return;
 
 		const current = this.activeNotePath;
 		if (!current) return;
 
 		const playlist = await resolveFolderPlaylist(this, current, this.settings.folderOrderMode);
-		if (!playlist) return; // resolver already explained via Notice
-		if (playlist.currentIndex < 0) return; // current note not in playlist
+		if (!playlist) return;
+		if (playlist.currentIndex < 0) return;
 
 		// Single-item folder: to save resources, do not tear down and reopen —
 		// honor "loop" semantics by replaying the current video instead.
@@ -270,13 +276,87 @@ export default class DialPlugin extends Plugin {
 		// Reset AB loop so stale points don't carry into the next episode.
 		syncABToViews(this, this.abLoop.clear());
 
-		// Detach the old video leaf; its onClose persists the position.
-		this.app.workspace.getLeavesOfType(VIDEO_PLAYER_VIEW_TYPE)[0]?.detach();
+		await this.openNextEpisode(nextPath);
+	}
 
-		// Make the next note the active file so resolveMediaPaths reads the
-		// correct frontmatter, then re-open the player.
-		await this.app.workspace.openLinkText(nextPath, '', false);
-		await openVideoPlayer(this);
+	/**
+	 * Swap the currently playing episode in place: keep the existing video and
+	 * subtitle views (no leaf teardown, no layout flicker) and load the next
+	 * note's media into them.
+	 *
+	 * We intentionally do NOT change the active Obsidian file. In the desktop
+	 * layout the active leaf is the custom SubtitleView, so navigating via
+	 * openLinkText would target that leaf and never actually switch the note —
+	 * which is exactly what broke auto-advance before. The plugin tracks the
+	 * playing note through `activeNotePath`, which we update here.
+	 */
+	private async openNextEpisode(nextPath: string): Promise<void> {
+		const videoView = getVideoView(this);
+		if (!videoView) {
+			// Views missing (shouldn't happen) — fall back to a full reopen.
+			this.activeNotePath = nextPath;
+			await openVideoPlayer(this);
+			return;
+		}
+
+		// Persist the outgoing episode's position before swapping media.
+		const oldPath = videoView.getVideoPath();
+		if (oldPath) {
+			this.positions.save(oldPath, videoView.getCurrentTime());
+			if (this.activeNotePath) {
+				void this.trace.saveTrace(
+					this.app.vault,
+					this.activeNotePath,
+					videoView.getCurrentTime(),
+				);
+			}
+		}
+
+		const paths = await resolveMediaPaths(this, nextPath);
+		if (!paths) return;
+		const { videoPath, subtitlePath } = paths;
+
+		const subtitleTFile = this.app.vault.getAbstractFileByPath(subtitlePath);
+		if (!(subtitleTFile instanceof TFile)) {
+			new Notice('Subtitle file not found for next episode.');
+			return;
+		}
+		let subtitleBuffer: ArrayBuffer;
+		try {
+			subtitleBuffer = await this.app.vault.readBinary(subtitleTFile);
+		} catch {
+			new Notice('Failed to read next subtitle file.');
+			return;
+		}
+		let subtitles: Subtitle[];
+		try {
+			subtitles = parseSubtitle(subtitleBuffer, subtitlePath);
+		} catch (e) {
+			new Notice(`Subtitle parse error: ${e instanceof Error ? e.message : String(e)}`);
+			return;
+		}
+		if (subtitles.length === 0) {
+			new Notice('No subtitles found in next episode');
+			return;
+		}
+
+		// Update the playing-note pointer and re-arm the single-loop guard.
+		this.activeNotePath = nextPath;
+		this.singleLoopNotified = false;
+
+		// Swap media into the existing views.
+		await videoView.loadVideo(videoPath, this.settings.defaultVolume);
+		videoView.setSubtitles(subtitles);
+
+		const subtitleView = getSubtitleView(this);
+		subtitleView?.setSubtitles(subtitles);
+		this.setSubtitles(subtitles);
+
+		// Restore saved position for the new video, if any.
+		const savedTime = this.positions.restore(videoPath);
+		if (savedTime !== null) {
+			videoView.jumpToTime(savedTime);
+		}
 	}
 
 	/**
