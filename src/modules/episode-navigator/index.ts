@@ -1,6 +1,7 @@
 import type DialPlugin from '@/main';
 import type { FolderOrderMode } from '@/types';
 
+import { resolveIndexPlaylist } from './index-order';
 import { resolveTreePlaylist } from './tree-order';
 
 /**
@@ -32,7 +33,6 @@ export async function resolveFolderPlaylist(
 		case 'tree':
 			return resolveTreePlaylist(plugin, currentNotePath);
 		case 'index':
-			// index.md resolution lands in a follow-up commit.
-			return null;
+			return resolveIndexPlaylist(plugin, currentNotePath);
 	}
 }
