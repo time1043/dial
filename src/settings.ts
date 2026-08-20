@@ -16,7 +16,7 @@ export const DEFAULT_SETTINGS: DialSettings = {
 	videoLibraryPath: '_lib/videos',
 	subtitleLibraryPath: '_lib/subtitles',
 	defaultVolume: 1,
-	loopMode: 'none',
+	loopMode: 'folder',
 	folderOrderMode: 'tree',
 	autoPlay: true,
 };
