@@ -109,7 +109,8 @@ export class DialSettingTab extends PluginSettingTab {
 		// Folder-loop-attached settings: only meaningful in "folder" mode, so
 		// show them only then. They are kept mounted (values persist) and
 		// toggled via display:none to avoid calling the deprecated display().
-		const folderSettingsEl = containerEl.createDiv();
+		// Rendered as indented children of "Loop mode" for visual hierarchy.
+		const folderSettingsEl = containerEl.createDiv({ cls: 'dial-loop-subsettings' });
 		folderSettingsEl.style.display = this.plugin.settings.loopMode === 'folder' ? '' : 'none';
 
 		new Setting(folderSettingsEl)

@@ -465,3 +465,11 @@
 	font-size: 0.85em;
 	margin: 8px 0 0;
 }
+
+/* Settings: folder-loop sub-items — indented children of "Loop mode",
+   only rendered while loopMode === 'folder". */
+.dial-loop-subsettings {
+	margin-left: 1.5em;
+	padding-left: 0.75em;
+	border-left: 1px solid var(--background-modifier-border);
+}
