@@ -191,14 +191,11 @@ export class DialSettingTab extends PluginSettingTab {
 					'playlist. Defaults to "note/".',
 			)
 			.addText((text) =>
-				text
-					.setPlaceholder('note/')
-					.setValue(this.plugin.settings.allFilesRoot)
-					.onChange(async (value) => {
-						this.plugin.settings.allFilesRoot =
-							trimTrailingSlash(value) || DEFAULT_SETTINGS.allFilesRoot;
-						await this.plugin.saveSettings();
-					}),
+				text.setValue(this.plugin.settings.allFilesRoot).onChange(async (value) => {
+					this.plugin.settings.allFilesRoot =
+						trimTrailingSlash(value) || DEFAULT_SETTINGS.allFilesRoot;
+					await this.plugin.saveSettings();
+				}),
 			);
 
 		new Setting(containerEl)
