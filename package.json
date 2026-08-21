@@ -1,6 +1,6 @@
 {
 	"name": "dial",
-	"version": "0.0.3",
+	"version": "0.0.4",
 	"description": "A video player plugin for Obsidian with subtitle-video bidirectional binding, playback speed control, AB loop, and more.",
 	"keywords": [
 		"ab-loop",
