@@ -34,6 +34,8 @@ describe('trimTrailingSlash', () => {
 describe('DEFAULT_SETTINGS', () => {
 	it('uses the expected library paths and full volume', () => {
 		expect(DEFAULT_SETTINGS).toEqual({
+			allFilesOrderMode: 'tree',
+			allFilesRoot: 'note/',
 			videoLibraryPath: '_lib/videos',
 			subtitleLibraryPath: '_lib/subtitles',
 			defaultVolume: 1,
