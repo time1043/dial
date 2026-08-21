@@ -10,6 +10,8 @@ export interface DialSettings {
 	loopMode: LoopMode;
 	folderOrderMode: FolderOrderMode;
 	folderLoopDepth: number;
+	allFilesOrderMode: FolderOrderMode;
+	allFilesRoot: string;
 	autoPlay: boolean;
 }
 
@@ -20,6 +22,8 @@ export const DEFAULT_SETTINGS: DialSettings = {
 	loopMode: 'folder',
 	folderOrderMode: 'tree',
 	folderLoopDepth: 1,
+	allFilesOrderMode: 'tree',
+	allFilesRoot: 'note/',
 	autoPlay: true,
 };
 
@@ -87,22 +91,23 @@ export class DialSettingTab extends PluginSettingTab {
 			.setName('Loop mode')
 			.setDesc(
 				'Behavior when the current video finishes. ' +
-					'All-files mode is coming soon — selecting it has no effect yet.',
+					'Folder and all-files modes loop to the next episode in the configured scope.',
 			)
 			.addDropdown((dropdown) =>
 				dropdown
 					.addOption('none', 'Play once (no loop)')
 					.addOption('single', 'Loop single episode')
 					.addOption('folder', 'Loop current folder')
-					.addOption('all', 'Loop all files (coming soon)')
+					.addOption('all', 'Loop all files')
 					.setValue(this.plugin.settings.loopMode)
 					.onChange(async (value) => {
 						const mode = value as LoopMode;
 						this.plugin.settings.loopMode = mode;
 						await this.plugin.saveSettings();
 						this.plugin.applyLoopMode(mode);
-						// Show/hide the folder-loop-attached settings below.
+						// Show/hide the mode-attached settings below.
 						folderSettingsEl.style.display = mode === 'folder' ? '' : 'none';
+						allSettingsEl.style.display = mode === 'all' ? '' : 'none';
 					}),
 			);
 
@@ -150,6 +155,47 @@ export class DialSettingTab extends PluginSettingTab {
 						this.plugin.settings.folderLoopDepth = depth;
 						await this.plugin.saveSettings();
 					}),
+			);
+
+		// All-files-loop-attached settings: only meaningful in "all" mode, so
+		// show them only then. Same nested/conditional treatment as the folder
+		// settings above, rendered as indented children of "Loop mode".
+		const allSettingsEl = containerEl.createDiv({ cls: 'dial-loop-subsettings' });
+		allSettingsEl.style.display = this.plugin.settings.loopMode === 'all' ? '' : 'none';
+
+		new Setting(allSettingsEl)
+			.setName('All files order mode')
+			.setDesc(
+				'How the next episode is chosen in "Loop all files" mode. ' +
+					'"File tree order" follows the folder under the all-files root sorted by path; ' +
+					'"Index.md list" follows the order declared in an index.md file ' +
+					'in that root under a "# List" heading.',
+			)
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOption('tree', 'File tree order')
+					.addOption('index', 'Index.md list')
+					.setValue(this.plugin.settings.allFilesOrderMode)
+					.onChange(async (value) => {
+						const mode = value as FolderOrderMode;
+						this.plugin.settings.allFilesOrderMode = mode;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(allSettingsEl)
+			.setName('All files root')
+			.setDesc(
+				'Vault-relative folder that scopes "Loop all files" mode. Every ' +
+					'playable note under this folder (recursively) becomes the loop ' +
+					'playlist. Defaults to "note/".',
+			)
+			.addText((text) =>
+				text.setValue(this.plugin.settings.allFilesRoot).onChange(async (value) => {
+					this.plugin.settings.allFilesRoot =
+						trimTrailingSlash(value) || DEFAULT_SETTINGS.allFilesRoot;
+					await this.plugin.saveSettings();
+				}),
 			);
 
 		new Setting(containerEl)

@@ -17,7 +17,11 @@ import {
 	trySetupSync,
 } from './core/sync-orchestrator';
 import { AbLoopManager } from './modules/ab-loop/ab-loop-manager';
-import { resolveFolderPlaylist } from './modules/episode-navigator';
+import {
+	resolveAllPlaylist,
+	resolveFolderPlaylist,
+	type FolderPlaylist,
+} from './modules/episode-navigator';
 import { PositionManager } from './modules/position-manager/position-manager';
 import { getJumpTarget } from './modules/subtitle-navigator/subtitle-navigator';
 import { parseSubtitle } from './modules/subtitle-parsers';
@@ -258,21 +262,32 @@ export default class DialPlugin extends Plugin {
 	 * openLinkText-based approach suffered from.
 	 */
 	async advanceToNextNote(): Promise<void> {
-		if (this.settings.loopMode !== 'folder') return;
+		const mode = this.settings.loopMode;
+		if (mode !== 'folder' && mode !== 'all') return;
 
 		const current = this.activeNotePath;
 		if (!current) return;
 
-		const playlist = await resolveFolderPlaylist(
-			this,
-			current,
-			this.settings.folderOrderMode,
-			this.settings.folderLoopDepth,
-		);
+		let playlist: FolderPlaylist | null = null;
+		if (mode === 'folder') {
+			playlist = await resolveFolderPlaylist(
+				this,
+				current,
+				this.settings.folderOrderMode,
+				this.settings.folderLoopDepth,
+			);
+		} else {
+			playlist = await resolveAllPlaylist(
+				this,
+				current,
+				this.settings.allFilesOrderMode,
+				this.settings.allFilesRoot,
+			);
+		}
 		if (!playlist) return;
 		if (playlist.currentIndex < 0) return;
 
-		// Single-item folder: to save resources, do not tear down and reopen —
+		// Single-item scope: to save resources, do not tear down and reopen —
 		// honor "loop" semantics by replaying the current video instead.
 		if (playlist.notes.length <= 1) {
 			this.loopCurrentEpisode();
@@ -387,7 +402,7 @@ export default class DialPlugin extends Plugin {
 		}
 		if (!this.singleLoopNotified) {
 			this.singleLoopNotified = true;
-			new Notice('Only one episode in this folder — looping single episode.');
+			new Notice('Only one episode in this loop scope — looping single episode.');
 		}
 	}
 
@@ -397,18 +412,30 @@ export default class DialPlugin extends Plugin {
 	 * advanceToNextNote so the preview matches what will actually play.
 	 */
 	async notifyNextEpisode(): Promise<void> {
-		if (this.settings.loopMode !== 'folder') return;
+		const mode = this.settings.loopMode;
+		if (mode !== 'folder' && mode !== 'all') return;
 		const current = this.activeNotePath;
 		if (!current) return;
-		const playlist = await resolveFolderPlaylist(
-			this,
-			current,
-			this.settings.folderOrderMode,
-			this.settings.folderLoopDepth,
-		);
+
+		let playlist: FolderPlaylist | null = null;
+		if (mode === 'folder') {
+			playlist = await resolveFolderPlaylist(
+				this,
+				current,
+				this.settings.folderOrderMode,
+				this.settings.folderLoopDepth,
+			);
+		} else {
+			playlist = await resolveAllPlaylist(
+				this,
+				current,
+				this.settings.allFilesOrderMode,
+				this.settings.allFilesRoot,
+			);
+		}
 		if (!playlist) return;
 		if (playlist.currentIndex < 0) {
-			new Notice('Current note is not in the folder playlist.');
+			new Notice('Current note is not in the loop playlist.');
 			return;
 		}
 		const nameOf = (p: string): string => p.split('/').pop() ?? p;
