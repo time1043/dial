@@ -412,18 +412,30 @@ export default class DialPlugin extends Plugin {
 	 * advanceToNextNote so the preview matches what will actually play.
 	 */
 	async notifyNextEpisode(): Promise<void> {
-		if (this.settings.loopMode !== 'folder') return;
+		const mode = this.settings.loopMode;
+		if (mode !== 'folder' && mode !== 'all') return;
 		const current = this.activeNotePath;
 		if (!current) return;
-		const playlist = await resolveFolderPlaylist(
-			this,
-			current,
-			this.settings.folderOrderMode,
-			this.settings.folderLoopDepth,
-		);
+
+		let playlist: FolderPlaylist | null = null;
+		if (mode === 'folder') {
+			playlist = await resolveFolderPlaylist(
+				this,
+				current,
+				this.settings.folderOrderMode,
+				this.settings.folderLoopDepth,
+			);
+		} else {
+			playlist = await resolveAllPlaylist(
+				this,
+				current,
+				this.settings.allFilesOrderMode,
+				this.settings.allFilesRoot,
+			);
+		}
 		if (!playlist) return;
 		if (playlist.currentIndex < 0) {
-			new Notice('Current note is not in the folder playlist.');
+			new Notice('Current note is not in the loop playlist.');
 			return;
 		}
 		const nameOf = (p: string): string => p.split('/').pop() ?? p;
