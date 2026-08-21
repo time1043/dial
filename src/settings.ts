@@ -10,6 +10,8 @@ export interface DialSettings {
 	loopMode: LoopMode;
 	folderOrderMode: FolderOrderMode;
 	folderLoopDepth: number;
+	allFilesOrderMode: FolderOrderMode;
+	allFilesRoot: string;
 	autoPlay: boolean;
 }
 
@@ -20,6 +22,8 @@ export const DEFAULT_SETTINGS: DialSettings = {
 	loopMode: 'folder',
 	folderOrderMode: 'tree',
 	folderLoopDepth: 1,
+	allFilesOrderMode: 'tree',
+	allFilesRoot: 'note/',
 	autoPlay: true,
 };
 
