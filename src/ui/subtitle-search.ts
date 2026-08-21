@@ -11,6 +11,14 @@ export interface SubtitleSearchDeps {
 	onOverlayChange?: () => void;
 }
 
+export interface SubtitleSearchOptions {
+	/** The host subtitle panel element; receives the mobile search overlay class. */
+	panelEl: HTMLElement;
+	/** The parent element for the search bar (created inside this element). */
+	parent: HTMLElement;
+	deps: SubtitleSearchDeps;
+}
+
 /**
  * Self-contained subtitle search/filter controller.
  *
@@ -30,18 +38,20 @@ export class SubtitleSearchController {
 	private mobileLayoutAbortController: AbortController | null = null;
 
 	private readonly containerEl: HTMLElement;
+	private readonly panelEl: HTMLElement;
 	private readonly deps: SubtitleSearchDeps;
 
-	constructor(parent: HTMLElement, deps: SubtitleSearchDeps) {
-		this.deps = deps;
-		this.containerEl = parent.createDiv({ cls: 'dial-subtitle-search' });
+	constructor(options: SubtitleSearchOptions) {
+		this.deps = options.deps;
+		this.panelEl = options.panelEl;
+		this.containerEl = options.parent.createDiv({ cls: 'dial-subtitle-search' });
 		this.input = this.buildInput();
 		this.clearBtn = this.buildClearButton();
 		this.countEl = this.containerEl.createSpan({
 			cls: 'dial-subtitle-search-count',
 			text: '',
 		});
-		this.emptyEl = parent.createDiv({
+		this.emptyEl = options.parent.createDiv({
 			cls: 'dial-subtitle-empty dial-subtitle-hidden',
 			text: 'No matching subtitles',
 		});
@@ -71,7 +81,7 @@ export class SubtitleSearchController {
 
 	/** True while the mobile full-screen search overlay is active. */
 	isMobileOverlayActive(): boolean {
-		return this.containerEl.hasClass('dial-mobile-search-overlay');
+		return this.panelEl.hasClass('dial-mobile-search-overlay');
 	}
 
 	/** Clean up all focus/blur listeners and restore the normal layout. */
@@ -157,18 +167,18 @@ export class SubtitleSearchController {
 		const closest = this.input.closest('.dial-video-container');
 		if (!(closest instanceof HTMLElement)) return;
 
-		const rect = this.containerEl.getBoundingClientRect();
+		const rect = this.panelEl.getBoundingClientRect();
 		if (rect.top > 0) {
-			this.containerEl.style.top = `${rect.top}px`;
+			this.panelEl.style.top = `${rect.top}px`;
 		}
-		this.containerEl.addClass('dial-mobile-search-overlay');
+		this.panelEl.addClass('dial-mobile-search-overlay');
 		this.deps.onOverlayChange?.();
 	}
 
 	private endMobileSearchLayout(): void {
 		if (!this.isMobileOverlayActive()) return;
-		this.containerEl.removeClass('dial-mobile-search-overlay');
-		this.containerEl.style.removeProperty('top');
+		this.panelEl.removeClass('dial-mobile-search-overlay');
+		this.panelEl.style.removeProperty('top');
 		this.deps.onOverlayChange?.();
 	}
 }
