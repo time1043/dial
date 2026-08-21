@@ -32,9 +32,13 @@ describe('SubtitleSearchController.applyFilter', () => {
 			parent.appendChild(el);
 			subtitleEls.set(s.id, el);
 		}
-		controller = new SubtitleSearchController(parent, {
-			getSubtitles: () => SUBS,
-			getSubtitleEls: () => subtitleEls,
+		controller = new SubtitleSearchController({
+			panelEl: parent,
+			parent,
+			deps: {
+				getSubtitles: () => SUBS,
+				getSubtitleEls: () => subtitleEls,
+			},
 		});
 		input = parent.querySelector('.dial-subtitle-search-input') as HTMLInputElement;
 	});

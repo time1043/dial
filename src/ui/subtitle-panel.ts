@@ -180,9 +180,13 @@ export class SubtitlePanel {
 		});
 
 		// Subtitle search bar (delegated to SubtitleSearchController)
-		this.search = new SubtitleSearchController(this.containerEl, {
-			getSubtitles: () => this.subtitles,
-			getSubtitleEls: () => this.subtitleEls,
+		this.search = new SubtitleSearchController({
+			panelEl: this.containerEl,
+			parent: this.containerEl,
+			deps: {
+				getSubtitles: () => this.subtitles,
+				getSubtitleEls: () => this.subtitleEls,
+			},
 		});
 
 		// Subtitle list
