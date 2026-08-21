@@ -1,4 +1,4 @@
-import { TFile, TFolder } from 'obsidian';
+import { Notice, TFile, TFolder } from 'obsidian';
 
 import type DialPlugin from '@/main';
 import type { FolderOrderMode } from '@/types';
@@ -68,6 +68,36 @@ export async function resolveFolderPlaylist(
 ): Promise<FolderPlaylist | null> {
 	const root = resolveLoopRootFolder(plugin, currentNotePath, depth);
 	if (!root) return null;
+	switch (orderMode) {
+		case 'tree':
+			return resolveTreePlaylist(plugin, currentNotePath, root);
+		case 'index':
+			return resolveIndexPlaylist(plugin, currentNotePath, root);
+	}
+}
+
+/**
+ * Resolve the all-files playlist for "Loop all files" mode.
+ *
+ * `rootPath` is the configured all-files root (a vault-relative folder). The
+ * playlist is every playable note under that folder (recursively), ordered by
+ * `orderMode` — the same resolution used by the folder playlist, just rooted at
+ * the configured directory instead of a depth-ascended parent.
+ *
+ * Returns null (after a Notice) when the root does not resolve to a folder, so
+ * the caller stays on the current video.
+ */
+export async function resolveAllPlaylist(
+	plugin: DialPlugin,
+	currentNotePath: string,
+	orderMode: FolderOrderMode,
+	rootPath: string,
+): Promise<FolderPlaylist | null> {
+	const root = plugin.app.vault.getAbstractFileByPath(rootPath.replace(/[/\\]+$/, ''));
+	if (!(root instanceof TFolder)) {
+		new Notice(`All-files root "${rootPath}" is not a folder.`);
+		return null;
+	}
 	switch (orderMode) {
 		case 'tree':
 			return resolveTreePlaylist(plugin, currentNotePath, root);
