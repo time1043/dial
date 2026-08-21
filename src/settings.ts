@@ -9,6 +9,7 @@ export interface DialSettings {
 	defaultVolume: number;
 	loopMode: LoopMode;
 	folderOrderMode: FolderOrderMode;
+	folderLoopDepth: number;
 	autoPlay: boolean;
 }
 
@@ -18,6 +19,7 @@ export const DEFAULT_SETTINGS: DialSettings = {
 	defaultVolume: 1,
 	loopMode: 'folder',
 	folderOrderMode: 'tree',
+	folderLoopDepth: 1,
 	autoPlay: true,
 };
 
@@ -99,10 +101,19 @@ export class DialSettingTab extends PluginSettingTab {
 						this.plugin.settings.loopMode = mode;
 						await this.plugin.saveSettings();
 						this.plugin.applyLoopMode(mode);
+						// Show/hide the folder-loop-attached settings below.
+						folderSettingsEl.style.display = mode === 'folder' ? '' : 'none';
 					}),
 			);
 
-		new Setting(containerEl)
+		// Folder-loop-attached settings: only meaningful in "folder" mode, so
+		// show them only then. They are kept mounted (values persist) and
+		// toggled via display:none to avoid calling the deprecated display().
+		// Rendered as indented children of "Loop mode" for visual hierarchy.
+		const folderSettingsEl = containerEl.createDiv({ cls: 'dial-loop-subsettings' });
+		folderSettingsEl.style.display = this.plugin.settings.loopMode === 'folder' ? '' : 'none';
+
+		new Setting(folderSettingsEl)
 			.setName('Folder order mode')
 			.setDesc(
 				'How the next episode is chosen in "Loop current folder" mode. ' +
@@ -118,6 +129,25 @@ export class DialSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						const mode = value as FolderOrderMode;
 						this.plugin.settings.folderOrderMode = mode;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(folderSettingsEl)
+			.setName('Folder loop depth')
+			.setDesc(
+				'How many folder levels up from the current note define the loop ' +
+					'scope in "Loop current folder" mode. 1 = the note\'s own folder; ' +
+					'2 = its parent folder (and everything beneath it); and so on. ' +
+					'All playable notes within that scope are included. Defaults to 1.',
+			)
+			.addText((text) =>
+				text
+					.setPlaceholder('1')
+					.setValue(String(this.plugin.settings.folderLoopDepth))
+					.onChange(async (value) => {
+						const depth = Math.max(1, Math.floor(Number(value)) || 1);
+						this.plugin.settings.folderLoopDepth = depth;
 						await this.plugin.saveSettings();
 					}),
 			);

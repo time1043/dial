@@ -7,7 +7,7 @@ import { mockObsidian } from '../../../helpers/mock-obsidian';
 vi.mock('obsidian', () => mockObsidian());
 
 import * as Obsidian from 'obsidian';
-import { TFile } from 'obsidian';
+import { TFile, TFolder } from 'obsidian';
 
 import type { FolderPlaylist } from '@/modules/episode-navigator';
 
@@ -15,16 +15,20 @@ import { resolveIndexPlaylist } from '@/modules/episode-navigator/index-order';
 
 const lastNotice = (): unknown => (Obsidian as { __lastNotice?: () => unknown }).__lastNotice?.();
 
-interface FakeFolder {
-	path: string;
-	name: string;
-	children: TFile[];
+/** Build a real TFolder with the structural fields the resolver reads. */
+function makeFolder(path: string): TFolder {
+	const folder = new TFolder();
+	folder.path = path;
+	const bag = folder as unknown as { name: string; children: TFile[] };
+	bag.name = path.split('/').pop() ?? path;
+	bag.children = [];
+	return folder;
 }
 
-function makeFile(path: string, parent: FakeFolder): TFile {
+function makeFile(path: string, parent: TFolder): TFile {
 	const f = new TFile();
 	f.path = path;
-	(f as unknown as { parent: FakeFolder }).parent = parent;
+	(f as unknown as { parent: TFolder }).parent = parent;
 	return f;
 }
 
@@ -46,13 +50,14 @@ function makePlugin(opts: {
 		};
 		metadataCache: { getFirstLinkpathDest: (link: string) => TFile | null };
 	};
+	folder: TFolder;
 } {
-	const folder: FakeFolder = { path: 'folder', name: 'folder', children: [] };
+	const folder = makeFolder('folder');
 	const current = makeFile('folder/a.md', folder);
 	const indexFile = makeFile('folder/index.md', folder);
 	const b = makeFile('folder/b.md', folder);
 	const c = makeFile('folder/c.md', folder);
-	folder.children = [current, indexFile, b, c];
+	(folder as unknown as { children: TFile[] }).children = [current, indexFile, b, c];
 
 	const fileMap: Record<string, TFile> = {
 		'folder/a.md': current,
@@ -73,13 +78,15 @@ function makePlugin(opts: {
 				getFirstLinkpathDest: (link: string) => opts.linkDest?.(link) ?? null,
 			},
 		},
+		folder,
 	};
 }
 
-// Re-use a single file map so linkDest can resolve by linktext.
-const fileMap_b = makeFile('folder/b.md', { path: 'folder', name: 'folder', children: [] });
-const fileMap_a = makeFile('folder/a.md', { path: 'folder', name: 'folder', children: [] });
-const fileMap_c = makeFile('folder/c.md', { path: 'folder', name: 'folder', children: [] });
+// Re-use a single dummy folder so linkDest can resolve by linktext.
+const dummyFolder = makeFolder('folder');
+const fileMap_b = makeFile('folder/b.md', dummyFolder);
+const fileMap_a = makeFile('folder/a.md', dummyFolder);
+const fileMap_c = makeFile('folder/c.md', dummyFolder);
 
 describe('resolveIndexPlaylist', () => {
 	it('follows the # List order and locates the current note', async () => {
@@ -93,6 +100,7 @@ describe('resolveIndexPlaylist', () => {
 		const result: FolderPlaylist | null = await resolveIndexPlaylist(
 			plugin as never,
 			'folder/a.md',
+			plugin.folder,
 		);
 		expect(result).not.toBeNull();
 		expect(result!.notes).toEqual(['folder/b.md', 'folder/a.md', 'folder/c.md']);
@@ -106,11 +114,9 @@ describe('resolveIndexPlaylist', () => {
 		});
 		// Hide index.md from the vault.
 		plugin.app.vault.getAbstractFileByPath = (p: string) =>
-			p === 'folder/index.md'
-				? null
-				: makeFile(p, { path: 'folder', name: 'folder', children: [] });
+			p === 'folder/index.md' ? null : makeFile(p, dummyFolder);
 
-		const result = await resolveIndexPlaylist(plugin as never, 'folder/a.md');
+		const result = await resolveIndexPlaylist(plugin as never, 'folder/a.md', plugin.folder);
 		expect(result).toBeNull();
 		expect(String(lastNotice())).toContain('No index.md found');
 	});
@@ -121,7 +127,7 @@ describe('resolveIndexPlaylist', () => {
 			readThrows: true,
 			linkDest: (link) => (link === 'a' ? fileMap_a : null),
 		});
-		const result = await resolveIndexPlaylist(plugin as never, 'folder/a.md');
+		const result = await resolveIndexPlaylist(plugin as never, 'folder/a.md', plugin.folder);
 		expect(result).toBeNull();
 		expect(String(lastNotice())).toContain('Failed to read index.md');
 	});
@@ -131,7 +137,7 @@ describe('resolveIndexPlaylist', () => {
 			indexContent: '# Intro\n- some prose',
 			linkDest: () => null,
 		});
-		const result = await resolveIndexPlaylist(plugin as never, 'folder/a.md');
+		const result = await resolveIndexPlaylist(plugin as never, 'folder/a.md', plugin.folder);
 		expect(result).toBeNull();
 		expect(String(lastNotice())).toContain('index.md has no "# List" items');
 	});
@@ -141,7 +147,7 @@ describe('resolveIndexPlaylist', () => {
 			indexContent: '# List\n- [[b]]\n- [[c]]',
 			linkDest: () => null,
 		});
-		const result = await resolveIndexPlaylist(plugin as never, 'folder/a.md');
+		const result = await resolveIndexPlaylist(plugin as never, 'folder/a.md', plugin.folder);
 		expect(result).toBeNull();
 		expect(String(lastNotice())).toContain('No resolvable links');
 	});
@@ -151,7 +157,7 @@ describe('resolveIndexPlaylist', () => {
 			indexContent: '# List\n- [[b]]\n- [[c]]',
 			linkDest: (link) => (link === 'b' ? fileMap_b : link === 'c' ? fileMap_c : null),
 		});
-		const result = await resolveIndexPlaylist(plugin as never, 'folder/a.md');
+		const result = await resolveIndexPlaylist(plugin as never, 'folder/a.md', plugin.folder);
 		expect(result).toBeNull();
 		expect(String(lastNotice())).toContain('Current note is not listed');
 	});
@@ -162,7 +168,7 @@ describe('resolveIndexPlaylist', () => {
 			linkDest: (link) =>
 				(({ a: fileMap_a, b: fileMap_b }) as Record<string, TFile | null>)[link] ?? null,
 		});
-		const result = await resolveIndexPlaylist(plugin as never, 'folder/a.md');
+		const result = await resolveIndexPlaylist(plugin as never, 'folder/a.md', plugin.folder);
 		expect(result).not.toBeNull();
 		expect(result!.notes).toEqual(['folder/a.md', 'folder/b.md']);
 		expect(result!.currentIndex).toBe(0);
@@ -173,7 +179,7 @@ describe('resolveIndexPlaylist', () => {
 			indexContent: '# List\n- [[b]]\n# Other\n- [[c]]',
 			linkDest: (link) => (link === 'b' ? fileMap_b : link === 'c' ? fileMap_c : null),
 		});
-		const result = await resolveIndexPlaylist(plugin as never, 'folder/b.md');
+		const result = await resolveIndexPlaylist(plugin as never, 'folder/b.md', plugin.folder);
 		expect(result).not.toBeNull();
 		expect(result!.notes).toEqual(['folder/b.md']);
 		expect(result!.currentIndex).toBe(0);

@@ -39,6 +39,7 @@ describe('DEFAULT_SETTINGS', () => {
 			defaultVolume: 1,
 			loopMode: 'folder',
 			folderOrderMode: 'tree',
+			folderLoopDepth: 1,
 			autoPlay: true,
 		});
 	});
