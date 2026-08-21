@@ -101,10 +101,18 @@ export class DialSettingTab extends PluginSettingTab {
 						this.plugin.settings.loopMode = mode;
 						await this.plugin.saveSettings();
 						this.plugin.applyLoopMode(mode);
+						// Show/hide the folder-loop-attached settings below.
+						folderSettingsEl.style.display = mode === 'folder' ? '' : 'none';
 					}),
 			);
 
-		new Setting(containerEl)
+		// Folder-loop-attached settings: only meaningful in "folder" mode, so
+		// show them only then. They are kept mounted (values persist) and
+		// toggled via display:none to avoid calling the deprecated display().
+		const folderSettingsEl = containerEl.createDiv();
+		folderSettingsEl.style.display = this.plugin.settings.loopMode === 'folder' ? '' : 'none';
+
+		new Setting(folderSettingsEl)
 			.setName('Folder order mode')
 			.setDesc(
 				'How the next episode is chosen in "Loop current folder" mode. ' +
@@ -124,7 +132,7 @@ export class DialSettingTab extends PluginSettingTab {
 					}),
 			);
 
-		new Setting(containerEl)
+		new Setting(folderSettingsEl)
 			.setName('Folder loop depth')
 			.setDesc(
 				'How many folder levels up from the current note define the loop ' +
