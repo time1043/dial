@@ -4,10 +4,16 @@ import type { SpeakRequest, SpeechProvider } from '@/modules/speech/speech-provi
 
 import { orderSpeechEngines, SpeechChain } from '@/modules/speech/speech-chain';
 
-function fakeEngine(id: string, available: boolean, ok = true): SpeechProvider {
+function fakeEngine(
+	id: string,
+	available: boolean,
+	ok = true,
+	kind: 'system' | 'cloud' = 'system',
+): SpeechProvider {
 	return {
 		id,
 		label: id,
+		kind,
 		isAvailable: () => available,
 		speak: ok ? vi.fn().mockResolvedValue(undefined) : vi.fn().mockRejectedValue(new Error(id)),
 	};
@@ -35,13 +41,18 @@ describe('orderSpeechEngines', () => {
 });
 
 describe('SpeechChain', () => {
-	it('is available when any engine is, and reports statuses in order', () => {
+	it('is available when any engine is, and reports state in order', () => {
 		const chain = new SpeechChain([fakeEngine('system', false), fakeEngine('azure', true)]);
 		expect(chain.isAvailable()).toBe(true);
 		expect(chain.statuses()).toEqual([
-			{ id: 'system', label: 'system', available: false },
-			{ id: 'azure', label: 'azure', available: true },
+			{ id: 'system', label: 'system', state: 'unavailable' },
+			{ id: 'azure', label: 'azure', state: 'available' },
 		]);
+	});
+
+	it('marks an unavailable cloud engine as partial (needs key), not red', () => {
+		const chain = new SpeechChain([fakeEngine('azure', false, true, 'cloud')]);
+		expect(chain.statuses()[0]?.state).toBe('partial');
 	});
 
 	it('skips unavailable engines and falls back when one fails mid-speak', async () => {

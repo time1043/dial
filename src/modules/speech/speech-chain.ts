@@ -1,5 +1,7 @@
 import type { SpeakRequest, SpeechProvider } from './speech-provider';
 
+export type SpeechEngineState = 'available' | 'partial' | 'unavailable';
+
 /**
  * Ordered pronunciation pipeline: engines are tried top to bottom, the
  * first available one that succeeds wins. Implements {@link SpeechProvider}
@@ -8,15 +10,19 @@ import type { SpeakRequest, SpeechProvider } from './speech-provider';
 export class SpeechChain implements SpeechProvider {
 	readonly id = 'chain';
 	readonly label = 'Engine chain';
+	readonly kind = 'system' as const;
 
 	constructor(private readonly providers: readonly SpeechProvider[]) {}
 
-	/** One row per engine, in try order, for the settings traffic lights. */
-	statuses(): { id: string; label: string; available: boolean }[] {
+	/**
+	 * One row per engine, in try order, for the settings traffic lights.
+	 * `partial` = a cloud engine that would run once its key is set.
+	 */
+	statuses(): { id: string; label: string; state: SpeechEngineState }[] {
 		return this.providers.map((provider) => ({
 			id: provider.id,
 			label: provider.label,
-			available: provider.isAvailable(),
+			state: engineState(provider),
 		}));
 	}
 
@@ -73,4 +79,9 @@ export function orderSpeechEngines(
 		}
 	}
 	return [...ordered, ...remaining.values()];
+}
+
+function engineState(provider: SpeechProvider): SpeechEngineState {
+	if (provider.isAvailable()) return 'available';
+	return provider.kind === 'cloud' ? 'partial' : 'unavailable';
 }

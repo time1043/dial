@@ -16,7 +16,10 @@ export interface HttpTextRequest {
 
 export interface HttpTextResponse {
 	status: number;
+	/** Body as text (JSON APIs, error pages). */
 	text: string;
+	/** Body as bytes when the endpoint returns audio/binary data. */
+	arrayBuffer?: ArrayBuffer;
 }
 
 export type HttpFn = (request: HttpTextRequest) => Promise<HttpTextResponse>;
@@ -25,5 +28,6 @@ export function obsidianHttp(request: HttpTextRequest): Promise<HttpTextResponse
 	return requestUrl({ ...request, throw: false }).then((response) => ({
 		status: response.status,
 		text: response.text,
+		arrayBuffer: response.arrayBuffer,
 	}));
 }

@@ -12,6 +12,7 @@ export const SYSTEM_SPEECH_ID = 'system';
 export class SystemSpeechProvider implements SpeechProvider {
 	readonly id = SYSTEM_SPEECH_ID;
 	readonly label = 'System (Web Speech)';
+	readonly kind = 'system' as const;
 
 	isAvailable(): boolean {
 		return (

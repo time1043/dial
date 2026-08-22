@@ -34,6 +34,9 @@ export interface DialSettings {
 	 * here are appended at the end.
 	 */
 	speechEngineOrder: string[];
+	azureSpeechKey: string;
+	azureSpeechRegion: string;
+	googleSpeechKey: string;
 	/** Master opt-in for cloud translation (policy: default off). */
 	translationEnabled: boolean;
 	translationSourceLang: string;
@@ -63,6 +66,9 @@ export const DEFAULT_SETTINGS: DialSettings = {
 	wordPronunciationLang: 'en-US',
 	wordAutoPronounce: true,
 	speechEngineOrder: ['system', 'azure', 'google'],
+	azureSpeechKey: '',
+	azureSpeechRegion: '',
+	googleSpeechKey: '',
 	translationEnabled: false,
 	translationSourceLang: 'en',
 	translationTargetLang: 'zh',
@@ -351,9 +357,7 @@ export class DialSettingTab extends PluginSettingTab {
 						.map((status) => ({
 							id: status.id,
 							label: status.label,
-							dot: status.available
-								? ('available' as const)
-								: ('unavailable' as const),
+							dot: status.state,
 						})),
 				'speechEngineOrder',
 			);
@@ -363,6 +367,44 @@ export class DialSettingTab extends PluginSettingTab {
 		new Setting(containerEl).addButton((button) =>
 			button.setButtonText('Re-detect engines').onClick(() => renderEngines()),
 		);
+
+		new Setting(containerEl)
+			.setName('Azure Speech key')
+			.setDesc(
+				'API key of your Speech resource (F0 free tier works). The yellow dot ' +
+					'above turns green once key and region are set.',
+			)
+			.addText((text) => {
+				text.inputEl.type = 'password';
+				text.setValue(this.plugin.settings.azureSpeechKey).onChange(async (value) => {
+					this.plugin.settings.azureSpeechKey = value;
+					await this.plugin.saveSettings();
+					renderEngines();
+				});
+			});
+
+		new Setting(containerEl)
+			.setName('Azure Speech region')
+			.setDesc('Region of your Speech resource, e.g. eastus.')
+			.addText((text) =>
+				text.setValue(this.plugin.settings.azureSpeechRegion).onChange(async (value) => {
+					this.plugin.settings.azureSpeechRegion = value.trim();
+					await this.plugin.saveSettings();
+					renderEngines();
+				}),
+			);
+
+		new Setting(containerEl)
+			.setName('Google TTS key')
+			.setDesc('API key of your Cloud Text-to-Speech enabled project.')
+			.addText((text) => {
+				text.inputEl.type = 'password';
+				text.setValue(this.plugin.settings.googleSpeechKey).onChange(async (value) => {
+					this.plugin.settings.googleSpeechKey = value;
+					await this.plugin.saveSettings();
+					renderEngines();
+				});
+			});
 
 		new Setting(containerEl)
 			.setName('Pronunciation language')
