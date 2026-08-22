@@ -1,6 +1,9 @@
 import { ItemView, Notice, Platform, TFile, WorkspaceLeaf } from 'obsidian';
 
+import type DialPlugin from '@/main';
 import type { ABLoopState, LoopMode, Subtitle } from '@/types';
+
+import { subtitlePanelVisibility } from '@/settings';
 
 import { SubtitlePanel } from './subtitle-panel';
 
@@ -39,9 +42,11 @@ export class VideoPlayerView extends ItemView {
 	private savePositionCallback: ((time: number) => void) | null = null;
 	private saveTimer: ReturnType<typeof setTimeout> | null = null;
 	private panel: SubtitlePanel | null = null;
+	private plugin?: DialPlugin;
 
-	constructor(leaf: WorkspaceLeaf) {
+	constructor(leaf: WorkspaceLeaf, plugin?: DialPlugin) {
 		super(leaf);
+		this.plugin = plugin;
 	}
 
 	getViewType(): string {
@@ -143,7 +148,10 @@ export class VideoPlayerView extends ItemView {
 	 */
 	private setupMobilePanel(container: HTMLElement): void {
 		container.addClass('dial-video-mobile');
-		this.panel = new SubtitlePanel(container);
+		this.panel = new SubtitlePanel(
+			container,
+			this.plugin ? subtitlePanelVisibility(this.plugin.settings) : undefined,
+		);
 		this.panel.setCallbacks({
 			onSubtitleClick: (sub) => {
 				this.jumpToTime(sub.start);

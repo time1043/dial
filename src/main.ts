@@ -56,9 +56,9 @@ export default class DialPlugin extends Plugin {
 		await this.loadPersistedData();
 		this.positions.setPersistCallback(() => this.persistAll());
 
-		this.registerView(VIDEO_PLAYER_VIEW_TYPE, (leaf) => new VideoPlayerView(leaf));
+		this.registerView(VIDEO_PLAYER_VIEW_TYPE, (leaf) => new VideoPlayerView(leaf, this));
 		this.registerView(URL_PLAYER_VIEW_TYPE, (leaf) => new UrlPlayerView(leaf));
-		this.registerView(SUBTITLE_VIEW_TYPE, (leaf) => new SubtitleView(leaf));
+		this.registerView(SUBTITLE_VIEW_TYPE, (leaf) => new SubtitleView(leaf, this));
 		this.registerView(TYPE_SUBTITLE_VIEW_TYPE, (leaf) => new TypeSubtitleView(leaf));
 		this.registerView(TYPE_VIEW_TYPE, (leaf) => new TypeView(leaf));
 
