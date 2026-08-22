@@ -1,6 +1,8 @@
 import { Notice, Platform, setIcon } from 'obsidian';
 
-import { isSpeechSynthesisAvailable } from '@/utils/speech';
+import type { SpeechProvider } from '@/modules/speech/speech-provider';
+
+import { systemSpeechProvider } from '@/modules/speech/system-speech-provider';
 
 const SHOW_DELAY_MS = 250;
 const HIDE_DELAY_MS = 200;
@@ -25,6 +27,11 @@ export interface WordCardOptions {
 	 * panels without a rebuild. Absent fields fall back to defaults.
 	 */
 	getConfig?: () => Partial<WordCardConfig>;
+	/**
+	 * Pronunciation engine. Defaults to the system Web Speech provider;
+	 * callers inject an engine chain to enable cloud fallbacks.
+	 */
+	speech?: SpeechProvider;
 }
 
 /**
@@ -46,6 +53,10 @@ export class WordCard {
 
 	private get config(): WordCardConfig {
 		return { ...DEFAULT_CONFIG, ...this.options.getConfig?.() };
+	}
+
+	private get speech(): SpeechProvider {
+		return this.options.speech ?? systemSpeechProvider;
 	}
 
 	/**
@@ -116,10 +127,10 @@ export class WordCard {
 		const wordEl = this.cardEl.createSpan({ cls: 'dial-word-card-word' });
 		wordEl.textContent = word;
 
-		// Hide the speak affordance entirely when the platform has no
-		// speech synthesis (Android WebView) — a dead button that only
+		// Hide the speak affordance entirely when no engine is available
+		// (Android WebView without cloud engines) — a dead button that only
 		// shows an error toast is worse than no button.
-		if (isSpeechSynthesisAvailable()) {
+		if (this.speech.isAvailable()) {
 			const speakBtnEl = this.cardEl.createEl('button', {
 				cls: 'dial-word-card-speak',
 				attr: { 'aria-label': 'Pronounce word', title: 'Pronounce word' },
@@ -127,7 +138,7 @@ export class WordCard {
 			setIcon(speakBtnEl, 'volume-2');
 			speakBtnEl.addEventListener('click', (e) => {
 				e.stopPropagation();
-				this.speak(word);
+				this.pronounce(word);
 			});
 		}
 
@@ -145,10 +156,10 @@ export class WordCard {
 		document.body.appendChild(this.cardEl);
 		this.position(span);
 
-		// Auto-pronounce once on open (if enabled and the platform supports
-		// it); the button replays on demand.
-		if (this.config.autoPronounce && isSpeechSynthesisAvailable()) {
-			this.speak(word, false);
+		// Auto-pronounce once on open (if enabled and an engine is
+		// available); the button replays on demand.
+		if (this.config.autoPronounce && this.speech.isAvailable()) {
+			this.pronounce(word, false);
 		}
 	}
 
@@ -170,25 +181,19 @@ export class WordCard {
 	}
 
 	/**
-	 * Pronounce the word with the Web Speech API (offline TTS).
+	 * Pronounce the word through the configured speech engine.
 	 *
-	 * @param notifyIfUnavailable When false (auto-pronounce on card open),
-	 *   silently skip if the API is missing so accidental hovers never
-	 *   spam the unavailable-notice. Explicit button clicks keep it.
+	 * @param notifyOnError When false (auto-pronounce on card open),
+	 *   failures are silent so accidental hovers never spam the notice.
+	 *   Explicit button clicks keep it.
 	 */
-	private speak(word: string, notifyIfUnavailable = true): void {
+	private pronounce(word: string, notifyOnError = true): void {
 		if (!word) return;
-		if (!isSpeechSynthesisAvailable()) {
-			if (notifyIfUnavailable) {
-				new Notice('Speech synthesis is not available in this environment');
+		this.speech.speak({ word, lang: this.config.pronunciationLang }).catch(() => {
+			if (notifyOnError) {
+				new Notice('Pronunciation failed');
 			}
-			return;
-		}
-		const utterance = new SpeechSynthesisUtterance(word);
-		utterance.lang = this.config.pronunciationLang;
-		// Replace any in-flight utterance so rapid taps do not queue up.
-		window.speechSynthesis.cancel();
-		window.speechSynthesis.speak(utterance);
+		});
 	}
 
 	/**
