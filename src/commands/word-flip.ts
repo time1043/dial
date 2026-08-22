@@ -84,3 +84,25 @@ export async function flipWordsChooseBook(plugin: DialPlugin): Promise<void> {
 		}
 	})(plugin.app).open();
 }
+
+/**
+ * Journey-file resume link (obsidian://dial?type=word-flip&book=…&index=…).
+ * Lands in browse mode — starting a session stays an explicit press of
+ * Start. `index` is 1-based in the URL for human readability.
+ */
+export async function resumeWordFlip(
+	plugin: DialPlugin,
+	bookParam?: string,
+	indexParam?: string,
+): Promise<void> {
+	if (!bookParam) return;
+	const bookPath = decodeURIComponent(bookParam);
+	const file = plugin.app.vault.getAbstractFileByPath(bookPath);
+	if (!(file instanceof TFile)) {
+		new Notice(`Word book not found: ${bookPath}`);
+		return;
+	}
+	const oneBased = Number.parseInt(indexParam ?? '1', 10);
+	const startAt = Number.isNaN(oneBased) ? undefined : oneBased - 1;
+	await openWordFlipBook(plugin, file, { startAt, autoStart: false });
+}

@@ -10,7 +10,12 @@ import { openTrace } from './commands/open-trace';
 import { openTypeSession, resumeTypeSession } from './commands/open-type-session';
 import { openUrlPlayerFromActiveNote } from './commands/open-url-player';
 import { togglePlay } from './commands/toggle-play';
-import { flipWords, flipWordsChooseBook, flipWordsFromActiveFile } from './commands/word-flip';
+import {
+	flipWords,
+	flipWordsChooseBook,
+	flipWordsFromActiveFile,
+	resumeWordFlip,
+} from './commands/word-flip';
 import {
 	getSubtitleView,
 	getVideoView,
@@ -188,6 +193,12 @@ export default class DialPlugin extends Plugin {
 
 		// Handle obsidian://dial?note=path&seconds=N and obsidian://dial?type=id links
 		this.registerObsidianProtocolHandler('dial', async (params) => {
+			// Word flip resume (journey file quick link) — browse mode
+			if (params.type === 'word-flip') {
+				await resumeWordFlip(this, params.book, params.index);
+				return;
+			}
+
 			// Type session resume
 			if (params.type) {
 				await resumeTypeSession(this, params.type);
