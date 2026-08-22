@@ -82,6 +82,7 @@ export class WordFlipView extends ItemView {
 		this.bookFile = file;
 		this.parsed = parsed;
 		this.reportProblems(parsed);
+		this.plugin.wordFlip.setLastBook(file.path);
 
 		if (parsed.words.length === 0) {
 			this.renderEmpty(
@@ -100,6 +101,9 @@ export class WordFlipView extends ItemView {
 		if (!words || words.length === 0) return;
 		this.index = Math.min(Math.max(index, 0), words.length - 1);
 		this.revealed = false;
+		if (this.bookFile) {
+			this.plugin.wordFlip.recordIndex(this.bookFile.path, this.index);
+		}
 		this.renderCard();
 	}
 
@@ -115,7 +119,9 @@ export class WordFlipView extends ItemView {
 			index: this.index,
 			total: this.parsed.words.length,
 			revealed: this.revealed,
-			marked: false,
+			marked:
+				this.bookFile !== null &&
+				this.plugin.wordFlip.isMarked(this.bookFile.path, entry.word),
 			revealMode: this.plugin.settings.wordFlipRevealMode,
 		});
 	}

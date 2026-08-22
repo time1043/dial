@@ -26,6 +26,7 @@ import { PositionManager } from './modules/position-manager/position-manager';
 import { getJumpTarget } from './modules/subtitle-navigator/subtitle-navigator';
 import { parseSubtitle } from './modules/subtitle-parsers';
 import { TraceManager } from './modules/trace-manager/trace-manager';
+import { WordFlipStore } from './modules/word-flip/flip-store';
 import { DEFAULT_SETTINGS, DialSettingTab, subtitlePanelVisibility } from './settings';
 import { SUBTITLE_VIEW_TYPE, SubtitleView } from './ui/subtitle-view';
 import { TYPE_SUBTITLE_VIEW_TYPE, TypeSubtitleView } from './ui/type-subtitle-view';
@@ -44,6 +45,8 @@ export default class DialPlugin extends Plugin {
 	readonly abLoop = new AbLoopManager();
 
 	readonly trace = new TraceManager();
+
+	readonly wordFlip = new WordFlipStore();
 	private subtitles: Subtitle[] = [];
 	activeNotePath: string | null = null;
 	activeTypeSessionId: string | null = null;
@@ -56,6 +59,7 @@ export default class DialPlugin extends Plugin {
 	async onload(): Promise<void> {
 		await this.loadPersistedData();
 		this.positions.setPersistCallback(() => this.persistAll());
+		this.wordFlip.setPersistCallback(() => this.persistAll());
 
 		this.registerView(VIDEO_PLAYER_VIEW_TYPE, (leaf) => new VideoPlayerView(leaf, this));
 		this.registerView(URL_PLAYER_VIEW_TYPE, (leaf) => new UrlPlayerView(leaf));
@@ -230,6 +234,7 @@ export default class DialPlugin extends Plugin {
 			data['settings'] as Partial<DialSettings> | undefined,
 		);
 		this.positions.load((data['positions'] as Record<string, number> | undefined) ?? {});
+		this.wordFlip.load(data['wordFlip']);
 		this.activeTypeSessionId = (data['activeTypeSessionId'] as string | null) ?? null;
 	}
 
@@ -478,6 +483,7 @@ export default class DialPlugin extends Plugin {
 			settings: this.settings,
 			positions: this.positions.getAll(),
 			activeTypeSessionId: this.activeTypeSessionId,
+			wordFlip: this.wordFlip.serialize(),
 		});
 	}
 
