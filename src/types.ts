@@ -57,6 +57,14 @@ export interface TypeSentenceRecord {
 	completedAt: string | null;
 }
 
+/**
+ * How the meaning block (ipa + meaning + forms) is shown on a flip card.
+ *
+ * - `hidden` : hidden until the card is tapped — forces active recall.
+ * - `always` : shown immediately, for fast review passes.
+ */
+export type WordFlipRevealMode = 'hidden' | 'always';
+
 export interface TypeSessionData {
 	id: string;
 	videoPath: string;
