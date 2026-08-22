@@ -5,7 +5,12 @@ import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
 import { isSpeechSynthesisAvailable } from '@/utils/speech';
 
 import type DialPlugin from './main';
-import type { FolderOrderMode, LoopMode, SubtitlePanelVisibility } from './types';
+import type {
+	FolderOrderMode,
+	LoopMode,
+	SubtitlePanelVisibility,
+	WordFlipRevealMode,
+} from './types';
 
 export interface DialSettings {
 	videoLibraryPath: string;
@@ -22,6 +27,8 @@ export interface DialSettings {
 	showSubtitleSearch: boolean;
 	wordPronunciationLang: string;
 	wordAutoPronounce: boolean;
+	vocabularyBucketPath: string;
+	wordFlipRevealMode: WordFlipRevealMode;
 }
 
 export const DEFAULT_SETTINGS: DialSettings = {
@@ -39,6 +46,8 @@ export const DEFAULT_SETTINGS: DialSettings = {
 	showSubtitleSearch: true,
 	wordPronunciationLang: 'en-US',
 	wordAutoPronounce: true,
+	vocabularyBucketPath: '_lib/vocabulary-bucket',
+	wordFlipRevealMode: 'hidden',
 };
 
 /** Languages offered for word card pronunciation (BCP 47 → label). */
@@ -369,6 +378,44 @@ export class DialSettingTab extends PluginSettingTab {
 					this.plugin.settings.wordAutoPronounce = value;
 					await this.plugin.saveSettings();
 				}),
+			);
+
+		new Setting(containerEl).setName('Word flip').setHeading();
+
+		new Setting(containerEl)
+			.setName('Vocabulary bucket path')
+			.setDesc(
+				'Vault-relative folder that holds word books. Every .md file in it ' +
+					'(recursively) is listed as a book; drop a shared book file into ' +
+					'this folder to import it.',
+			)
+			.addText((text) =>
+				text
+					.setPlaceholder('_lib/vocabulary-bucket')
+					.setValue(this.plugin.settings.vocabularyBucketPath)
+					.onChange(async (value) => {
+						this.plugin.settings.vocabularyBucketPath =
+							trimTrailingSlash(value) || DEFAULT_SETTINGS.vocabularyBucketPath;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName('Meaning visibility')
+			.setDesc(
+				'"Reveal on tap" shows only the word first — tap the card to reveal ' +
+					'phonetics, meaning and word forms (active recall). "Always visible" ' +
+					'shows everything immediately for fast review passes.',
+			)
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOption('hidden', 'Reveal on tap')
+					.addOption('always', 'Always visible')
+					.setValue(this.plugin.settings.wordFlipRevealMode)
+					.onChange(async (value) => {
+						this.plugin.settings.wordFlipRevealMode = value as WordFlipRevealMode;
+						await this.plugin.saveSettings();
+					}),
 			);
 	}
 }

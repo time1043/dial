@@ -11,6 +11,13 @@ import { openTypeSession, resumeTypeSession } from './commands/open-type-session
 import { openUrlPlayerFromActiveNote } from './commands/open-url-player';
 import { togglePlay } from './commands/toggle-play';
 import {
+	createWordBook,
+	flipWords,
+	flipWordsChooseBook,
+	flipWordsFromActiveFile,
+	resumeWordFlip,
+} from './commands/word-flip';
+import {
 	getSubtitleView,
 	getVideoView,
 	syncABToViews,
@@ -26,12 +33,14 @@ import { PositionManager } from './modules/position-manager/position-manager';
 import { getJumpTarget } from './modules/subtitle-navigator/subtitle-navigator';
 import { parseSubtitle } from './modules/subtitle-parsers';
 import { TraceManager } from './modules/trace-manager/trace-manager';
+import { WordFlipStore } from './modules/word-flip/flip-store';
 import { DEFAULT_SETTINGS, DialSettingTab, subtitlePanelVisibility } from './settings';
 import { SUBTITLE_VIEW_TYPE, SubtitleView } from './ui/subtitle-view';
 import { TYPE_SUBTITLE_VIEW_TYPE, TypeSubtitleView } from './ui/type-subtitle-view';
 import { TYPE_VIEW_TYPE, TypeView } from './ui/type-view';
 import { URL_PLAYER_VIEW_TYPE, UrlPlayerView } from './ui/url-player-view';
 import { VIDEO_PLAYER_VIEW_TYPE, VideoPlayerView } from './ui/video-player-view';
+import { WORD_FLIP_VIEW_TYPE, WordFlipView } from './ui/word-flip-view';
 import { formatTime } from './utils/time';
 import { resolveMediaPaths } from './vault/paths';
 
@@ -43,6 +52,8 @@ export default class DialPlugin extends Plugin {
 	readonly abLoop = new AbLoopManager();
 
 	readonly trace = new TraceManager();
+
+	readonly wordFlip = new WordFlipStore();
 	private subtitles: Subtitle[] = [];
 	activeNotePath: string | null = null;
 	activeTypeSessionId: string | null = null;
@@ -55,12 +66,14 @@ export default class DialPlugin extends Plugin {
 	async onload(): Promise<void> {
 		await this.loadPersistedData();
 		this.positions.setPersistCallback(() => this.persistAll());
+		this.wordFlip.setPersistCallback(() => this.persistAll());
 
 		this.registerView(VIDEO_PLAYER_VIEW_TYPE, (leaf) => new VideoPlayerView(leaf, this));
 		this.registerView(URL_PLAYER_VIEW_TYPE, (leaf) => new UrlPlayerView(leaf));
 		this.registerView(SUBTITLE_VIEW_TYPE, (leaf) => new SubtitleView(leaf, this));
 		this.registerView(TYPE_SUBTITLE_VIEW_TYPE, (leaf) => new TypeSubtitleView(leaf));
 		this.registerView(TYPE_VIEW_TYPE, (leaf) => new TypeView(leaf));
+		this.registerView(WORD_FLIP_VIEW_TYPE, (leaf) => new WordFlipView(leaf, this));
 
 		this.addRibbonIcon('play', 'Dial', () => {
 			void openVideoPlayer(this);
@@ -149,6 +162,30 @@ export default class DialPlugin extends Plugin {
 			callback: () => openTrace(this),
 		});
 
+		this.addCommand({
+			id: 'word-flip-open',
+			name: 'Flip words',
+			callback: () => void flipWords(this),
+		});
+
+		this.addCommand({
+			id: 'word-flip-open-current',
+			name: 'Flip words: from the active book',
+			callback: () => void flipWordsFromActiveFile(this),
+		});
+
+		this.addCommand({
+			id: 'word-flip-choose-book',
+			name: 'Flip words: choose a book',
+			callback: () => void flipWordsChooseBook(this),
+		});
+
+		this.addCommand({
+			id: 'word-flip-create-book',
+			name: 'New word book',
+			callback: () => void createWordBook(this),
+		});
+
 		this.addSettingTab(new DialSettingTab(this.app, this));
 
 		// Re-wire sync after vault reload restores views.
@@ -163,6 +200,12 @@ export default class DialPlugin extends Plugin {
 
 		// Handle obsidian://dial?note=path&seconds=N and obsidian://dial?type=id links
 		this.registerObsidianProtocolHandler('dial', async (params) => {
+			// Word flip resume (journey file quick link) — browse mode
+			if (params.type === 'word-flip') {
+				await resumeWordFlip(this, params.book, params.index);
+				return;
+			}
+
 			// Type session resume
 			if (params.type) {
 				await resumeTypeSession(this, params.type);
@@ -228,6 +271,7 @@ export default class DialPlugin extends Plugin {
 			data['settings'] as Partial<DialSettings> | undefined,
 		);
 		this.positions.load((data['positions'] as Record<string, number> | undefined) ?? {});
+		this.wordFlip.load(data['wordFlip']);
 		this.activeTypeSessionId = (data['activeTypeSessionId'] as string | null) ?? null;
 	}
 
@@ -476,6 +520,7 @@ export default class DialPlugin extends Plugin {
 			settings: this.settings,
 			positions: this.positions.getAll(),
 			activeTypeSessionId: this.activeTypeSessionId,
+			wordFlip: this.wordFlip.serialize(),
 		});
 	}
 

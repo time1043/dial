@@ -48,6 +48,8 @@ describe('DEFAULT_SETTINGS', () => {
 			showSubtitleSearch: true,
 			wordPronunciationLang: 'en-US',
 			wordAutoPronounce: true,
+			vocabularyBucketPath: '_lib/vocabulary-bucket',
+			wordFlipRevealMode: 'hidden',
 		});
 	});
 });

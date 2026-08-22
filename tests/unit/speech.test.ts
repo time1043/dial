@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { speechStatusText } from '@/settings';
-import { isSpeechSynthesisAvailable } from '@/utils/speech';
+import { isSpeechSynthesisAvailable, speakWord } from '@/utils/speech';
 
 describe('isSpeechSynthesisAvailable', () => {
 	it('is false in the node environment (no speech APIs at all)', () => {
@@ -24,5 +24,15 @@ describe('speechStatusText', () => {
 		const text = speechStatusText('unavailable');
 		expect(text).toContain('Not available');
 		expect(text).toContain('speaker');
+	});
+});
+
+describe('speakWord', () => {
+	it('returns silently in node (no speech APIs) when notify is off', () => {
+		expect(() => speakWord('abandon', 'en-US', false)).not.toThrow();
+	});
+
+	it('does nothing for an empty word', () => {
+		expect(() => speakWord('', 'en-US')).not.toThrow();
 	});
 });

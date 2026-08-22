@@ -1,3 +1,5 @@
+import { Notice } from 'obsidian';
+
 /**
  * Whether this environment can pronounce words with the Web Speech API.
  *
@@ -12,4 +14,26 @@ export function isSpeechSynthesisAvailable(): boolean {
 	return (
 		typeof speechSynthesis !== 'undefined' && typeof SpeechSynthesisUtterance !== 'undefined'
 	);
+}
+
+/**
+ * Pronounce one word with the Web Speech API (offline TTS).
+ *
+ * Any in-flight utterance is cancelled first so rapid taps replace rather
+ * than queue. When the API is missing (Android WebView), silently skips for
+ * auto-pronounce (`notifyIfUnavailable = false`) or toasts once for an
+ * explicit button press.
+ */
+export function speakWord(word: string, lang: string, notifyIfUnavailable = true): void {
+	if (!word) return;
+	if (!isSpeechSynthesisAvailable()) {
+		if (notifyIfUnavailable) {
+			new Notice('Speech synthesis is not available in this environment');
+		}
+		return;
+	}
+	const utterance = new SpeechSynthesisUtterance(word);
+	utterance.lang = lang;
+	window.speechSynthesis.cancel();
+	window.speechSynthesis.speak(utterance);
 }

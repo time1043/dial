@@ -552,3 +552,348 @@
 .dial-subtitle-word:hover {
 	background: var(--background-modifier-hover);
 }
+
+/* ---- Word flip ---- */
+
+.dial-word-flip {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	overflow: hidden;
+}
+
+.dial-word-flip-area {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	position: relative;
+	overflow: hidden;
+	touch-action: none;
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+.dial-word-flip-card {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 16px;
+	padding: 24px;
+	cursor: pointer;
+	min-height: 0;
+}
+
+.dial-word-flip-card.is-empty-state {
+	cursor: default;
+}
+
+.dial-word-flip-card-index {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 16px;
+	color: var(--text-muted, #999999);
+}
+
+.dial-word-flip-card-mark-badge {
+	display: none;
+	font-size: 14px;
+	color: var(--text-accent, #7f5df2);
+}
+
+.dial-word-flip-card-mark-badge.is-marked {
+	display: inline;
+}
+
+.dial-word-flip-card-word {
+	font-size: clamp(40px, 10vmin, 80px);
+	font-weight: 700;
+	line-height: 1.15;
+	text-align: center;
+	color: var(--text-normal, #dcddde);
+	overflow-wrap: anywhere;
+}
+
+.dial-word-flip-card-answer {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10px;
+	min-height: 0;
+}
+
+/* Space-preserving hide so revealing never shifts the layout. */
+.dial-word-flip-card-answer.is-hidden {
+	visibility: hidden;
+}
+
+.dial-word-flip-card-ipa-line {
+	font-size: 20px;
+	color: var(--text-muted, #999999);
+}
+
+.dial-word-flip-card-meaning-line {
+	font-size: 22px;
+	line-height: 1.4;
+	color: var(--text-normal, #dcddde);
+	text-align: center;
+}
+
+.dial-word-flip-card-forms-line {
+	font-size: 15px;
+	line-height: 1.4;
+	color: var(--text-faint, #999999);
+	text-align: center;
+}
+
+.dial-word-flip-empty {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 24px;
+	text-align: center;
+	color: var(--text-muted, #999999);
+}
+
+/* Directional card switch: the real card slides in from one edge while a
+   cloned ghost of the old card slides out the other edge in lockstep. */
+.dial-word-flip-card {
+	transition: transform 240ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+.dial-word-flip-card.is-enter-next,
+.dial-word-flip-card.is-enter-prev {
+	transition: none;
+}
+
+.dial-word-flip-card.is-enter-next {
+	transform: translateY(100%);
+}
+
+.dial-word-flip-card.is-enter-prev {
+	transform: translateY(-100%);
+}
+
+.dial-word-flip-card-ghost {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+}
+
+.dial-word-flip-card-ghost.is-leave-next {
+	animation: dial-word-flip-leave-next 240ms cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+
+.dial-word-flip-card-ghost.is-leave-prev {
+	animation: dial-word-flip-leave-prev 240ms cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+
+@keyframes dial-word-flip-leave-next {
+	from {
+		transform: translateY(0);
+	}
+	to {
+		transform: translateY(-100%);
+	}
+}
+
+@keyframes dial-word-flip-leave-prev {
+	from {
+		transform: translateY(0);
+	}
+	to {
+		transform: translateY(100%);
+	}
+}
+
+/* Swipe: off-screen neighbor card and no-transition finger tracking. */
+.dial-word-flip-card-neighbor {
+	position: absolute;
+	inset: 0;
+	visibility: hidden;
+	pointer-events: none;
+}
+
+.dial-word-flip-card.is-dragging,
+.dial-word-flip-card-neighbor.is-dragging {
+	transition: none;
+}
+
+/* Footer with session / mark / speak buttons. */
+.dial-word-flip-footer {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+	border-top: 1px solid var(--background-modifier-border, #dddddd);
+}
+
+.dial-word-flip-footer button {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 14px;
+	font-size: 14px;
+	border: 1px solid var(--background-modifier-border, #dddddd);
+	border-radius: var(--radius-s, 4px);
+	background: var(--interactive-normal, #eeeeee);
+	color: var(--text-normal, #dcddde);
+	cursor: pointer;
+}
+
+.dial-word-flip-footer button:hover {
+	background: var(--interactive-hover, #e6e6e6);
+}
+
+.dial-word-flip-footer button:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+.dial-word-flip-session-btn.is-active-session {
+	border-color: var(--text-error, #e0563f);
+	color: var(--text-error, #e0563f);
+}
+
+.dial-word-flip-btn-icon {
+	display: inline-flex;
+	align-items: center;
+}
+
+.dial-word-flip-btn-icon svg {
+	width: 14px;
+	height: 14px;
+}
+
+/* Mark button: filled star while the current word is marked. */
+.dial-word-flip-mark-btn.is-marked {
+	color: var(--text-accent, #7f5df2);
+	border-color: var(--text-accent, #7f5df2);
+}
+
+.dial-word-flip-mark-btn.is-marked svg {
+	fill: currentColor;
+}
+
+/* Top progress bar: position indicator and drag-to-seek control. */
+.dial-word-flip-progress {
+	padding: 10px 16px 0;
+}
+
+.dial-word-flip-progress-track {
+	position: relative;
+	height: 6px;
+	border-radius: 3px;
+	background: var(--background-modifier-border, #dddddd);
+	cursor: pointer;
+	touch-action: none;
+}
+
+.dial-word-flip-progress-fill {
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 0%;
+	border-radius: 3px;
+	background: var(--text-accent, #7f5df2);
+}
+
+.dial-word-flip-progress-handle {
+	position: absolute;
+	top: 50%;
+	left: 0%;
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	background: var(--text-accent, #7f5df2);
+	transform: translate(-50%, -50%);
+	opacity: 0;
+	transition: opacity 120ms ease;
+}
+
+.dial-word-flip-progress-track:hover .dial-word-flip-progress-handle,
+.dial-word-flip-progress-track.is-seeking .dial-word-flip-progress-handle {
+	opacity: 1;
+}
+
+/* Word preview overlay while seeking. */
+.dial-word-flip-seek-preview {
+	position: absolute;
+	inset: 0;
+	z-index: 5;
+	display: none;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	background: var(--background-primary, #ffffff);
+	background: color-mix(in srgb, var(--background-primary, #ffffff) 88%, transparent);
+}
+
+.dial-word-flip-seek-preview.is-visible {
+	display: flex;
+}
+
+.dial-word-flip-seek-preview-index {
+	font-size: 16px;
+	color: var(--text-muted, #999999);
+}
+
+.dial-word-flip-seek-preview-word {
+	font-size: clamp(32px, 8vmin, 56px);
+	font-weight: 700;
+	color: var(--text-normal, #dcddde);
+}
+
+/* Finale card shown after the last word. */
+.dial-word-flip-end-card {
+	position: absolute;
+	inset: 0;
+	z-index: 6;
+	display: none;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 18px;
+	padding: 24px;
+	background: var(--background-primary, #ffffff);
+}
+
+.dial-word-flip-end-card.is-visible {
+	display: flex;
+}
+
+.dial-word-flip-end-title {
+	font-size: 28px;
+	font-weight: 700;
+	color: var(--text-normal, #dcddde);
+}
+
+.dial-word-flip-end-stats {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	font-size: 15px;
+	color: var(--text-muted, #999999);
+}
+
+.dial-word-flip-end-restart {
+	padding: 8px 20px;
+	font-size: 15px;
+	border: 1px solid var(--background-modifier-border, #dddddd);
+	border-radius: var(--radius-s, 4px);
+	background: var(--interactive-normal, #eeeeee);
+	color: var(--text-normal, #dcddde);
+	cursor: pointer;
+}
+
+.dial-word-flip-end-restart:hover {
+	background: var(--interactive-hover, #e6e6e6);
+}
