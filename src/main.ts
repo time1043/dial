@@ -252,9 +252,10 @@ export default class DialPlugin extends Plugin {
 	/**
 	 * Advance to the next episode when the current video finishes naturally.
 	 *
-	 * Only `folder` mode is wired so far — `all` is not implemented. The
-	 * teardown is deferred via setTimeout in wireVideoEnd, so this runs
-	 * outside the video element's own `ended` handler.
+	 * Both `folder` and `all` loop modes are wired: `folder` resolves the
+	 * depth-ascended parent subtree, `all` resolves the configured all-files
+	 * root via resolveAllPlaylist. The teardown is deferred via setTimeout in
+	 * wireVideoEnd, so this runs outside the video element's own `ended` handler.
 	 *
 	 * The next episode is swapped into the existing views in place (see
 	 * openNextEpisode) rather than torn down and re-opened. That avoids both
