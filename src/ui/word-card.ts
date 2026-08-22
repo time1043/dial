@@ -32,6 +32,11 @@ export interface WordCardOptions {
 	 * callers inject an engine chain to enable cloud fallbacks.
 	 */
 	speech?: SpeechProvider;
+	/**
+	 * Translation lookup for the card (cache-first pipeline). Absent =
+	 * no translation UI at all; a null result hides the row quietly.
+	 */
+	getTranslation?: (word: string) => Promise<string | null>;
 }
 
 /**
@@ -48,6 +53,8 @@ export class WordCard {
 	private showTimer: number | null = null;
 	private hideTimer: number | null = null;
 	private removeDismissListener: (() => void) | null = null;
+	/** Bumped on every hide/show so stale async translations are dropped. */
+	private translationToken = 0;
 
 	constructor(private readonly options: WordCardOptions = {}) {}
 
@@ -108,6 +115,7 @@ export class WordCard {
 		this.activeWordEl = null;
 		this.cardEl?.remove();
 		this.cardEl = null;
+		this.translationToken++;
 	}
 
 	/** Release all DOM owned by this card. Safe to call on plugin unload. */
@@ -124,7 +132,8 @@ export class WordCard {
 		this.cardEl.className = 'dial-word-card';
 
 		const word = span.dataset.word ?? span.textContent ?? '';
-		const wordEl = this.cardEl.createSpan({ cls: 'dial-word-card-word' });
+		const mainEl = this.cardEl.createDiv({ cls: 'dial-word-card-main' });
+		const wordEl = mainEl.createSpan({ cls: 'dial-word-card-word' });
 		wordEl.textContent = word;
 
 		// Hide the speak affordance entirely when no engine is available
@@ -155,6 +164,30 @@ export class WordCard {
 
 		document.body.appendChild(this.cardEl);
 		this.position(span);
+
+		// Translation row: '…' while the cache/engine pipeline runs. The
+		// token drops results that arrive after the card changed or hid.
+		if (this.options.getTranslation) {
+			const token = ++this.translationToken;
+			const translationEl = mainEl.createSpan({ cls: 'dial-word-card-translation' });
+			translationEl.textContent = '…';
+			this.options
+				.getTranslation(word)
+				.then((text) => {
+					if (token !== this.translationToken || !this.cardEl) return;
+					if (text) {
+						translationEl.textContent = text;
+						// The card grew — re-clamp it against the viewport.
+						this.position(span);
+					} else {
+						translationEl.remove();
+					}
+				})
+				.catch(() => {
+					if (token !== this.translationToken || !this.cardEl) return;
+					translationEl.remove();
+				});
+		}
 
 		// Auto-pronounce once on open (if enabled and an engine is
 		// available); the button replays on demand.

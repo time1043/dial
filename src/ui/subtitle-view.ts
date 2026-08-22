@@ -4,6 +4,7 @@ import type DialPlugin from '@/main';
 import type { ABLoopState, Subtitle, SubtitlePanelVisibility } from '@/types';
 
 import { createSpeechChain } from '@/modules/speech/create-speech-chain';
+import { createTranslationLookup } from '@/modules/word-cache/lookup-service';
 import { subtitlePanelVisibility } from '@/settings';
 
 import { SubtitlePanel, type SubtitlePanelCallbacks } from './subtitle-panel';
@@ -57,8 +58,9 @@ export class SubtitleView extends ItemView {
 					})
 				: undefined,
 			wordCardSpeech: this.plugin
-				? createSpeechChain(() => this.plugin!.settings)
+				? createSpeechChain(() => this.plugin!.settings, this.plugin.audioCache)
 				: undefined,
+			wordCardTranslation: this.plugin ? createTranslationLookup(this.plugin) : undefined,
 		});
 		this.panel.setCallbacks({
 			onSubtitleClick: (sub) => this.callbacks?.onSubtitleClick(sub),

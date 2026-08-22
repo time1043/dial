@@ -28,6 +28,8 @@ export interface SubtitlePanelOptions {
 	wordCardConfig?: () => Partial<WordCardConfig>;
 	/** Pronunciation engine (a SpeechChain in the app). */
 	wordCardSpeech?: SpeechProvider;
+	/** Translation lookup for the word card (cache-first pipeline). */
+	wordCardTranslation?: (word: string) => Promise<string | null>;
 }
 
 /**
@@ -64,6 +66,7 @@ export class SubtitlePanel {
 		this.wordCard = new WordCard({
 			getConfig: opts.wordCardConfig,
 			speech: opts.wordCardSpeech,
+			getTranslation: opts.wordCardTranslation,
 		});
 		this.buildUI();
 	}

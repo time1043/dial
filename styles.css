@@ -496,6 +496,19 @@
 	color: var(--text-normal);
 }
 
+/* Word + translation stack on the card's left; speak button sits right. */
+.dial-word-card-main {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+
+.dial-word-card-translation {
+	font-size: 0.85em;
+	color: var(--text-muted);
+}
+
 /* Pronounce button inside the word card. Overrides Obsidian's global
    `button` styling so it reads as a compact icon affordance. */
 .dial-word-card .dial-word-card-speak {
