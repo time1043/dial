@@ -1,6 +1,7 @@
 import { App, Notice, PluginSettingTab, Setting, setIcon } from 'obsidian';
 
 import { createSpeechChain } from '@/modules/speech/create-speech-chain';
+import { createTranslationChain } from '@/modules/translation/create-translation-chain';
 
 import type DialPlugin from './main';
 import type {
@@ -9,6 +10,8 @@ import type {
 	SubtitlePanelVisibility,
 	WordFlipRevealMode,
 } from './types';
+
+export type DeeplPlan = 'free' | 'pro';
 
 export interface DialSettings {
 	videoLibraryPath: string;
@@ -31,6 +34,15 @@ export interface DialSettings {
 	 * here are appended at the end.
 	 */
 	speechEngineOrder: string[];
+	/** Master opt-in for cloud translation (policy: default off). */
+	translationEnabled: boolean;
+	translationSourceLang: string;
+	translationTargetLang: string;
+	translationEngineOrder: string[];
+	azureTranslateKey: string;
+	azureRegion: string;
+	deeplKey: string;
+	deeplPlan: DeeplPlan;
 	vocabularyBucketPath: string;
 	wordFlipRevealMode: WordFlipRevealMode;
 }
@@ -51,6 +63,14 @@ export const DEFAULT_SETTINGS: DialSettings = {
 	wordPronunciationLang: 'en-US',
 	wordAutoPronounce: true,
 	speechEngineOrder: ['system', 'azure', 'google'],
+	translationEnabled: false,
+	translationSourceLang: 'en',
+	translationTargetLang: 'zh',
+	translationEngineOrder: ['azure-translate', 'deepl'],
+	azureTranslateKey: '',
+	azureRegion: '',
+	deeplKey: '',
+	deeplPlan: 'free',
 	vocabularyBucketPath: '_lib/vocabulary-bucket',
 	wordFlipRevealMode: 'hidden',
 };
@@ -64,6 +84,17 @@ export const PRONUNCIATION_LANG_OPTIONS: Record<string, string> = {
 	'es-ES': 'Spanish',
 	'ja-JP': 'Japanese',
 	'ko-KR': 'Korean',
+};
+
+/** Languages offered for translation source/target. */
+export const TRANSLATION_LANG_OPTIONS: Record<string, string> = {
+	en: 'English',
+	zh: 'Chinese',
+	fr: 'French',
+	de: 'German',
+	es: 'Spanish',
+	ja: 'Japanese',
+	ko: 'Korean',
 };
 
 /**
@@ -311,44 +342,21 @@ export class DialSettingTab extends PluginSettingTab {
 					'appear here once their API key is configured.',
 			);
 		const enginesListEl = enginesSetting.descEl.createDiv({ cls: 'dial-speech-engines' });
-
 		const renderEngines = () => {
-			enginesListEl.empty();
-			const order = this.plugin.settings.speechEngineOrder;
-			const statuses = createSpeechChain(() => this.plugin.settings).statuses();
-
-			statuses.forEach((status, index) => {
-				const row = enginesListEl.createDiv({ cls: 'dial-speech-engine-row' });
-				row.createSpan({
-					cls: `dial-speech-dot dial-speech-dot-${status.available ? 'available' : 'unavailable'}`,
-				});
-				row.createSpan({ cls: 'dial-speech-engine-label', text: status.label });
-
-				const move = (delta: number, icon: string) => {
-					const btn = row.createEl('button', {
-						cls: 'dial-speech-engine-move',
-						attr: {
-							'aria-label': delta < 0 ? 'Move up' : 'Move down',
-							title: delta < 0 ? 'Move up' : 'Move down',
-						},
-					});
-					setIcon(btn, icon);
-					btn.disabled = index + delta < 0 || index + delta >= statuses.length;
-					btn.addEventListener('click', async () => {
-						const target = index + delta;
-						const current = order[index];
-						const swapWith = order[target];
-						if (current === undefined || swapWith === undefined) return;
-						order[index] = swapWith;
-						order[target] = current;
-						this.plugin.settings.speechEngineOrder = [...order];
-						await this.plugin.saveSettings();
-						renderEngines();
-					});
-				};
-				move(-1, 'chevron-up');
-				move(1, 'chevron-down');
-			});
+			this.renderEngineList(
+				enginesListEl,
+				() =>
+					createSpeechChain(() => this.plugin.settings)
+						.statuses()
+						.map((status) => ({
+							id: status.id,
+							label: status.label,
+							dot: status.available
+								? ('available' as const)
+								: ('unavailable' as const),
+						})),
+				'speechEngineOrder',
+			);
 		};
 		renderEngines();
 
@@ -384,6 +392,132 @@ export class DialSettingTab extends PluginSettingTab {
 					this.plugin.settings.wordAutoPronounce = value;
 					await this.plugin.saveSettings();
 				}),
+			);
+
+		new Setting(containerEl).setName('Translation').setHeading();
+
+		new Setting(containerEl)
+			.setName('Enable cloud translation')
+			.setDesc(
+				'Opt-in: show word translations on the word card. Words that are not ' +
+					'in the local cache are sent to the cloud service configured below; ' +
+					'results are cached in your vault and reused without further requests.',
+			)
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.translationEnabled).onChange(async (value) => {
+					this.plugin.settings.translationEnabled = value;
+					await this.plugin.saveSettings();
+				}),
+			);
+
+		const translationEnginesSetting = new Setting(containerEl)
+			.setName('Translation engines')
+			.setDesc(
+				'Tried top to bottom. Green = API key configured, yellow = needs a ' +
+					'key (fields below).',
+			);
+		const translationListEl = translationEnginesSetting.descEl.createDiv({
+			cls: 'dial-speech-engines',
+		});
+		const renderTranslationEngines = () => {
+			this.renderEngineList(
+				translationListEl,
+				() =>
+					createTranslationChain(() => this.plugin.settings)
+						.statuses()
+						.map((status) => ({
+							id: status.id,
+							label: status.label,
+							dot: status.configured ? ('available' as const) : ('partial' as const),
+						})),
+				'translationEngineOrder',
+			);
+		};
+		renderTranslationEngines();
+
+		new Setting(containerEl)
+			.setName('Source language')
+			.setDesc('Language of the subtitle words being looked up.')
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOptions(TRANSLATION_LANG_OPTIONS)
+					.setValue(this.plugin.settings.translationSourceLang)
+					.onChange(async (value) => {
+						this.plugin.settings.translationSourceLang = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName('Target language')
+			.setDesc('Language the translation is shown in.')
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOptions(TRANSLATION_LANG_OPTIONS)
+					.setValue(this.plugin.settings.translationTargetLang)
+					.onChange(async (value) => {
+						this.plugin.settings.translationTargetLang = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		const keyField = (
+			name: string,
+			getValue: () => string,
+			save: (value: string) => Promise<void>,
+			onRefresh: () => void,
+		) =>
+			new Setting(containerEl).setName(name).addText((text) => {
+				text.inputEl.type = 'password';
+				text.setValue(getValue()).onChange(async (value) => {
+					await save(value);
+					onRefresh();
+				});
+			});
+
+		keyField(
+			'Azure Translator key',
+			() => this.plugin.settings.azureTranslateKey,
+			async (value) => {
+				this.plugin.settings.azureTranslateKey = value;
+				await this.plugin.saveSettings();
+			},
+			renderTranslationEngines,
+		);
+
+		new Setting(containerEl)
+			.setName('Azure region')
+			.setDesc('Region of your Translator resource, e.g. eastus or global.')
+			.addText((text) =>
+				text.setValue(this.plugin.settings.azureRegion).onChange(async (value) => {
+					this.plugin.settings.azureRegion = value.trim();
+					await this.plugin.saveSettings();
+					renderTranslationEngines();
+				}),
+			);
+
+		keyField(
+			'DeepL API key',
+			() => this.plugin.settings.deeplKey,
+			async (value) => {
+				this.plugin.settings.deeplKey = value;
+				await this.plugin.saveSettings();
+			},
+			renderTranslationEngines,
+		);
+
+		new Setting(containerEl)
+			.setName('DeepL plan')
+			.setDesc('Free keys use api-free.deepl.com; pro keys use api.deepl.com.')
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOption('free', 'Free')
+					.addOption('pro', 'Pro')
+					.setValue(this.plugin.settings.deeplPlan)
+					.onChange(async (value) => {
+						this.plugin.settings.deeplPlan = value as DeeplPlan;
+						await this.plugin.saveSettings();
+					}),
 			);
 
 		new Setting(containerEl).setName('Word flip').setHeading();
@@ -423,5 +557,56 @@ export class DialSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					}),
 			);
+	}
+
+	/**
+	 * Render one reorderable engine priority list (shared by the speech
+	 * and translation engine settings). Rows are recomputed through
+	 * `getRows` on every render, so availability dots refresh after a
+	 * reorder, a key edit, or a Re-detect press.
+	 */
+	private renderEngineList(
+		listEl: HTMLElement,
+		getRows: () => {
+			id: string;
+			label: string;
+			dot: 'available' | 'partial' | 'unavailable';
+		}[],
+		orderSettingKey: 'speechEngineOrder' | 'translationEngineOrder',
+	): void {
+		listEl.empty();
+		const rows = getRows();
+		const order = this.plugin.settings[orderSettingKey];
+
+		rows.forEach((row, index) => {
+			const rowEl = listEl.createDiv({ cls: 'dial-speech-engine-row' });
+			rowEl.createSpan({ cls: `dial-speech-dot dial-speech-dot-${row.dot}` });
+			rowEl.createSpan({ cls: 'dial-speech-engine-label', text: row.label });
+
+			const move = (delta: number, icon: string) => {
+				const btn = rowEl.createEl('button', {
+					cls: 'dial-speech-engine-move',
+					attr: {
+						'aria-label': delta < 0 ? 'Move up' : 'Move down',
+						title: delta < 0 ? 'Move up' : 'Move down',
+					},
+				});
+				setIcon(btn, icon);
+				btn.disabled = index + delta < 0 || index + delta >= rows.length;
+				btn.addEventListener('click', async () => {
+					const target = index + delta;
+					const current = order[index];
+					const swapWith = order[target];
+					if (current === undefined || swapWith === undefined) return;
+					order[index] = swapWith;
+					order[target] = current;
+					this.plugin.settings[orderSettingKey] = [...order];
+					await this.plugin.saveSettings();
+					this.renderEngineList(listEl, getRows, orderSettingKey);
+				});
+			};
+			move(-1, 'chevron-up');
+			move(1, 'chevron-down');
+		});
 	}
 }

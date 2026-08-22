@@ -570,6 +570,11 @@
 	background: var(--text-success, #08b94e);
 }
 
+/* Amber: engine exists but needs an API key before it can run. */
+.dial-speech-dot-partial {
+	background: var(--text-warning, #e0ac00);
+}
+
 .dial-speech-dot-unavailable {
 	background: var(--text-error, #e0563f);
 }
