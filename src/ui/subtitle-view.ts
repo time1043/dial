@@ -1,6 +1,9 @@
 import { ItemView, WorkspaceLeaf } from 'obsidian';
 
+import type DialPlugin from '@/main';
 import type { ABLoopState, Subtitle } from '@/types';
+
+import { subtitlePanelVisibility } from '@/settings';
 
 import { SubtitlePanel, type SubtitlePanelCallbacks } from './subtitle-panel';
 
@@ -18,9 +21,11 @@ export class SubtitleView extends ItemView {
 	private panel: SubtitlePanel | null = null;
 	private callbacks: SubtitleViewCallbacks | null = null;
 	private keyHandler: ((e: KeyboardEvent) => void) | null = null;
+	private plugin?: DialPlugin;
 
-	constructor(leaf: WorkspaceLeaf) {
+	constructor(leaf: WorkspaceLeaf, plugin?: DialPlugin) {
 		super(leaf);
+		this.plugin = plugin;
 	}
 
 	getViewType(): string {
@@ -42,7 +47,10 @@ export class SubtitleView extends ItemView {
 		container.addClass('dial-subtitle-container');
 		(container as HTMLElement).setAttribute('tabindex', '-1');
 
-		this.panel = new SubtitlePanel(container as HTMLElement);
+		this.panel = new SubtitlePanel(
+			container as HTMLElement,
+			this.plugin ? subtitlePanelVisibility(this.plugin.settings) : undefined,
+		);
 		this.panel.setCallbacks({
 			onSubtitleClick: (sub) => this.callbacks?.onSubtitleClick(sub),
 			onSetA: (time) => this.callbacks!.onSetA(time),

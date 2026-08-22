@@ -35,6 +35,21 @@ export type LoopMode = 'none' | 'single' | 'folder' | 'all';
  */
 export type FolderOrderMode = 'tree' | 'index';
 
+/**
+ * Which built-in controls are rendered on the subtitle panel.
+ *
+ * - `abLoop`  : the A/B loop buttons (set loop start, end, clear).
+ * - `speed`   : the playback speed slider.
+ * - `search`  : the subtitle search box.
+ *
+ * Defaults (see DEFAULT_SETTINGS): abLoop and search visible, speed hidden.
+ */
+export interface SubtitlePanelVisibility {
+	abLoop: boolean;
+	speed: boolean;
+	search: boolean;
+}
+
 export interface TypeSentenceRecord {
 	subtitleId: number;
 	userInput: string[];

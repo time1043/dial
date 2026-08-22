@@ -1,6 +1,6 @@
 import { Notice, setIcon } from 'obsidian';
 
-import type { ABLoopState, Subtitle } from '@/types';
+import type { ABLoopState, Subtitle, SubtitlePanelVisibility } from '@/types';
 
 import { formatTime } from '@/utils/time';
 
@@ -35,17 +35,19 @@ export class SubtitlePanel {
 	private abStatusEl: HTMLElement | null = null;
 	private btnClearEl: HTMLElement | null = null;
 	private btnPlayPauseEl: HTMLElement | null = null;
-	private speedLabel!: HTMLElement;
-	private speedSlider!: HTMLInputElement;
+	private speedLabel: HTMLElement | null = null;
+	private speedSlider: HTMLInputElement | null = null;
 	private subtitleContainerEl: HTMLElement | null = null;
 
-	private search!: SubtitleSearchController;
+	private search: SubtitleSearchController | null = null;
 
+	private visibility: SubtitlePanelVisibility;
 	private callbacks: SubtitlePanelCallbacks | null = null;
 	private playbackRate = 1;
 
-	constructor(parent: HTMLElement) {
+	constructor(parent: HTMLElement, visibility?: SubtitlePanelVisibility) {
 		this.containerEl = parent.createDiv({ cls: 'dial-subtitle-panel' });
+		this.visibility = visibility ?? { abLoop: true, speed: true, search: true };
 		this.buildUI();
 	}
 
@@ -98,6 +100,7 @@ export class SubtitlePanel {
 	}
 
 	setSpeed(rate: number): void {
+		if (!this.speedSlider || !this.speedLabel) return;
 		this.playbackRate = rate;
 		this.speedSlider.value = String(rate);
 		this.speedLabel.textContent = formatSpeed(rate);
@@ -106,88 +109,96 @@ export class SubtitlePanel {
 
 	/** Focus the search input and select its content for quick retyping. */
 	focusSearch(): void {
-		this.search.focus();
+		this.search?.focus();
 	}
 
 	/** Clear the search query and restore the full list. */
 	clearSearch(): void {
-		this.search.clear();
+		this.search?.clear();
 	}
 
 	/** True while the mobile full-screen search overlay is active. */
 	isMobileSearchOverlayActive(): boolean {
-		return this.search.isMobileOverlayActive();
+		return this.search?.isMobileOverlayActive() ?? false;
 	}
 
 	/** Clean up all focus/blur listeners and restore the normal layout. */
 	detachMobileLayout(): void {
-		this.search.detachMobileLayout();
+		this.search?.detachMobileLayout();
 	}
 
 	private buildUI(): void {
-		// AB controls
-		const controlsEl = this.containerEl.createDiv({ cls: 'dial-ab-controls' });
+		// AB controls — only when enabled by settings.
+		if (this.visibility.abLoop) {
+			const controlsEl = this.containerEl.createDiv({ cls: 'dial-ab-controls' });
 
-		this.btnPlayPauseEl = controlsEl.createEl('button', {
-			cls: 'dial-ab-btn dial-ab-btn-play',
-		});
-		setIcon(this.btnPlayPauseEl, 'play');
-		this.btnPlayPauseEl.addEventListener('click', () => {
-			this.callbacks?.onTogglePlay();
-		});
+			this.btnPlayPauseEl = controlsEl.createEl('button', {
+				cls: 'dial-ab-btn dial-ab-btn-play',
+			});
+			setIcon(this.btnPlayPauseEl, 'play');
+			this.btnPlayPauseEl.addEventListener('click', () => {
+				this.callbacks?.onTogglePlay();
+			});
 
-		const btnA = controlsEl.createEl('button', {
-			text: 'A',
-			cls: 'dial-ab-btn dial-ab-btn-a',
-		});
-		btnA.addEventListener('click', () => this.handleSetA());
+			const btnA = controlsEl.createEl('button', {
+				text: 'A',
+				cls: 'dial-ab-btn dial-ab-btn-a',
+			});
+			btnA.addEventListener('click', () => this.handleSetA());
 
-		const btnB = controlsEl.createEl('button', {
-			text: 'B',
-			cls: 'dial-ab-btn dial-ab-btn-b',
-		});
-		btnB.addEventListener('click', () => this.handleSetB());
+			const btnB = controlsEl.createEl('button', {
+				text: 'B',
+				cls: 'dial-ab-btn dial-ab-btn-b',
+			});
+			btnB.addEventListener('click', () => this.handleSetB());
 
-		this.btnClearEl = controlsEl.createEl('button', {
-			text: 'AB',
-			cls: 'dial-ab-btn dial-ab-btn-clear',
-		});
-		this.btnClearEl.addEventListener('click', () => this.handleToggleAB());
+			this.btnClearEl = controlsEl.createEl('button', {
+				text: 'AB',
+				cls: 'dial-ab-btn dial-ab-btn-clear',
+			});
+			this.btnClearEl.addEventListener('click', () => this.handleToggleAB());
 
-		this.abStatusEl = controlsEl.createDiv({
-			cls: 'dial-ab-status',
-			text: 'No loop set',
-		});
+			this.abStatusEl = controlsEl.createDiv({
+				cls: 'dial-ab-status',
+				text: 'No loop set',
+			});
+		}
 
-		// Speed controls
-		const speedEl = this.containerEl.createDiv({ cls: 'dial-speed-controls' });
+		// Speed controls — only when enabled by settings.
+		if (this.visibility.speed) {
+			const speedEl = this.containerEl.createDiv({ cls: 'dial-speed-controls' });
 
-		this.speedLabel = speedEl.createSpan({
-			cls: 'dial-speed-label',
-			text: '1x',
-		});
+			const speedLabel = speedEl.createSpan({
+				cls: 'dial-speed-label',
+				text: '1x',
+			});
+			this.speedLabel = speedLabel;
 
-		this.speedSlider = speedEl.createEl('input', {
-			cls: 'dial-speed-slider',
-			type: 'range',
-			attr: { min: '0.25', max: '3', step: '0.25', value: '1' },
-		});
-		this.speedSlider.addEventListener('input', () => {
-			const rate = parseFloat(this.speedSlider.value);
-			this.playbackRate = rate;
-			this.speedLabel.textContent = formatSpeed(rate);
-			this.callbacks?.onSpeedChange(rate);
-		});
+			const speedSlider = speedEl.createEl('input', {
+				cls: 'dial-speed-slider',
+				type: 'range',
+				attr: { min: '0.25', max: '3', step: '0.25', value: '1' },
+			});
+			this.speedSlider = speedSlider;
+			speedSlider.addEventListener('input', () => {
+				const rate = parseFloat(speedSlider.value);
+				this.playbackRate = rate;
+				speedLabel.textContent = formatSpeed(rate);
+				this.callbacks?.onSpeedChange(rate);
+			});
+		}
 
-		// Subtitle search bar (delegated to SubtitleSearchController)
-		this.search = new SubtitleSearchController({
-			panelEl: this.containerEl,
-			parent: this.containerEl,
-			deps: {
-				getSubtitles: () => this.subtitles,
-				getSubtitleEls: () => this.subtitleEls,
-			},
-		});
+		// Subtitle search bar — only when enabled by settings.
+		if (this.visibility.search) {
+			this.search = new SubtitleSearchController({
+				panelEl: this.containerEl,
+				parent: this.containerEl,
+				deps: {
+					getSubtitles: () => this.subtitles,
+					getSubtitleEls: () => this.subtitleEls,
+				},
+			});
+		}
 
 		// Subtitle list
 		this.subtitleContainerEl = this.containerEl.createDiv({
@@ -220,7 +231,7 @@ export class SubtitlePanel {
 				// On mobile, tapping a match also drops the full-screen search
 				// overlay and dismisses the keyboard, so the user can watch the
 				// video jump to that line. On desktop this is a no-op.
-				if (this.search.isMobileOverlayActive()) {
+				if (this.search?.isMobileOverlayActive()) {
 					this.search.blurInput();
 				}
 			});
@@ -228,7 +239,7 @@ export class SubtitlePanel {
 			this.subtitleEls.set(sub.id, el);
 		}
 
-		this.search.applyFilter();
+		this.search?.applyFilter();
 	}
 
 	private updateLoopHighlight(): void {
@@ -249,6 +260,7 @@ export class SubtitlePanel {
 
 	handleSetA(): void {
 		if (!this.callbacks) return;
+		if (!this.abStatusEl) return;
 		if (this.abLoop.active) {
 			new Notice('Loop active — click ab button to cancel');
 			return;
@@ -262,6 +274,7 @@ export class SubtitlePanel {
 
 	handleSetB(): void {
 		if (!this.callbacks) return;
+		if (!this.abStatusEl) return;
 		if (this.abLoop.active) {
 			new Notice('Loop active — click ab button to cancel');
 			return;
@@ -275,6 +288,7 @@ export class SubtitlePanel {
 
 	handleToggleAB(): void {
 		if (!this.callbacks) return;
+		if (!this.abStatusEl) return;
 		if (this.abLoop.active) {
 			this.abLoop = this.callbacks.onClearAB();
 		} else {

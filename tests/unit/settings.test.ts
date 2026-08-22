@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_SETTINGS, trimTrailingSlash } from '@/settings';
+import { DEFAULT_SETTINGS, subtitlePanelVisibility, trimTrailingSlash } from '@/settings';
 
 /**
  * `trimTrailingSlash` normalises vault-relative library paths entered in the
@@ -43,6 +43,25 @@ describe('DEFAULT_SETTINGS', () => {
 			folderOrderMode: 'tree',
 			folderLoopDepth: 1,
 			autoPlay: true,
+			showABLoop: true,
+			showSpeed: false,
+			showSubtitleSearch: true,
+		});
+	});
+});
+
+describe('subtitlePanelVisibility', () => {
+	it('maps the three show flags into a visibility object', () => {
+		const settings = {
+			...DEFAULT_SETTINGS,
+			showABLoop: false,
+			showSpeed: true,
+			showSubtitleSearch: false,
+		};
+		expect(subtitlePanelVisibility(settings)).toEqual({
+			abLoop: false,
+			speed: true,
+			search: false,
 		});
 	});
 });
