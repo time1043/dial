@@ -552,3 +552,109 @@
 .dial-subtitle-word:hover {
 	background: var(--background-modifier-hover);
 }
+
+/* ---- Word flip ---- */
+
+.dial-word-flip {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	overflow: hidden;
+}
+
+.dial-word-flip-area {
+	flex: 1;
+	min-height: 0;
+	display: flex;
+	position: relative;
+	overflow: hidden;
+	touch-action: none;
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+.dial-word-flip-card {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 16px;
+	padding: 24px;
+	cursor: pointer;
+	min-height: 0;
+}
+
+.dial-word-flip-card.is-empty-state {
+	cursor: default;
+}
+
+.dial-word-flip-card-index {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-size: 16px;
+	color: var(--text-muted, #999999);
+}
+
+.dial-word-flip-card-mark-badge {
+	display: none;
+	font-size: 14px;
+	color: var(--text-accent, #7f5df2);
+}
+
+.dial-word-flip-card-mark-badge.is-marked {
+	display: inline;
+}
+
+.dial-word-flip-card-word {
+	font-size: clamp(40px, 10vmin, 80px);
+	font-weight: 700;
+	line-height: 1.15;
+	text-align: center;
+	color: var(--text-normal, #dcddde);
+	overflow-wrap: anywhere;
+}
+
+.dial-word-flip-card-answer {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10px;
+	min-height: 0;
+}
+
+/* Space-preserving hide so revealing never shifts the layout. */
+.dial-word-flip-card-answer.is-hidden {
+	visibility: hidden;
+}
+
+.dial-word-flip-card-ipa-line {
+	font-size: 20px;
+	color: var(--text-muted, #999999);
+}
+
+.dial-word-flip-card-meaning-line {
+	font-size: 22px;
+	line-height: 1.4;
+	color: var(--text-normal, #dcddde);
+	text-align: center;
+}
+
+.dial-word-flip-card-forms-line {
+	font-size: 15px;
+	line-height: 1.4;
+	color: var(--text-faint, #999999);
+	text-align: center;
+}
+
+.dial-word-flip-empty {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 24px;
+	text-align: center;
+	color: var(--text-muted, #999999);
+}

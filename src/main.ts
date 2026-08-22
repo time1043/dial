@@ -32,6 +32,7 @@ import { TYPE_SUBTITLE_VIEW_TYPE, TypeSubtitleView } from './ui/type-subtitle-vi
 import { TYPE_VIEW_TYPE, TypeView } from './ui/type-view';
 import { URL_PLAYER_VIEW_TYPE, UrlPlayerView } from './ui/url-player-view';
 import { VIDEO_PLAYER_VIEW_TYPE, VideoPlayerView } from './ui/video-player-view';
+import { WORD_FLIP_VIEW_TYPE, WordFlipView } from './ui/word-flip-view';
 import { formatTime } from './utils/time';
 import { resolveMediaPaths } from './vault/paths';
 
@@ -61,6 +62,7 @@ export default class DialPlugin extends Plugin {
 		this.registerView(SUBTITLE_VIEW_TYPE, (leaf) => new SubtitleView(leaf, this));
 		this.registerView(TYPE_SUBTITLE_VIEW_TYPE, (leaf) => new TypeSubtitleView(leaf));
 		this.registerView(TYPE_VIEW_TYPE, (leaf) => new TypeView(leaf));
+		this.registerView(WORD_FLIP_VIEW_TYPE, (leaf) => new WordFlipView(leaf, this));
 
 		this.addRibbonIcon('play', 'Dial', () => {
 			void openVideoPlayer(this);
