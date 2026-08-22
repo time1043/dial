@@ -3,6 +3,7 @@ import { ItemView, WorkspaceLeaf } from 'obsidian';
 import type DialPlugin from '@/main';
 import type { ABLoopState, Subtitle, SubtitlePanelVisibility } from '@/types';
 
+import { createSpeechChain } from '@/modules/speech/create-speech-chain';
 import { subtitlePanelVisibility } from '@/settings';
 
 import { SubtitlePanel, type SubtitlePanelCallbacks } from './subtitle-panel';
@@ -47,16 +48,18 @@ export class SubtitleView extends ItemView {
 		container.addClass('dial-subtitle-container');
 		(container as HTMLElement).setAttribute('tabindex', '-1');
 
-		this.panel = new SubtitlePanel(
-			container as HTMLElement,
-			this.plugin ? subtitlePanelVisibility(this.plugin.settings) : undefined,
-			this.plugin
+		this.panel = new SubtitlePanel(container as HTMLElement, {
+			visibility: this.plugin ? subtitlePanelVisibility(this.plugin.settings) : undefined,
+			wordCardConfig: this.plugin
 				? () => ({
 						pronunciationLang: this.plugin!.settings.wordPronunciationLang,
 						autoPronounce: this.plugin!.settings.wordAutoPronounce,
 					})
 				: undefined,
-		);
+			wordCardSpeech: this.plugin
+				? createSpeechChain(() => this.plugin!.settings)
+				: undefined,
+		});
 		this.panel.setCallbacks({
 			onSubtitleClick: (sub) => this.callbacks?.onSubtitleClick(sub),
 			onSetA: (time) => this.callbacks!.onSetA(time),

@@ -3,6 +3,7 @@ import { ItemView, Notice, Platform, TFile, WorkspaceLeaf } from 'obsidian';
 import type DialPlugin from '@/main';
 import type { ABLoopState, LoopMode, Subtitle, SubtitlePanelVisibility } from '@/types';
 
+import { createSpeechChain } from '@/modules/speech/create-speech-chain';
 import { subtitlePanelVisibility } from '@/settings';
 
 import { SubtitlePanel } from './subtitle-panel';
@@ -148,16 +149,18 @@ export class VideoPlayerView extends ItemView {
 	 */
 	private setupMobilePanel(container: HTMLElement): void {
 		container.addClass('dial-video-mobile');
-		this.panel = new SubtitlePanel(
-			container,
-			this.plugin ? subtitlePanelVisibility(this.plugin.settings) : undefined,
-			this.plugin
+		this.panel = new SubtitlePanel(container, {
+			visibility: this.plugin ? subtitlePanelVisibility(this.plugin.settings) : undefined,
+			wordCardConfig: this.plugin
 				? () => ({
 						pronunciationLang: this.plugin!.settings.wordPronunciationLang,
 						autoPronounce: this.plugin!.settings.wordAutoPronounce,
 					})
 				: undefined,
-		);
+			wordCardSpeech: this.plugin
+				? createSpeechChain(() => this.plugin!.settings)
+				: undefined,
+		});
 		this.panel.setCallbacks({
 			onSubtitleClick: (sub) => {
 				this.jumpToTime(sub.start);

@@ -1,8 +1,6 @@
-import type { ButtonComponent } from 'obsidian';
+import { App, Notice, PluginSettingTab, Setting, setIcon } from 'obsidian';
 
-import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
-
-import { isSpeechSynthesisAvailable } from '@/utils/speech';
+import { createSpeechChain } from '@/modules/speech/create-speech-chain';
 
 import type DialPlugin from './main';
 import type {
@@ -27,6 +25,12 @@ export interface DialSettings {
 	showSubtitleSearch: boolean;
 	wordPronunciationLang: string;
 	wordAutoPronounce: boolean;
+	/**
+	 * Speech engine ids in user priority order (tried top to bottom).
+	 * Ids not yet in the registry are skipped; registry engines missing
+	 * here are appended at the end.
+	 */
+	speechEngineOrder: string[];
 	vocabularyBucketPath: string;
 	wordFlipRevealMode: WordFlipRevealMode;
 }
@@ -46,6 +50,7 @@ export const DEFAULT_SETTINGS: DialSettings = {
 	showSubtitleSearch: true,
 	wordPronunciationLang: 'en-US',
 	wordAutoPronounce: true,
+	speechEngineOrder: ['system', 'azure', 'google'],
 	vocabularyBucketPath: '_lib/vocabulary-bucket',
 	wordFlipRevealMode: 'hidden',
 };
@@ -75,28 +80,6 @@ export function subtitlePanelVisibility(settings: DialSettings): SubtitlePanelVi
 
 export function trimTrailingSlash(path: string): string {
 	return path.replace(/[/\\]+$/, '');
-}
-
-/** Visual states for the speech synthesis detection row in settings. */
-export type SpeechStatus = 'checking' | 'available' | 'unavailable';
-
-/** How long Re-detect shows its "Detecting…" state. The underlying typeof
- *  check resolves instantly, so this window exists purely as feedback. */
-export const SPEECH_DETECT_FEEDBACK_MS = 500;
-
-/** Status text for the speech synthesis detection row in settings. */
-export function speechStatusText(status: SpeechStatus): string {
-	switch (status) {
-		case 'checking':
-			return 'Detecting…';
-		case 'available':
-			return 'Available on this device. Pronunciation and auto-pronounce are active.';
-		case 'unavailable':
-			return (
-				'Not available on this device (common on Android). The speaker ' +
-				'button is hidden and words are not spoken.'
-			);
-	}
 }
 
 export class DialSettingTab extends PluginSettingTab {
@@ -316,39 +299,62 @@ export class DialSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl).setName('Word card').setHeading();
 
-		// Live detection status: Android WebView has no speech synthesis at
-		// all, so a colored dot + text tells the user why pronunciation does
-		// not work there instead of leaving them to discover it via an error
-		// toast.
-		const speechSetting = new Setting(containerEl).setName('Speech synthesis');
-		const speechStatusEl = speechSetting.descEl.createDiv({
-			cls: 'dial-speech-status',
-		});
-		const speechDotEl = speechStatusEl.createSpan({ cls: 'dial-speech-dot' });
-		const speechTextEl = speechStatusEl.createSpan({ cls: 'dial-speech-text' });
+		// Pronunciation engine priority list: one traffic-light row per
+		// engine, reorderable with arrows. Android WebView has no system
+		// speech at all (red dot), so the order decides whether a cloud
+		// engine takes over — that is the point of letting users set it.
+		const enginesSetting = new Setting(containerEl)
+			.setName('Pronunciation engines')
+			.setDesc(
+				'Engines tried top to bottom when pronouncing a word. The dot ' +
+					'shows whether an engine works on this device. Cloud engines ' +
+					'appear here once their API key is configured.',
+			);
+		const enginesListEl = enginesSetting.descEl.createDiv({ cls: 'dial-speech-engines' });
 
-		const renderSpeechStatus = (status: SpeechStatus) => {
-			speechDotEl.className = `dial-speech-dot dial-speech-dot-${status}`;
-			speechTextEl.textContent = speechStatusText(status);
-		};
+		const renderEngines = () => {
+			enginesListEl.empty();
+			const order = this.plugin.settings.speechEngineOrder;
+			const statuses = createSpeechChain(() => this.plugin.settings).statuses();
 
-		// Opening the settings page shows the result instantly; Re-detect
-		// replays the check behind a brief "Detecting…" window so the press
-		// has visible feedback (the check itself resolves in the same tick).
-		renderSpeechStatus(isSpeechSynthesisAvailable() ? 'available' : 'unavailable');
+			statuses.forEach((status, index) => {
+				const row = enginesListEl.createDiv({ cls: 'dial-speech-engine-row' });
+				row.createSpan({
+					cls: `dial-speech-dot dial-speech-dot-${status.available ? 'available' : 'unavailable'}`,
+				});
+				row.createSpan({ cls: 'dial-speech-engine-label', text: status.label });
 
-		let reDetectBtn: ButtonComponent | null = null;
-		speechSetting.addButton((button) => {
-			reDetectBtn = button;
-			return button.setButtonText('Re-detect').onClick(() => {
-				renderSpeechStatus('checking');
-				reDetectBtn?.setDisabled(true);
-				window.setTimeout(() => {
-					renderSpeechStatus(isSpeechSynthesisAvailable() ? 'available' : 'unavailable');
-					reDetectBtn?.setDisabled(false);
-				}, SPEECH_DETECT_FEEDBACK_MS);
+				const move = (delta: number, icon: string) => {
+					const btn = row.createEl('button', {
+						cls: 'dial-speech-engine-move',
+						attr: {
+							'aria-label': delta < 0 ? 'Move up' : 'Move down',
+							title: delta < 0 ? 'Move up' : 'Move down',
+						},
+					});
+					setIcon(btn, icon);
+					btn.disabled = index + delta < 0 || index + delta >= statuses.length;
+					btn.addEventListener('click', async () => {
+						const target = index + delta;
+						const current = order[index];
+						const swapWith = order[target];
+						if (current === undefined || swapWith === undefined) return;
+						order[index] = swapWith;
+						order[target] = current;
+						this.plugin.settings.speechEngineOrder = [...order];
+						await this.plugin.saveSettings();
+						renderEngines();
+					});
+				};
+				move(-1, 'chevron-up');
+				move(1, 'chevron-down');
 			});
-		});
+		};
+		renderEngines();
+
+		new Setting(containerEl).addButton((button) =>
+			button.setButtonText('Re-detect engines').onClick(() => renderEngines()),
+		);
 
 		new Setting(containerEl)
 			.setName('Pronunciation language')
@@ -370,8 +376,8 @@ export class DialSettingTab extends PluginSettingTab {
 			.setName('Auto-pronounce on card open')
 			.setDesc(
 				'Speak the word automatically when the word card appears. ' +
-					'The speaker button on the card still works where speech synthesis ' +
-					'is available (see the status above).',
+					'The speaker button on the card still works where a pronunciation ' +
+					'engine is available (see the engine list above).',
 			)
 			.addToggle((toggle) =>
 				toggle.setValue(this.plugin.settings.wordAutoPronounce).onChange(async (value) => {

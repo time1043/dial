@@ -148,9 +148,9 @@ describe('WordCard', () => {
 	});
 
 	it('pronounces with the language provided by the panel options', () => {
-		panel = new SubtitlePanel(parent, undefined, () => ({
-			pronunciationLang: 'de-DE',
-		}));
+		panel = new SubtitlePanel(parent, {
+			wordCardConfig: () => ({ pronunciationLang: 'de-DE' }),
+		});
 		panel.setCallbacks(callbacks);
 		panel.setSubtitles(SUBS);
 		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;
@@ -163,9 +163,7 @@ describe('WordCard', () => {
 	});
 
 	it('skips auto-pronounce when the config disables it, but the button still speaks', () => {
-		panel = new SubtitlePanel(parent, undefined, () => ({
-			autoPronounce: false,
-		}));
+		panel = new SubtitlePanel(parent, { wordCardConfig: () => ({ autoPronounce: false }) });
 		panel.setCallbacks(callbacks);
 		panel.setSubtitles(SUBS);
 		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;
