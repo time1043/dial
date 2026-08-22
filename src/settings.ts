@@ -1,7 +1,7 @@
 import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
 
 import type DialPlugin from './main';
-import type { FolderOrderMode, LoopMode } from './types';
+import type { FolderOrderMode, LoopMode, SubtitlePanelVisibility } from './types';
 
 export interface DialSettings {
 	videoLibraryPath: string;
@@ -13,6 +13,9 @@ export interface DialSettings {
 	allFilesOrderMode: FolderOrderMode;
 	allFilesRoot: string;
 	autoPlay: boolean;
+	showABLoop: boolean;
+	showSpeed: boolean;
+	showSubtitleSearch: boolean;
 }
 
 export const DEFAULT_SETTINGS: DialSettings = {
@@ -25,7 +28,22 @@ export const DEFAULT_SETTINGS: DialSettings = {
 	allFilesOrderMode: 'tree',
 	allFilesRoot: 'note/',
 	autoPlay: true,
+	showABLoop: true,
+	showSpeed: false,
+	showSubtitleSearch: true,
 };
+
+/**
+ * Derive the subtitle panel control visibility from the plugin settings.
+ * Used by SubtitleView and VideoPlayerView when constructing SubtitlePanel.
+ */
+export function subtitlePanelVisibility(settings: DialSettings): SubtitlePanelVisibility {
+	return {
+		abLoop: settings.showABLoop,
+		speed: settings.showSpeed,
+		search: settings.showSubtitleSearch,
+	};
+}
 
 export function trimTrailingSlash(path: string): string {
 	return path.replace(/[/\\]+$/, '');
@@ -207,6 +225,38 @@ export class DialSettingTab extends PluginSettingTab {
 			.addToggle((toggle) =>
 				toggle.setValue(this.plugin.settings.autoPlay).onChange(async (value) => {
 					this.plugin.settings.autoPlay = value;
+					await this.plugin.saveSettings();
+				}),
+			);
+
+		new Setting(containerEl).setName('Subtitle panel').setHeading();
+
+		new Setting(containerEl)
+			.setName('Show loop controls')
+			.setDesc('Display the start/end loop buttons on the subtitle panel.')
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.showABLoop).onChange(async (value) => {
+					this.plugin.settings.showABLoop = value;
+					await this.plugin.saveSettings();
+				}),
+			);
+
+		new Setting(containerEl)
+			.setName('Show playback speed control')
+			.setDesc('Display the playback speed slider on the subtitle panel.')
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.showSpeed).onChange(async (value) => {
+					this.plugin.settings.showSpeed = value;
+					await this.plugin.saveSettings();
+				}),
+			);
+
+		new Setting(containerEl)
+			.setName('Show subtitle search')
+			.setDesc('Display the subtitle search box on the subtitle panel.')
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.showSubtitleSearch).onChange(async (value) => {
+					this.plugin.settings.showSubtitleSearch = value;
 					await this.plugin.saveSettings();
 				}),
 			);
