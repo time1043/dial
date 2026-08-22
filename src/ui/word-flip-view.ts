@@ -4,6 +4,7 @@ import type DialPlugin from '@/main';
 
 import { bookDisplayName, readWordBook } from '@/modules/word-flip/book-finder';
 import { WORD_ROW_FORMAT_HINT, type ParsedWordBook } from '@/modules/word-flip/book-parser';
+import { appendJourneySession, type JourneyWordSnapshot } from '@/modules/word-flip/journey-writer';
 import { WordFlipCard, type WordFlipCardState } from '@/ui/word-flip-card';
 import { VerticalDragDetector, type DragCommitDirection } from '@/ui/word-flip-drag';
 
@@ -136,7 +137,8 @@ export class WordFlipView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
-		this.endSession();
+		await this.settleSession();
+		this.plugin.wordFlip.flush();
 		this.dragDetector?.destroy();
 		this.dragDetector = null;
 		this.card = null;
@@ -201,11 +203,53 @@ export class WordFlipView extends ItemView {
 		return this.session !== null;
 	}
 
-	/** Close the session and record it (journey write lands in a later step). */
+	/** Close the session and record it to the journey file (fire & forget). */
 	endSession(): void {
-		if (!this.session) return;
+		void this.settleSession();
+	}
+
+	/**
+	 * Settle the active session: snapshot the covered range with the
+	 * current mark state and append it to the book's journey file in a
+	 * single write. Trivial sessions (one word, under 5s, no marks) are
+	 * skipped — they are accidental Start/End presses, not study.
+	 */
+	private async settleSession(): Promise<void> {
+		const session = this.session;
 		this.session = null;
 		this.updateSessionButton();
+		if (!session || !this.bookFile || !this.parsed) return;
+
+		const durationMs = Date.now() - session.startTime;
+		if (session.minIdx === session.maxIdx && durationMs < 5000 && session.marksMade === 0) {
+			return;
+		}
+
+		const words: JourneyWordSnapshot[] = [];
+		for (let i = session.minIdx; i <= session.maxIdx; i++) {
+			const entry = this.parsed.words[i];
+			if (!entry) continue;
+			words.push({
+				entry,
+				marked: this.plugin.wordFlip.isMarked(this.bookFile.path, entry.word),
+			});
+		}
+
+		try {
+			await appendJourneySession(this.app.vault, {
+				bookPath: this.bookFile.path,
+				startIdx: session.startIdx,
+				minIdx: session.minIdx,
+				maxIdx: session.maxIdx,
+				startTime: new Date(session.startTime),
+				endTime: new Date(),
+				words,
+			});
+		} catch (e) {
+			new Notice(
+				`Failed to write the journey record: ${e instanceof Error ? e.message : String(e)}`,
+			);
+		}
 	}
 
 	private updateSessionButton(): void {
