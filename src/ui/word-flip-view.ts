@@ -59,6 +59,8 @@ export class WordFlipView extends ItemView {
 	private speakBtnEl: HTMLButtonElement | null = null;
 	private progressBar: WordFlipProgressBar | null = null;
 	private seekPreviewEl: HTMLElement | null = null;
+	private endCardEl: HTMLElement | null = null;
+	private endCardShown = false;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -96,6 +98,7 @@ export class WordFlipView extends ItemView {
 		this.neighborCard = new WordFlipCard(this.cardAreaEl, () => {});
 		this.neighborCard.rootEl.addClass('dial-word-flip-card-neighbor');
 		this.seekPreviewEl = this.cardAreaEl.createDiv({ cls: 'dial-word-flip-seek-preview' });
+		this.endCardEl = this.cardAreaEl.createDiv({ cls: 'dial-word-flip-end-card' });
 		this.renderEmpty('No word book loaded. Open one via a "Flip words" command.');
 
 		this.dragDetector = new VerticalDragDetector(this.cardAreaEl, {
@@ -181,6 +184,7 @@ export class WordFlipView extends ItemView {
 		this.markBtnEl = null;
 		this.speakBtnEl = null;
 		this.seekPreviewEl = null;
+		this.endCardEl = null;
 	}
 
 	/** The vault path of the loaded book, for session/persistence wiring. */
@@ -362,11 +366,19 @@ export class WordFlipView extends ItemView {
 	next(): void {
 		const words = this.parsed?.words;
 		if (!words || words.length === 0) return;
-		if (this.index >= words.length - 1) return;
+		if (this.endCardShown) return;
+		if (this.index >= words.length - 1) {
+			this.renderEndCard();
+			return;
+		}
 		this.switchTo(this.index + 1, 1);
 	}
 
 	prev(): void {
+		if (this.endCardShown) {
+			this.hideEndCard();
+			return;
+		}
 		if (this.index <= 0) return;
 		this.switchTo(this.index - 1, -1);
 	}
@@ -376,6 +388,7 @@ export class WordFlipView extends ItemView {
 		if (!words || words.length === 0) return;
 		this.index = Math.min(Math.max(index, 0), words.length - 1);
 		this.revealed = false;
+		this.hideEndCard();
 		if (this.bookFile) {
 			this.plugin.wordFlip.recordIndex(this.bookFile.path, this.index);
 		}
@@ -388,6 +401,43 @@ export class WordFlipView extends ItemView {
 		if (this.plugin.settings.wordAutoPronounce && isSpeechSynthesisAvailable()) {
 			this.speakCurrentWord(false);
 		}
+	}
+
+	/**
+	 * Finale card past the last word: session stats and a start-over
+	 * button (a session, if active, keeps running — starting over does not
+	 * open a new epoch; only a session started at word 1 does).
+	 */
+	private renderEndCard(): void {
+		if (!this.endCardEl || !this.parsed) return;
+		this.endCardShown = true;
+		this.endCardEl.empty();
+		this.endCardEl.addClass('is-visible');
+
+		this.endCardEl.createDiv({
+			cls: 'dial-word-flip-end-title',
+			text: 'Book finished',
+		});
+
+		const statsEl = this.endCardEl.createDiv({ cls: 'dial-word-flip-end-stats' });
+		if (this.session && this.bookFile) {
+			const range = `${this.session.minIdx + 1} - ${this.session.maxIdx + 1}`;
+			statsEl.createDiv({ text: `This session: words ${range}` });
+			statsEl.createDiv({ text: `Marked this session: ${this.session.marksMade}` });
+			const total = this.plugin.wordFlip.getMarkedWords(this.bookFile.path).length;
+			statsEl.createDiv({ text: `Marked in this book: ${total}` });
+		}
+
+		const startOverEl = this.endCardEl.createEl('button', {
+			cls: 'dial-word-flip-end-restart',
+			text: 'Start over',
+		});
+		startOverEl.addEventListener('click', () => this.goToIndex(0));
+	}
+
+	private hideEndCard(): void {
+		this.endCardShown = false;
+		this.endCardEl?.removeClass('is-visible');
 	}
 
 	/** Live word preview while the progress bar is being dragged. */

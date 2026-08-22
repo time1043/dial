@@ -850,3 +850,50 @@
 	font-weight: 700;
 	color: var(--text-normal, #dcddde);
 }
+
+/* Finale card shown after the last word. */
+.dial-word-flip-end-card {
+	position: absolute;
+	inset: 0;
+	z-index: 6;
+	display: none;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 18px;
+	padding: 24px;
+	background: var(--background-primary, #ffffff);
+}
+
+.dial-word-flip-end-card.is-visible {
+	display: flex;
+}
+
+.dial-word-flip-end-title {
+	font-size: 28px;
+	font-weight: 700;
+	color: var(--text-normal, #dcddde);
+}
+
+.dial-word-flip-end-stats {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	font-size: 15px;
+	color: var(--text-muted, #999999);
+}
+
+.dial-word-flip-end-restart {
+	padding: 8px 20px;
+	font-size: 15px;
+	border: 1px solid var(--background-modifier-border, #dddddd);
+	border-radius: var(--radius-s, 4px);
+	background: var(--interactive-normal, #eeeeee);
+	color: var(--text-normal, #dcddde);
+	cursor: pointer;
+}
+
+.dial-word-flip-end-restart:hover {
+	background: var(--interactive-hover, #e6e6e6);
+}
