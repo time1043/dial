@@ -769,3 +769,13 @@
 	width: 14px;
 	height: 14px;
 }
+
+/* Mark button: filled star while the current word is marked. */
+.dial-word-flip-mark-btn.is-marked {
+	color: var(--text-accent, #7f5df2);
+	border-color: var(--text-accent, #7f5df2);
+}
+
+.dial-word-flip-mark-btn.is-marked svg {
+	fill: currentColor;
+}

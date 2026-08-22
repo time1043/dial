@@ -53,6 +53,7 @@ export class WordFlipView extends ItemView {
 	private session: FlipSession | null = null;
 	private footerEl: HTMLElement | null = null;
 	private sessionBtnEl: HTMLElement | null = null;
+	private markBtnEl: HTMLButtonElement | null = null;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -92,6 +93,13 @@ export class WordFlipView extends ItemView {
 		});
 
 		this.footerEl = container.createDiv({ cls: 'dial-word-flip-footer' });
+
+		this.markBtnEl = this.footerEl.createEl('button', {
+			cls: 'dial-word-flip-mark-btn',
+			attr: { 'aria-label': 'Mark word', title: 'Mark word' },
+		});
+		this.markBtnEl.addEventListener('click', () => this.toggleMark());
+
 		this.sessionBtnEl = this.footerEl.createEl('button', {
 			cls: 'dial-word-flip-session-btn',
 		});
@@ -99,7 +107,8 @@ export class WordFlipView extends ItemView {
 			if (this.session) this.endSession();
 			else this.startSession();
 		});
-		this.updateSessionButton();
+
+		this.updateFooterButtons();
 
 		// Keyboard: ↓/Space = next, ↑ = previous (scroll semantics, like
 		// short-video web apps). Registered on the view's keymap scope so
@@ -147,6 +156,7 @@ export class WordFlipView extends ItemView {
 		this.emptyEl = null;
 		this.footerEl = null;
 		this.sessionBtnEl = null;
+		this.markBtnEl = null;
 	}
 
 	/** The vault path of the loaded book, for session/persistence wiring. */
@@ -196,11 +206,26 @@ export class WordFlipView extends ItemView {
 			startTime: Date.now(),
 			marksMade: 0,
 		};
-		this.updateSessionButton();
+		this.updateFooterButtons();
 	}
 
 	isSessionActive(): boolean {
 		return this.session !== null;
+	}
+
+	/** Toggle the current word's mark. Only available inside a session. */
+	private toggleMark(): void {
+		if (!this.session || !this.bookFile || !this.parsed) return;
+		const entry = this.parsed.words[this.index];
+		if (!entry) return;
+		const nowMarked = this.plugin.wordFlip.toggleMark(this.bookFile.path, entry.word);
+		if (nowMarked) {
+			this.session.marksMade++;
+		} else {
+			this.session.marksMade = Math.max(0, this.session.marksMade - 1);
+		}
+		this.renderCard();
+		this.updateMarkButton();
 	}
 
 	/** Close the session and record it to the journey file (fire & forget). */
@@ -217,7 +242,7 @@ export class WordFlipView extends ItemView {
 	private async settleSession(): Promise<void> {
 		const session = this.session;
 		this.session = null;
-		this.updateSessionButton();
+		this.updateFooterButtons();
 		if (!session || !this.bookFile || !this.parsed) return;
 
 		const durationMs = Date.now() - session.startTime;
@@ -252,6 +277,11 @@ export class WordFlipView extends ItemView {
 		}
 	}
 
+	private updateFooterButtons(): void {
+		this.updateSessionButton();
+		this.updateMarkButton();
+	}
+
 	private updateSessionButton(): void {
 		if (!this.sessionBtnEl) return;
 		this.sessionBtnEl.empty();
@@ -262,6 +292,28 @@ export class WordFlipView extends ItemView {
 			text: this.session ? 'End' : 'Start',
 		});
 		this.sessionBtnEl.toggleClass('is-active-session', this.session !== null);
+	}
+
+	/** Mark button: filled star when the current word is marked; disabled
+	 *  while browsing (marks are a session activity). */
+	private updateMarkButton(): void {
+		if (!this.markBtnEl) return;
+		const entry = this.parsed?.words[this.index];
+		const marked =
+			entry !== undefined &&
+			this.bookFile !== null &&
+			this.plugin.wordFlip.isMarked(this.bookFile!.path, entry.word);
+		const enabled = this.session !== null && entry !== undefined;
+
+		this.markBtnEl.empty();
+		const iconEl = this.markBtnEl.createSpan({ cls: 'dial-word-flip-btn-icon' });
+		setIcon(iconEl, 'star');
+		this.markBtnEl.toggleClass('is-marked', marked);
+		this.markBtnEl.disabled = !enabled;
+		this.markBtnEl.setAttr(
+			'title',
+			enabled ? 'Mark word as unknown' : 'Marking is available during a session',
+		);
 	}
 
 	/** Jump to a position without a directional animation. */
@@ -332,6 +384,7 @@ export class WordFlipView extends ItemView {
 		this.emptyEl = null;
 		this.card.rootEl.toggleClass('is-empty-state', false);
 		this.card.update(this.cardStateFor(this.index, entry));
+		this.updateMarkButton();
 	}
 
 	private cardStateFor(index: number, entry: ParsedWordBook['words'][number]): WordFlipCardState {
