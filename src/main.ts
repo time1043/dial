@@ -10,6 +10,7 @@ import { openTrace } from './commands/open-trace';
 import { openTypeSession, resumeTypeSession } from './commands/open-type-session';
 import { openUrlPlayerFromActiveNote } from './commands/open-url-player';
 import { togglePlay } from './commands/toggle-play';
+import { flipWords, flipWordsChooseBook, flipWordsFromActiveFile } from './commands/word-flip';
 import {
 	getSubtitleView,
 	getVideoView,
@@ -153,6 +154,24 @@ export default class DialPlugin extends Plugin {
 			id: 'open-trace',
 			name: 'Open trace',
 			callback: () => openTrace(this),
+		});
+
+		this.addCommand({
+			id: 'word-flip-open',
+			name: 'Flip words',
+			callback: () => void flipWords(this),
+		});
+
+		this.addCommand({
+			id: 'word-flip-open-current',
+			name: 'Flip words: from the active book',
+			callback: () => void flipWordsFromActiveFile(this),
+		});
+
+		this.addCommand({
+			id: 'word-flip-choose-book',
+			name: 'Flip words: choose a book',
+			callback: () => void flipWordsChooseBook(this),
 		});
 
 		this.addSettingTab(new DialSettingTab(this.app, this));

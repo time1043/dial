@@ -722,3 +722,50 @@
 .dial-word-flip-card-neighbor.is-dragging {
 	transition: none;
 }
+
+/* Footer with session / mark / speak buttons. */
+.dial-word-flip-footer {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 12px;
+	padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+	border-top: 1px solid var(--background-modifier-border, #dddddd);
+}
+
+.dial-word-flip-footer button {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 14px;
+	font-size: 14px;
+	border: 1px solid var(--background-modifier-border, #dddddd);
+	border-radius: var(--radius-s, 4px);
+	background: var(--interactive-normal, #eeeeee);
+	color: var(--text-normal, #dcddde);
+	cursor: pointer;
+}
+
+.dial-word-flip-footer button:hover {
+	background: var(--interactive-hover, #e6e6e6);
+}
+
+.dial-word-flip-footer button:disabled {
+	opacity: 0.45;
+	cursor: not-allowed;
+}
+
+.dial-word-flip-session-btn.is-active-session {
+	border-color: var(--text-error, #e0563f);
+	color: var(--text-error, #e0563f);
+}
+
+.dial-word-flip-btn-icon {
+	display: inline-flex;
+	align-items: center;
+}
+
+.dial-word-flip-btn-icon svg {
+	width: 14px;
+	height: 14px;
+}

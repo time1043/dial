@@ -1,4 +1,4 @@
-import { ItemView, Notice, TFile, type WorkspaceLeaf } from 'obsidian';
+import { ItemView, Notice, setIcon, TFile, type WorkspaceLeaf } from 'obsidian';
 
 import type DialPlugin from '@/main';
 
@@ -14,6 +14,20 @@ const WHEEL_COOLDOWN_MS = 150;
 const WHEEL_MIN_DELTA = 16;
 /** Card switch transition duration — ghosts are removed after it. */
 const SWITCH_ANIMATION_MS = 260;
+
+/**
+ * A study session: opened explicitly via Start (or automatically by the
+ * entry commands), closed via End / book switch / view close. Its coverage
+ * (min–max visited) is what gets written to the journey file on settle.
+ */
+interface FlipSession {
+	/** Index the session was started at (decides the epoch on settle). */
+	startIdx: number;
+	minIdx: number;
+	maxIdx: number;
+	startTime: number;
+	marksMade: number;
+}
 
 /**
  * Short-video-style word flipping view: one card fills the view, navigated
@@ -34,6 +48,10 @@ export class WordFlipView extends ItemView {
 	/** 0-based index of the current word. */
 	private index = 0;
 	private revealed = false;
+	/** Active study session; null while merely browsing. */
+	private session: FlipSession | null = null;
+	private footerEl: HTMLElement | null = null;
+	private sessionBtnEl: HTMLElement | null = null;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -72,6 +90,16 @@ export class WordFlipView extends ItemView {
 			onDragEnd: (dy, commit) => this.handleDragEnd(dy, commit),
 		});
 
+		this.footerEl = container.createDiv({ cls: 'dial-word-flip-footer' });
+		this.sessionBtnEl = this.footerEl.createEl('button', {
+			cls: 'dial-word-flip-session-btn',
+		});
+		this.sessionBtnEl.addEventListener('click', () => {
+			if (this.session) this.endSession();
+			else this.startSession();
+		});
+		this.updateSessionButton();
+
 		// Keyboard: ↓/Space = next, ↑ = previous (scroll semantics, like
 		// short-video web apps). Registered on the view's keymap scope so
 		// they only fire while this view is the active leaf.
@@ -108,12 +136,15 @@ export class WordFlipView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
+		this.endSession();
 		this.dragDetector?.destroy();
 		this.dragDetector = null;
 		this.card = null;
 		this.neighborCard = null;
 		this.cardAreaEl = null;
 		this.emptyEl = null;
+		this.footerEl = null;
+		this.sessionBtnEl = null;
 	}
 
 	/** The vault path of the loaded book, for session/persistence wiring. */
@@ -134,6 +165,7 @@ export class WordFlipView extends ItemView {
 	 * (0-based; defaults to the first word).
 	 */
 	async loadBook(file: TFile, startAt?: number): Promise<void> {
+		this.endSession();
 		const parsed = await readWordBook(this.app.vault, file);
 		this.bookFile = file;
 		this.parsed = parsed;
@@ -149,6 +181,43 @@ export class WordFlipView extends ItemView {
 
 		const target = Math.min(Math.max(startAt ?? 0, 0), parsed.words.length - 1);
 		this.goToIndex(target);
+	}
+
+	/** Begin a study session at the current position (marks become available). */
+	startSession(): void {
+		if (this.session) return;
+		if (!this.parsed || this.parsed.words.length === 0) return;
+		this.session = {
+			startIdx: this.index,
+			minIdx: this.index,
+			maxIdx: this.index,
+			startTime: Date.now(),
+			marksMade: 0,
+		};
+		this.updateSessionButton();
+	}
+
+	isSessionActive(): boolean {
+		return this.session !== null;
+	}
+
+	/** Close the session and record it (journey write lands in a later step). */
+	endSession(): void {
+		if (!this.session) return;
+		this.session = null;
+		this.updateSessionButton();
+	}
+
+	private updateSessionButton(): void {
+		if (!this.sessionBtnEl) return;
+		this.sessionBtnEl.empty();
+		const iconEl = this.sessionBtnEl.createSpan({ cls: 'dial-word-flip-btn-icon' });
+		setIcon(iconEl, this.session ? 'square' : 'play');
+		this.sessionBtnEl.createSpan({
+			cls: 'dial-word-flip-btn-label',
+			text: this.session ? 'End' : 'Start',
+		});
+		this.sessionBtnEl.toggleClass('is-active-session', this.session !== null);
 	}
 
 	/** Jump to a position without a directional animation. */
@@ -175,6 +244,10 @@ export class WordFlipView extends ItemView {
 		this.revealed = false;
 		if (this.bookFile) {
 			this.plugin.wordFlip.recordIndex(this.bookFile.path, this.index);
+		}
+		if (this.session) {
+			this.session.minIdx = Math.min(this.session.minIdx, this.index);
+			this.session.maxIdx = Math.max(this.session.maxIdx, this.index);
 		}
 		this.renderCard();
 	}
