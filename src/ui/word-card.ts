@@ -166,8 +166,7 @@ export class WordCard {
 			this.hide();
 		};
 		document.addEventListener('click', handler, true);
-		this.removeDismissListener = () =>
-			document.removeEventListener('click', handler, true);
+		this.removeDismissListener = () => document.removeEventListener('click', handler, true);
 	}
 
 	/**

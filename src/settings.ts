@@ -1,10 +1,11 @@
-import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
 import type { ButtonComponent } from 'obsidian';
+
+import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
+
+import { isSpeechSynthesisAvailable } from '@/utils/speech';
 
 import type DialPlugin from './main';
 import type { FolderOrderMode, LoopMode, SubtitlePanelVisibility } from './types';
-
-import { isSpeechSynthesisAvailable } from '@/utils/speech';
 
 export interface DialSettings {
 	videoLibraryPath: string;
@@ -82,8 +83,10 @@ export function speechStatusText(status: SpeechStatus): string {
 		case 'available':
 			return 'Available on this device. Pronunciation and auto-pronounce are active.';
 		case 'unavailable':
-			return 'Not available on this device (common on Android). The speaker ' +
-				'button is hidden and words are not spoken.';
+			return (
+				'Not available on this device (common on Android). The speaker ' +
+				'button is hidden and words are not spoken.'
+			);
 	}
 }
 
@@ -332,9 +335,7 @@ export class DialSettingTab extends PluginSettingTab {
 				renderSpeechStatus('checking');
 				reDetectBtn?.setDisabled(true);
 				window.setTimeout(() => {
-					renderSpeechStatus(
-						isSpeechSynthesisAvailable() ? 'available' : 'unavailable',
-					);
+					renderSpeechStatus(isSpeechSynthesisAvailable() ? 'available' : 'unavailable');
 					reDetectBtn?.setDisabled(false);
 				}, SPEECH_DETECT_FEEDBACK_MS);
 			});

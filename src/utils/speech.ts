@@ -10,7 +10,6 @@
  */
 export function isSpeechSynthesisAvailable(): boolean {
 	return (
-		typeof speechSynthesis !== 'undefined' &&
-		typeof SpeechSynthesisUtterance !== 'undefined'
+		typeof speechSynthesis !== 'undefined' && typeof SpeechSynthesisUtterance !== 'undefined'
 	);
 }
