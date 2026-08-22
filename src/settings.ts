@@ -16,6 +16,8 @@ export interface DialSettings {
 	showABLoop: boolean;
 	showSpeed: boolean;
 	showSubtitleSearch: boolean;
+	wordPronunciationLang: string;
+	wordAutoPronounce: boolean;
 }
 
 export const DEFAULT_SETTINGS: DialSettings = {
@@ -31,6 +33,19 @@ export const DEFAULT_SETTINGS: DialSettings = {
 	showABLoop: true,
 	showSpeed: false,
 	showSubtitleSearch: true,
+	wordPronunciationLang: 'en-US',
+	wordAutoPronounce: true,
+};
+
+/** Languages offered for word card pronunciation (BCP 47 → label). */
+export const PRONUNCIATION_LANG_OPTIONS: Record<string, string> = {
+	'en-US': 'English (US)',
+	'en-GB': 'English (UK)',
+	'fr-FR': 'French',
+	'de-DE': 'German',
+	'es-ES': 'Spanish',
+	'ja-JP': 'Japanese',
+	'ko-KR': 'Korean',
 };
 
 /**
@@ -261,6 +276,37 @@ export class DialSettingTab extends PluginSettingTab {
 					this.plugin.settings.showSubtitleSearch = value;
 					await this.plugin.saveSettings();
 					this.plugin.applySubtitlePanelVisibility();
+				}),
+			);
+
+		new Setting(containerEl).setName('Word card').setHeading();
+
+		new Setting(containerEl)
+			.setName('Pronunciation language')
+			.setDesc(
+				'Language used to pronounce a word when you press the speaker ' +
+					'button on the word card. Applies to new pronunciations immediately.',
+			)
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOptions(PRONUNCIATION_LANG_OPTIONS)
+					.setValue(this.plugin.settings.wordPronunciationLang)
+					.onChange(async (value) => {
+						this.plugin.settings.wordPronunciationLang = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName('Auto-pronounce on card open')
+			.setDesc(
+				'Speak the word automatically when the word card appears. ' +
+					'The speaker button on the card always works regardless of this setting.',
+			)
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.wordAutoPronounce).onChange(async (value) => {
+					this.plugin.settings.wordAutoPronounce = value;
+					await this.plugin.saveSettings();
 				}),
 			);
 	}

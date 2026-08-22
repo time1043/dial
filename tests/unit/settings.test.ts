@@ -46,6 +46,8 @@ describe('DEFAULT_SETTINGS', () => {
 			showABLoop: true,
 			showSpeed: false,
 			showSubtitleSearch: true,
+			wordPronunciationLang: 'en-US',
+			wordAutoPronounce: true,
 		});
 	});
 });

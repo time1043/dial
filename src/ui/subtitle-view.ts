@@ -50,6 +50,12 @@ export class SubtitleView extends ItemView {
 		this.panel = new SubtitlePanel(
 			container as HTMLElement,
 			this.plugin ? subtitlePanelVisibility(this.plugin.settings) : undefined,
+			this.plugin
+				? () => ({
+						pronunciationLang: this.plugin!.settings.wordPronunciationLang,
+						autoPronounce: this.plugin!.settings.wordAutoPronounce,
+					})
+				: undefined,
 		);
 		this.panel.setCallbacks({
 			onSubtitleClick: (sub) => this.callbacks?.onSubtitleClick(sub),

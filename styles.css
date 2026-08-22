@@ -473,3 +473,55 @@
 	padding-left: 0.75em;
 	border-left: 1px solid var(--background-modifier-border);
 }
+
+/* Word card: shown on hover (desktop) or tap (mobile) of a subtitle word.
+   Fixed-positioned against the viewport by WordCard.position(). On desktop
+   the card stays open while hovered so the speak button is reachable. */
+.dial-word-card {
+	position: fixed;
+	z-index: var(--layer-popover, 100);
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 12px;
+	border-radius: var(--radius-s, 6px);
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	box-shadow: var(--shadow-s, 0 1px 3px rgba(0, 0, 0, 0.25));
+}
+
+.dial-word-card-word {
+	font-size: 1em;
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+/* Pronounce button inside the word card. Overrides Obsidian's global
+   `button` styling so it reads as a compact icon affordance. */
+.dial-word-card .dial-word-card-speak {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 2px;
+	margin: 0;
+	background: transparent;
+	border: none;
+	box-shadow: none;
+	color: var(--text-muted);
+	cursor: pointer;
+}
+
+.dial-word-card .dial-word-card-speak:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+/* Subtitle words are interactive targets for the word card. */
+.dial-subtitle-word {
+	cursor: pointer;
+	border-radius: 2px;
+}
+
+.dial-subtitle-word:hover {
+	background: var(--background-modifier-hover);
+}

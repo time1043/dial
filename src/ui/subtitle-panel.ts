@@ -5,6 +5,7 @@ import type { ABLoopState, Subtitle, SubtitlePanelVisibility } from '@/types';
 import { formatTime } from '@/utils/time';
 
 import { SubtitleSearchController } from './subtitle-search';
+import { WordCard, renderWordSpans, type WordCardConfig } from './word-card';
 
 function formatSpeed(rate: number): string {
 	return rate % 1 === 0 ? `${rate}x` : `${rate.toFixed(2)}x`;
@@ -40,6 +41,7 @@ export class SubtitlePanel {
 	private subtitleContainerEl: HTMLElement | null = null;
 
 	private search: SubtitleSearchController | null = null;
+	private wordCard: WordCard;
 
 	private visibility: SubtitlePanelVisibility;
 	private callbacks: SubtitlePanelCallbacks | null = null;
@@ -47,9 +49,18 @@ export class SubtitlePanel {
 	/** Tracks the last reported play state so it can be restored after a rebuild. */
 	private isPlaying = false;
 
-	constructor(parent: HTMLElement, visibility?: SubtitlePanelVisibility) {
+	/**
+	 * @param getWordCardConfig Read at card-open and speak time so word card
+	 * settings changes apply to open panels without a rebuild.
+	 */
+	constructor(
+		parent: HTMLElement,
+		visibility?: SubtitlePanelVisibility,
+		getWordCardConfig?: () => Partial<WordCardConfig>,
+	) {
 		this.containerEl = parent.createDiv({ cls: 'dial-subtitle-panel' });
 		this.visibility = visibility ?? { abLoop: true, speed: true, search: true };
+		this.wordCard = new WordCard({ getConfig: getWordCardConfig });
 		this.buildUI();
 	}
 
@@ -105,6 +116,9 @@ export class SubtitlePanel {
 		// is discarded by containerEl.empty().
 		this.search?.detachMobileLayout();
 		this.search = null;
+
+		// Rebuild discards the subtitle DOM, so any open word card must go.
+		this.wordCard.hide();
 
 		this.containerEl.empty();
 		// Reset all element refs so stale pointers are never reused post-rebuild.
@@ -269,6 +283,9 @@ export class SubtitlePanel {
 		this.subtitleContainerEl = this.containerEl.createDiv({
 			cls: 'dial-subtitle-list',
 		});
+		// Scrolling the list moves words out from under their cards, so
+		// dismiss any open card as soon as the list scrolls.
+		this.subtitleContainerEl.addEventListener('scroll', () => this.wordCard.hide());
 	}
 
 	private renderSubtitles(): void {
@@ -286,12 +303,15 @@ export class SubtitlePanel {
 				text: formatTime(sub.start),
 			});
 
-			el.createSpan({
+			const textEl = el.createSpan({
 				cls: 'dial-subtitle-text',
-				text: sub.text,
 			});
+			renderWordSpans(textEl, sub.text, (span) => this.wordCard.bindWordSpan(span));
 
 			el.addEventListener('click', () => {
+				// Clicking the line (outside any word) seeks; on mobile it also
+				// dismisses an open word card.
+				this.wordCard.hide();
 				this.callbacks?.onSubtitleClick(sub);
 				// On mobile, tapping a match also drops the full-screen search
 				// overlay and dismisses the keyboard, so the user can watch the
