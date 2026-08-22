@@ -44,6 +44,8 @@ export class SubtitlePanel {
 	private visibility: SubtitlePanelVisibility;
 	private callbacks: SubtitlePanelCallbacks | null = null;
 	private playbackRate = 1;
+	/** Tracks the last reported play state so it can be restored after a rebuild. */
+	private isPlaying = false;
 
 	constructor(parent: HTMLElement, visibility?: SubtitlePanelVisibility) {
 		this.containerEl = parent.createDiv({ cls: 'dial-subtitle-panel' });
@@ -75,8 +77,71 @@ export class SubtitlePanel {
 	}
 
 	setPlayState(isPlaying: boolean): void {
+		this.isPlaying = isPlaying;
 		if (this.btnPlayPauseEl) {
 			setIcon(this.btnPlayPauseEl, isPlaying ? 'pause' : 'play');
+		}
+	}
+
+	/**
+	 * Re-render the panel with updated control visibility.
+	 *
+	 * The AB controls, speed slider, and search box are conditionally created
+	 * in {@link buildUI}, so changing visibility requires rebuilding the panel
+	 * DOM. This tears down the old subtree, rebuilds it, and re-hydrates the
+	 * current subtitles, AB loop state, speed, active line, and play icon so
+	 * the update is immediate — no need to close and reopen the view.
+	 *
+	 * The active subtitle search query is re-applied to the recreated search
+	 * controller so toggling another control does not wipe the user's filter;
+	 * subtitle data and loop state are preserved.
+	 */
+	setVisibility(visibility: SubtitlePanelVisibility): void {
+		this.visibility = visibility;
+		// Preserve an active search query so toggling another control does not
+		// wipe the user's current filter. The controller is recreated below.
+		const searchQuery = this.search?.getQuery() ?? '';
+		// Release the old search controller's mobile listeners before its DOM
+		// is discarded by containerEl.empty().
+		this.search?.detachMobileLayout();
+		this.search = null;
+
+		this.containerEl.empty();
+		// Reset all element refs so stale pointers are never reused post-rebuild.
+		this.abStatusEl = null;
+		this.btnClearEl = null;
+		this.btnPlayPauseEl = null;
+		this.speedLabel = null;
+		this.speedSlider = null;
+		this.subtitleContainerEl = null;
+		this.subtitleEls.clear();
+		this.loopedSubtitleIds.clear();
+
+		this.buildUI();
+
+		// Re-hydrate state onto the freshly built DOM.
+		if (this.subtitles.length > 0) {
+			this.renderSubtitles();
+			// Restore the active-line highlight without scrolling: the user is
+			// interacting with settings, not the panel, so a scrollIntoView
+			// here would be surprising.
+			if (this.currentSubtitleId >= 0) {
+				this.subtitleEls.get(this.currentSubtitleId)?.addClass('dial-subtitle-active');
+			}
+			// Re-apply the search query on the recreated controller now that the
+			// subtitle elements exist, so the filter can toggle their visibility.
+			// buildUI reassigns this.search; the cast acknowledges that TS cannot
+			// see that reassignment through the method call (it narrowed this.search
+			// to null at the assignment above).
+			const recreatedSearch = this.search as SubtitleSearchController | null;
+			if (searchQuery && recreatedSearch) {
+				recreatedSearch.setQuery(searchQuery);
+			}
+		}
+		this.updateABDisplay();
+		this.updateLoopHighlight();
+		if (this.btnPlayPauseEl) {
+			setIcon(this.btnPlayPauseEl, this.isPlaying ? 'pause' : 'play');
 		}
 	}
 
@@ -170,14 +235,14 @@ export class SubtitlePanel {
 
 			const speedLabel = speedEl.createSpan({
 				cls: 'dial-speed-label',
-				text: '1x',
+				text: formatSpeed(this.playbackRate),
 			});
 			this.speedLabel = speedLabel;
 
 			const speedSlider = speedEl.createEl('input', {
 				cls: 'dial-speed-slider',
 				type: 'range',
-				attr: { min: '0.25', max: '3', step: '0.25', value: '1' },
+				attr: { min: '0.25', max: '3', step: '0.25', value: String(this.playbackRate) },
 			});
 			this.speedSlider = speedSlider;
 			speedSlider.addEventListener('input', () => {
