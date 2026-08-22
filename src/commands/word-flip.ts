@@ -81,8 +81,8 @@ export async function flipWordsChooseBook(plugin: DialPlugin): Promise<void> {
 		getItemText(file: TFile): string {
 			return file.basename;
 		}
-		async onChooseItem(file: TFile): Promise<void> {
-			await openWordFlipBook(plugin, file, { autoStart: true });
+		onChooseItem(file: TFile): void {
+			void openWordFlipBook(plugin, file, { autoStart: true });
 		}
 	})(plugin.app).open();
 }
@@ -111,7 +111,7 @@ export async function resumeWordFlip(
 
 /** Strip characters that are illegal in vault file names. */
 function sanitizeBookName(name: string): string {
-	return name.replace(/[\/:*?"<>|#^[\]]/g, '').trim();
+	return name.replace(/[/\\:*?"<>|#^[\]]/g, '').trim();
 }
 
 /** "New word book" — prompt for a name, create the template, open it. */
@@ -145,11 +145,13 @@ export async function createWordBook(plugin: DialPlugin): Promise<void> {
 				}
 				const file = await plugin.app.vault.create(path, WORD_BOOK_TEMPLATE);
 				await plugin.app.workspace.getLeaf('tab').openFile(file);
-				new Notice(`Word book created — add words, then run "Flip words".`);
+				new Notice(
+					`Word book created — add words to the table, then flip it from the palette.`,
+				);
 			};
 
 			new Setting(this.contentEl).setName('Book name').addText((text) => {
-				text.setPlaceholder('e.g. CET-4 core');
+				text.setPlaceholder('My vocabulary');
 				text.onChange((value) => {
 					this.name = value;
 				});

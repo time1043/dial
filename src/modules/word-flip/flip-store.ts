@@ -133,7 +133,7 @@ function sanitizeData(raw: unknown): PersistedWordFlipData {
 					: 0;
 			const marked: Record<string, true> = {};
 			if (typeof book['marked'] === 'object' && book['marked'] !== null) {
-				for (const word of Object.keys(book['marked'] as Record<string, unknown>)) {
+				for (const word of Object.keys(book['marked'])) {
 					marked[word] = true;
 				}
 			}

@@ -344,7 +344,7 @@ export class WordFlipView extends ItemView {
 		const marked =
 			entry !== undefined &&
 			this.bookFile !== null &&
-			this.plugin.wordFlip.isMarked(this.bookFile!.path, entry.word);
+			this.plugin.wordFlip.isMarked(this.bookFile.path, entry.word);
 		const enabled = this.session !== null && entry !== undefined;
 
 		this.markBtnEl.empty();
@@ -541,13 +541,15 @@ export class WordFlipView extends ItemView {
 		this.neighborCard.rootEl.addClass('is-dragging');
 
 		if (dir !== 0 && this.canGo(dir)) {
-			this.card.rootEl.style.transform = `translateY(${dy}px)`;
+			this.card.rootEl.setCssProps({ transform: `translateY(${dy}px)` });
 			const base = dir === 1 ? 100 : -100;
-			this.neighborCard.rootEl.style.visibility = 'visible';
-			this.neighborCard.rootEl.style.transform = `translateY(calc(${base}% + ${dy}px))`;
+			this.neighborCard.rootEl.setCssProps({ visibility: 'visible' });
+			this.neighborCard.rootEl.setCssProps({
+				transform: `translateY(calc(${base}% + ${dy}px))`,
+			});
 		} else {
-			this.card.rootEl.style.transform = `translateY(${dy * 0.3}px)`;
-			this.neighborCard.rootEl.style.visibility = 'hidden';
+			this.card.rootEl.setCssProps({ transform: `translateY(${dy * 0.3}px)` });
+			this.neighborCard.rootEl.setCssProps({ visibility: 'hidden' });
 		}
 	}
 
@@ -568,14 +570,16 @@ export class WordFlipView extends ItemView {
 		this.neighborCard.rootEl.removeClass('is-dragging');
 
 		if (effective !== 0 && this.dragDir === effective) {
-			this.card.rootEl.style.transform =
-				effective === 1 ? 'translateY(-100%)' : 'translateY(100%)';
-			this.neighborCard.rootEl.style.transform = 'translateY(0)';
+			this.card.rootEl.setCssProps({
+				transform: effective === 1 ? 'translateY(-100%)' : 'translateY(100%)',
+			});
+			this.neighborCard.rootEl.setCssProps({ transform: 'translateY(0)' });
 		} else {
-			this.card.rootEl.style.transform = 'translateY(0)';
+			this.card.rootEl.setCssProps({ transform: 'translateY(0)' });
 			if (this.dragDir !== 0) {
-				this.neighborCard.rootEl.style.transform =
-					this.dragDir === 1 ? 'translateY(100%)' : 'translateY(-100%)';
+				this.neighborCard.rootEl.setCssProps({
+					transform: this.dragDir === 1 ? 'translateY(100%)' : 'translateY(-100%)',
+				});
 			}
 		}
 
@@ -591,9 +595,9 @@ export class WordFlipView extends ItemView {
 		if (!this.card || !this.neighborCard) return;
 		for (const el of [this.card.rootEl, this.neighborCard.rootEl]) {
 			el.removeClass('is-dragging');
-			el.style.transform = '';
+			el.setCssProps({ transform: '' });
 		}
-		this.neighborCard.rootEl.style.visibility = 'hidden';
+		this.neighborCard.rootEl.setCssProps({ visibility: 'hidden' });
 	}
 
 	private renderNeighbor(direction: 1 | -1): void {
@@ -601,7 +605,7 @@ export class WordFlipView extends ItemView {
 		const target = this.index + direction;
 		const entry = this.parsed.words[target];
 		if (!entry) {
-			this.neighborCard.rootEl.style.visibility = 'hidden';
+			this.neighborCard.rootEl.setCssProps({ visibility: 'hidden' });
 			return;
 		}
 		this.neighborCard.update(this.cardStateFor(target, entry));
