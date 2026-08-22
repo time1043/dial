@@ -184,6 +184,24 @@ describe('WordCard', () => {
 		expect((speak.mock.calls[0]?.[0] as StubUtterance).text).toBe('Hello');
 	});
 
+	it('hides the speak button and stays silent when speech synthesis is missing', () => {
+		// Simulate Android WebView: the speech globals simply do not exist.
+		vi.stubGlobal('speechSynthesis', undefined);
+		vi.stubGlobal('SpeechSynthesisUtterance', undefined);
+
+		panel.setSubtitles(SUBS);
+		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;
+		word.dispatchEvent(new MouseEvent('mouseenter'));
+		vi.advanceTimersByTime(250);
+
+		// The card still opens and shows the word — it degrades quietly.
+		const card = document.querySelector('.dial-word-card') as HTMLElement;
+		expect(card).not.toBeNull();
+		expect(card.textContent).toContain('Hello');
+		expect(document.querySelector('.dial-word-card-speak')).toBeNull();
+		expect(speak).not.toHaveBeenCalled();
+	});
+
 	it('hides when the subtitle list scrolls', () => {
 		panel.setSubtitles(SUBS);
 		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;

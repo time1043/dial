@@ -3,6 +3,8 @@ import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
 import type DialPlugin from './main';
 import type { FolderOrderMode, LoopMode, SubtitlePanelVisibility } from './types';
 
+import { isSpeechSynthesisAvailable } from '@/utils/speech';
+
 export interface DialSettings {
 	videoLibraryPath: string;
 	subtitleLibraryPath: string;
@@ -62,6 +64,14 @@ export function subtitlePanelVisibility(settings: DialSettings): SubtitlePanelVi
 
 export function trimTrailingSlash(path: string): string {
 	return path.replace(/[/\\]+$/, '');
+}
+
+/** Status text for the speech synthesis detection row in settings. */
+export function speechStatusDescription(available: boolean): string {
+	return available
+		? 'Available on this device. Pronunciation and auto-pronounce are active.'
+		: 'Not available on this device (common on Android). The speaker button ' +
+				'is hidden and words are not spoken.';
 }
 
 export class DialSettingTab extends PluginSettingTab {
@@ -281,6 +291,18 @@ export class DialSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl).setName('Word card').setHeading();
 
+		// Live detection status: Android WebView has no speech synthesis at
+		// all, so tell the user why pronunciation does not work there instead
+		// of leaving them to discover it via an error toast.
+		const speechSetting = new Setting(containerEl).setName('Speech synthesis');
+		const updateSpeechStatus = () => {
+			speechSetting.setDesc(speechStatusDescription(isSpeechSynthesisAvailable()));
+		};
+		updateSpeechStatus();
+		speechSetting.addButton((button) =>
+			button.setButtonText('Re-detect').onClick(() => updateSpeechStatus()),
+		);
+
 		new Setting(containerEl)
 			.setName('Pronunciation language')
 			.setDesc(
@@ -301,7 +323,8 @@ export class DialSettingTab extends PluginSettingTab {
 			.setName('Auto-pronounce on card open')
 			.setDesc(
 				'Speak the word automatically when the word card appears. ' +
-					'The speaker button on the card always works regardless of this setting.',
+					'The speaker button on the card still works where speech synthesis ' +
+					'is available (see the status above).',
 			)
 			.addToggle((toggle) =>
 				toggle.setValue(this.plugin.settings.wordAutoPronounce).onChange(async (value) => {
