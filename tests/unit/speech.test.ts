@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { speechStatusDescription } from '@/settings';
+import { speechStatusText } from '@/settings';
 import { isSpeechSynthesisAvailable } from '@/utils/speech';
 
 describe('isSpeechSynthesisAvailable', () => {
@@ -11,14 +11,18 @@ describe('isSpeechSynthesisAvailable', () => {
 	});
 });
 
-describe('speechStatusDescription', () => {
+describe('speechStatusText', () => {
+	it('signals the transient checking state during re-detection', () => {
+		expect(speechStatusText('checking')).toContain('Detecting');
+	});
+
 	it('announces availability when detected', () => {
-		expect(speechStatusDescription(true)).toContain('Available');
+		expect(speechStatusText('available')).toContain('Available');
 	});
 
 	it('explains the Android degradation when missing', () => {
-		const desc = speechStatusDescription(false);
-		expect(desc).toContain('Not available');
-		expect(desc).toContain('speaker button');
+		const text = speechStatusText('unavailable');
+		expect(text).toContain('Not available');
+		expect(text).toContain('speaker');
 	});
 });
