@@ -51,7 +51,10 @@ export class SubtitleView extends ItemView {
 			container as HTMLElement,
 			this.plugin ? subtitlePanelVisibility(this.plugin.settings) : undefined,
 			this.plugin
-				? () => this.plugin!.settings.wordPronunciationLang
+				? () => ({
+						pronunciationLang: this.plugin!.settings.wordPronunciationLang,
+						autoPronounce: this.plugin!.settings.wordAutoPronounce,
+					})
 				: undefined,
 		);
 		this.panel.setCallbacks({

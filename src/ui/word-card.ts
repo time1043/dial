@@ -4,12 +4,25 @@ const SHOW_DELAY_MS = 250;
 const HIDE_DELAY_MS = 200;
 const DEFAULT_LANG = 'en-US';
 
+/** Behavior knobs for the word card, sourced from plugin settings. */
+export interface WordCardConfig {
+	/** BCP 47 language tag used when pronouncing a word. */
+	pronunciationLang: string;
+	/** Speak the word automatically when the card opens. */
+	autoPronounce: boolean;
+}
+
+const DEFAULT_CONFIG: WordCardConfig = {
+	pronunciationLang: DEFAULT_LANG,
+	autoPronounce: true,
+};
+
 export interface WordCardOptions {
 	/**
-	 * Returns the BCP 47 language tag used when pronouncing a word.
-	 * Read at speak time so settings changes apply without rebuilding panels.
+	 * Read at card-open and speak time so settings changes apply to open
+	 * panels without a rebuild. Absent fields fall back to defaults.
 	 */
-	getLang?: () => string;
+	getConfig?: () => Partial<WordCardConfig>;
 }
 
 /**
@@ -28,6 +41,10 @@ export class WordCard {
 	private removeDismissListener: (() => void) | null = null;
 
 	constructor(private readonly options: WordCardOptions = {}) {}
+
+	private get config(): WordCardConfig {
+		return { ...DEFAULT_CONFIG, ...this.options.getConfig?.() };
+	}
 
 	/**
 	 * Wire hover/tap behavior onto a `.dial-subtitle-word` span.
@@ -121,8 +138,10 @@ export class WordCard {
 		document.body.appendChild(this.cardEl);
 		this.position(span);
 
-		// Auto-pronounce once on open; the button replays it on demand.
-		this.speak(word, false);
+		// Auto-pronounce once on open (if enabled); the button replays on demand.
+		if (this.config.autoPronounce) {
+			this.speak(word, false);
+		}
 	}
 
 	/**
@@ -159,7 +178,7 @@ export class WordCard {
 			return;
 		}
 		const utterance = new SpeechSynthesisUtterance(word);
-		utterance.lang = this.options.getLang?.() ?? DEFAULT_LANG;
+		utterance.lang = this.config.pronunciationLang;
 		// Replace any in-flight utterance so rapid taps do not queue up.
 		window.speechSynthesis.cancel();
 		window.speechSynthesis.speak(utterance);

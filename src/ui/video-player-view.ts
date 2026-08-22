@@ -152,7 +152,10 @@ export class VideoPlayerView extends ItemView {
 			container,
 			this.plugin ? subtitlePanelVisibility(this.plugin.settings) : undefined,
 			this.plugin
-				? () => this.plugin!.settings.wordPronunciationLang
+				? () => ({
+						pronunciationLang: this.plugin!.settings.wordPronunciationLang,
+						autoPronounce: this.plugin!.settings.wordAutoPronounce,
+					})
 				: undefined,
 		);
 		this.panel.setCallbacks({

@@ -152,7 +152,9 @@ describe('WordCard', () => {
 	});
 
 	it('pronounces with the language provided by the panel options', () => {
-		panel = new SubtitlePanel(parent, undefined, () => 'de-DE');
+		panel = new SubtitlePanel(parent, undefined, () => ({
+			pronunciationLang: 'de-DE',
+		}));
 		panel.setCallbacks(callbacks);
 		panel.setSubtitles(SUBS);
 		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;
@@ -162,6 +164,24 @@ describe('WordCard', () => {
 		const utterance = speak.mock.calls[0]?.[0] as StubUtterance;
 		expect(utterance.text).toBe('Hello');
 		expect(utterance.lang).toBe('de-DE');
+	});
+
+	it('skips auto-pronounce when the config disables it, but the button still speaks', () => {
+		panel = new SubtitlePanel(parent, undefined, () => ({
+			autoPronounce: false,
+		}));
+		panel.setCallbacks(callbacks);
+		panel.setSubtitles(SUBS);
+		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;
+		word.dispatchEvent(new MouseEvent('mouseenter'));
+		vi.advanceTimersByTime(250);
+
+		expect(document.querySelector('.dial-word-card')).not.toBeNull();
+		expect(speak).not.toHaveBeenCalled();
+
+		(document.querySelector('.dial-word-card-speak') as HTMLElement).click();
+		expect(speak).toHaveBeenCalledTimes(1);
+		expect((speak.mock.calls[0]?.[0] as StubUtterance).text).toBe('Hello');
 	});
 
 	it('hides when the subtitle list scrolls', () => {

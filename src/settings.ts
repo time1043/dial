@@ -17,6 +17,7 @@ export interface DialSettings {
 	showSpeed: boolean;
 	showSubtitleSearch: boolean;
 	wordPronunciationLang: string;
+	wordAutoPronounce: boolean;
 }
 
 export const DEFAULT_SETTINGS: DialSettings = {
@@ -33,6 +34,7 @@ export const DEFAULT_SETTINGS: DialSettings = {
 	showSpeed: false,
 	showSubtitleSearch: true,
 	wordPronunciationLang: 'en-US',
+	wordAutoPronounce: true,
 };
 
 /** Languages offered for word card pronunciation (BCP 47 → label). */
@@ -293,6 +295,19 @@ export class DialSettingTab extends PluginSettingTab {
 						this.plugin.settings.wordPronunciationLang = value;
 						await this.plugin.saveSettings();
 					}),
+			);
+
+		new Setting(containerEl)
+			.setName('Auto-pronounce on card open')
+			.setDesc(
+				'Speak the word automatically when the word card appears. ' +
+					'The speaker button on the card always works regardless of this setting.',
+			)
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.wordAutoPronounce).onChange(async (value) => {
+					this.plugin.settings.wordAutoPronounce = value;
+					await this.plugin.saveSettings();
+				}),
 			);
 	}
 }

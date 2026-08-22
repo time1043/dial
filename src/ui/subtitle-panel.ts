@@ -5,7 +5,7 @@ import type { ABLoopState, Subtitle, SubtitlePanelVisibility } from '@/types';
 import { formatTime } from '@/utils/time';
 
 import { SubtitleSearchController } from './subtitle-search';
-import { WordCard, renderWordSpans } from './word-card';
+import { WordCard, renderWordSpans, type WordCardConfig } from './word-card';
 
 function formatSpeed(rate: number): string {
 	return rate % 1 === 0 ? `${rate}x` : `${rate.toFixed(2)}x`;
@@ -50,17 +50,17 @@ export class SubtitlePanel {
 	private isPlaying = false;
 
 	/**
-	 * @param getPronunciationLang Read at speak time so pronunciation
-	 * language settings changes apply to open panels without a rebuild.
+	 * @param getWordCardConfig Read at card-open and speak time so word card
+	 * settings changes apply to open panels without a rebuild.
 	 */
 	constructor(
 		parent: HTMLElement,
 		visibility?: SubtitlePanelVisibility,
-		getPronunciationLang?: () => string,
+		getWordCardConfig?: () => Partial<WordCardConfig>,
 	) {
 		this.containerEl = parent.createDiv({ cls: 'dial-subtitle-panel' });
 		this.visibility = visibility ?? { abLoop: true, speed: true, search: true };
-		this.wordCard = new WordCard({ getLang: getPronunciationLang });
+		this.wordCard = new WordCard({ getConfig: getWordCardConfig });
 		this.buildUI();
 	}
 
