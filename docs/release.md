@@ -6,7 +6,7 @@
     - `manifest.json` (plugin version)
     - `package.json` (npm package version)
     - `versions.json` (plugin version → minimum Obsidian version mapping)
-2. Create release notes in `docs/release-notes/RELEASE_NOTES_vX.X.X.md`
+2. Create release notes in `docs/release-notes/RELEASE_NOTES_vX.X.X.md` and format file via `pnpm fmt`
 
 ## Release Steps
 
