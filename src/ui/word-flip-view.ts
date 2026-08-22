@@ -8,6 +8,7 @@ import { appendJourneySession, type JourneyWordSnapshot } from '@/modules/word-f
 import { WordFlipCard, type WordFlipCardState } from '@/ui/word-flip-card';
 import { VerticalDragDetector, type DragCommitDirection } from '@/ui/word-flip-drag';
 import { WordFlipProgressBar } from '@/ui/word-flip-progress';
+import { isSpeechSynthesisAvailable, speakWord } from '@/utils/speech';
 
 export const WORD_FLIP_VIEW_TYPE = 'dial-word-flip';
 
@@ -55,6 +56,7 @@ export class WordFlipView extends ItemView {
 	private footerEl: HTMLElement | null = null;
 	private sessionBtnEl: HTMLElement | null = null;
 	private markBtnEl: HTMLButtonElement | null = null;
+	private speakBtnEl: HTMLButtonElement | null = null;
 	private progressBar: WordFlipProgressBar | null = null;
 	private seekPreviewEl: HTMLElement | null = null;
 
@@ -117,6 +119,15 @@ export class WordFlipView extends ItemView {
 			else this.startSession();
 		});
 
+		// No dead speaker button on platforms without speech synthesis.
+		if (isSpeechSynthesisAvailable()) {
+			this.speakBtnEl = this.footerEl.createEl('button', {
+				cls: 'dial-word-flip-speak-btn',
+				attr: { 'aria-label': 'Pronounce word', title: 'Pronounce word' },
+			});
+			this.speakBtnEl.addEventListener('click', () => this.speakCurrentWord());
+		}
+
 		this.updateFooterButtons();
 
 		// Keyboard: ↓/Space = next, ↑ = previous (scroll semantics, like
@@ -168,6 +179,7 @@ export class WordFlipView extends ItemView {
 		this.footerEl = null;
 		this.sessionBtnEl = null;
 		this.markBtnEl = null;
+		this.speakBtnEl = null;
 		this.seekPreviewEl = null;
 	}
 
@@ -292,6 +304,20 @@ export class WordFlipView extends ItemView {
 	private updateFooterButtons(): void {
 		this.updateSessionButton();
 		this.updateMarkButton();
+		if (this.speakBtnEl) {
+			this.speakBtnEl.empty();
+			const iconEl = this.speakBtnEl.createSpan({ cls: 'dial-word-flip-btn-icon' });
+			setIcon(iconEl, 'volume-2');
+			this.speakBtnEl.disabled = !this.parsed || this.parsed.words.length === 0;
+		}
+	}
+
+	/** Pronounce the current word: book lang overrides the global setting. */
+	private speakCurrentWord(notifyIfUnavailable = true): void {
+		const entry = this.parsed?.words[this.index];
+		if (!entry) return;
+		const lang = this.parsed?.lang ?? this.plugin.settings.wordPronunciationLang;
+		speakWord(entry.word, lang, notifyIfUnavailable);
 	}
 
 	private updateSessionButton(): void {
@@ -359,6 +385,9 @@ export class WordFlipView extends ItemView {
 		}
 		this.progressBar?.setPosition(this.index, words.length);
 		this.renderCard();
+		if (this.plugin.settings.wordAutoPronounce && isSpeechSynthesisAvailable()) {
+			this.speakCurrentWord(false);
+		}
 	}
 
 	/** Live word preview while the progress bar is being dragged. */
