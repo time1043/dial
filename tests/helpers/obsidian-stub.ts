@@ -61,4 +61,10 @@ export class PluginSettingTab {
 	constructor(_app: unknown, _plugin: unknown) {}
 }
 
+export class Modal {
+	constructor(_app: unknown) {}
+	open(): void {}
+	close(): void {}
+}
+
 export function setIcon(_el: HTMLElement, _icon: string): void {}

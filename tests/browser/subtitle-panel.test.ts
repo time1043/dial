@@ -96,4 +96,23 @@ describe('SubtitlePanel.setVisibility', () => {
 		).not.toThrow();
 		expect(parent.querySelectorAll('.dial-subtitle-item').length).toBe(0);
 	});
+
+	it('preserves the active search query across a rebuild', () => {
+		panel.setSubtitles(SUBS);
+		const input = parent.querySelector('.dial-subtitle-search-input') as HTMLInputElement;
+		input.value = 'second';
+		input.dispatchEvent(new Event('input'));
+
+		// Toggle speed off while keeping search on: the rebuild must keep the
+		// typed query and the filtered result set, not wipe the user's filter.
+		panel.setVisibility({ abLoop: true, speed: false, search: true });
+
+		const newInput = parent.querySelector('.dial-subtitle-search-input') as HTMLInputElement;
+		expect(newInput.value).toBe('second');
+		// Only the matching line stays visible after the filter is re-applied.
+		expect(
+			parent.querySelectorAll('.dial-subtitle-item:not(.dial-subtitle-hidden)').length,
+		).toBe(1);
+		expect(parent.querySelector('.dial-subtitle-hidden')).not.toBeNull();
+	});
 });

@@ -79,6 +79,22 @@ export class SubtitleSearchController {
 		this.input.blur();
 	}
 
+	/** Returns the raw text the user has typed into the search box. */
+	getQuery(): string {
+		return this.searchText;
+	}
+
+	/**
+	 * Restore a previously entered query — used when the host panel rebuilds
+	 * and recreates this controller. Updates the input value and re-applies the
+	 * filter immediately so the user's active filter is not lost.
+	 */
+	setQuery(text: string): void {
+		this.searchText = text;
+		this.input.value = text;
+		this.applyFilter();
+	}
+
 	/** True while the mobile full-screen search overlay is active. */
 	isMobileOverlayActive(): boolean {
 		return this.panelEl.hasClass('dial-mobile-search-overlay');

@@ -92,11 +92,15 @@ export class SubtitlePanel {
 	 * current subtitles, AB loop state, speed, active line, and play icon so
 	 * the update is immediate — no need to close and reopen the view.
 	 *
-	 * The active subtitle search query is not carried over (the search
-	 * controller is recreated); subtitle data and loop state are preserved.
+	 * The active subtitle search query is re-applied to the recreated search
+	 * controller so toggling another control does not wipe the user's filter;
+	 * subtitle data and loop state are preserved.
 	 */
 	setVisibility(visibility: SubtitlePanelVisibility): void {
 		this.visibility = visibility;
+		// Preserve an active search query so toggling another control does not
+		// wipe the user's current filter. The controller is recreated below.
+		const searchQuery = this.search?.getQuery() ?? '';
 		// Release the old search controller's mobile listeners before its DOM
 		// is discarded by containerEl.empty().
 		this.search?.detachMobileLayout();
@@ -123,6 +127,15 @@ export class SubtitlePanel {
 			// here would be surprising.
 			if (this.currentSubtitleId >= 0) {
 				this.subtitleEls.get(this.currentSubtitleId)?.addClass('dial-subtitle-active');
+			}
+			// Re-apply the search query on the recreated controller now that the
+			// subtitle elements exist, so the filter can toggle their visibility.
+			// buildUI reassigns this.search; the cast acknowledges that TS cannot
+			// see that reassignment through the method call (it narrowed this.search
+			// to null at the assignment above).
+			const recreatedSearch = this.search as SubtitleSearchController | null;
+			if (searchQuery && recreatedSearch) {
+				recreatedSearch.setQuery(searchQuery);
 			}
 		}
 		this.updateABDisplay();
