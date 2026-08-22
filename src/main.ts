@@ -11,6 +11,7 @@ import { openTypeSession, resumeTypeSession } from './commands/open-type-session
 import { openUrlPlayerFromActiveNote } from './commands/open-url-player';
 import { togglePlay } from './commands/toggle-play';
 import {
+	createWordBook,
 	flipWords,
 	flipWordsChooseBook,
 	flipWordsFromActiveFile,
@@ -177,6 +178,12 @@ export default class DialPlugin extends Plugin {
 			id: 'word-flip-choose-book',
 			name: 'Flip words: choose a book',
 			callback: () => void flipWordsChooseBook(this),
+		});
+
+		this.addCommand({
+			id: 'word-flip-create-book',
+			name: 'New word book',
+			callback: () => void createWordBook(this),
 		});
 
 		this.addSettingTab(new DialSettingTab(this.app, this));

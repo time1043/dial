@@ -1,11 +1,13 @@
-import { FuzzySuggestModal, Notice, TFile } from 'obsidian';
+import { FuzzySuggestModal, Modal, Notice, Setting, TFile } from 'obsidian';
 
 import type DialPlugin from '@/main';
 
 import {
+	ensureBucketFolder,
 	findWordBookFiles,
 	isWordBookPath,
 	normalizeBucketPath,
+	WORD_BOOK_TEMPLATE,
 } from '@/modules/word-flip/book-finder';
 import { WORD_FLIP_VIEW_TYPE, WordFlipView } from '@/ui/word-flip-view';
 
@@ -105,4 +107,60 @@ export async function resumeWordFlip(
 	const oneBased = Number.parseInt(indexParam ?? '1', 10);
 	const startAt = Number.isNaN(oneBased) ? undefined : oneBased - 1;
 	await openWordFlipBook(plugin, file, { startAt, autoStart: false });
+}
+
+/** Strip characters that are illegal in vault file names. */
+function sanitizeBookName(name: string): string {
+	return name.replace(/[\/:*?"<>|#^[\]]/g, '').trim();
+}
+
+/** "New word book" — prompt for a name, create the template, open it. */
+export async function createWordBook(plugin: DialPlugin): Promise<void> {
+	new (class extends Modal {
+		private name = '';
+
+		constructor(app: import('obsidian').App) {
+			super(app);
+		}
+
+		async onOpen(): Promise<void> {
+			this.titleEl.setText('New word book');
+
+			const submit = async (): Promise<void> => {
+				const clean = sanitizeBookName(this.name);
+				if (!clean) {
+					new Notice('Please enter a book name.');
+					return;
+				}
+				this.close();
+
+				const bucket = await ensureBucketFolder(
+					plugin.app.vault,
+					plugin.settings.vocabularyBucketPath,
+				);
+				const path = `${bucket}/${clean}.md`;
+				if (plugin.app.vault.getAbstractFileByPath(path)) {
+					new Notice(`"${path}" already exists.`);
+					return;
+				}
+				const file = await plugin.app.vault.create(path, WORD_BOOK_TEMPLATE);
+				await plugin.app.workspace.getLeaf('tab').openFile(file);
+				new Notice(`Word book created — add words, then run "Flip words".`);
+			};
+
+			new Setting(this.contentEl).setName('Book name').addText((text) => {
+				text.setPlaceholder('e.g. CET-4 core');
+				text.onChange((value) => {
+					this.name = value;
+				});
+				text.inputEl.addEventListener('keydown', (evt) => {
+					if (evt.key === 'Enter') void submit();
+				});
+				window.setTimeout(() => text.inputEl.focus(), 50);
+			});
+			new Setting(this.contentEl).addButton((button) =>
+				button.setButtonText('Create').onClick(() => void submit()),
+			);
+		}
+	})(plugin.app).open();
 }

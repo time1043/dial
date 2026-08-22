@@ -33,6 +33,32 @@ export async function readWordBook(vault: Vault, file: TFile): Promise<ParsedWor
 	return parseWordBook(await vault.read(file));
 }
 
+/** Starter content for a freshly created word book. */
+export const WORD_BOOK_TEMPLATE = [
+	'---',
+	'title: ',
+	'lang: ',
+	'---',
+	'',
+	'| # | word | ipa | meaning | forms |',
+	'| - | ---- | --- | ------- | ----- |',
+	'| 1 |  |  |  |  |',
+	'',
+].join('\n');
+
+/** Create the bucket folder (and any missing parents). */
+export async function ensureBucketFolder(vault: Vault, bucketPath: string): Promise<string> {
+	const bucket = normalizeBucketPath(bucketPath);
+	let current = '';
+	for (const part of bucket.split('/')) {
+		current = current ? `${current}/${part}` : part;
+		if (!vault.getAbstractFileByPath(current)) {
+			await vault.createFolder(current);
+		}
+	}
+	return bucket;
+}
+
 /** Display name for a book: frontmatter title, else the file basename. */
 export function bookDisplayName(fileName: string, parsed: ParsedWordBook): string {
 	return parsed.title ?? fileName.replace(/\.md$/i, '');
