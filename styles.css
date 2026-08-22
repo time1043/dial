@@ -709,3 +709,16 @@
 		transform: translateY(100%);
 	}
 }
+
+/* Swipe: off-screen neighbor card and no-transition finger tracking. */
+.dial-word-flip-card-neighbor {
+	position: absolute;
+	inset: 0;
+	visibility: hidden;
+	pointer-events: none;
+}
+
+.dial-word-flip-card.is-dragging,
+.dial-word-flip-card-neighbor.is-dragging {
+	transition: none;
+}

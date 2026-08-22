@@ -4,7 +4,8 @@ import type DialPlugin from '@/main';
 
 import { bookDisplayName, readWordBook } from '@/modules/word-flip/book-finder';
 import { WORD_ROW_FORMAT_HINT, type ParsedWordBook } from '@/modules/word-flip/book-parser';
-import { WordFlipCard } from '@/ui/word-flip-card';
+import { WordFlipCard, type WordFlipCardState } from '@/ui/word-flip-card';
+import { VerticalDragDetector, type DragCommitDirection } from '@/ui/word-flip-drag';
 
 export const WORD_FLIP_VIEW_TYPE = 'dial-word-flip';
 
@@ -20,8 +21,13 @@ const SWITCH_ANIMATION_MS = 260;
  */
 export class WordFlipView extends ItemView {
 	private card: WordFlipCard | null = null;
+	/** Off-screen twin that previews the adjacent word during a swipe. */
+	private neighborCard: WordFlipCard | null = null;
 	private cardAreaEl: HTMLElement | null = null;
 	private emptyEl: HTMLElement | null = null;
+	private dragDetector: VerticalDragDetector | null = null;
+	/** Direction (1 next / -1 prev / 0 none) of the in-flight swipe. */
+	private dragDir: 1 | -1 | 0 = 0;
 
 	private bookFile: TFile | null = null;
 	private parsed: ParsedWordBook | null = null;
@@ -57,7 +63,14 @@ export class WordFlipView extends ItemView {
 		this.cardAreaEl = container.createDiv({ cls: 'dial-word-flip-area' });
 		this.card = new WordFlipCard(this.cardAreaEl, () => this.toggleReveal());
 		this.card.rootEl.toggleClass('is-empty-state', true);
+		this.neighborCard = new WordFlipCard(this.cardAreaEl, () => {});
+		this.neighborCard.rootEl.addClass('dial-word-flip-card-neighbor');
 		this.renderEmpty('No word book loaded. Open one via a "Flip words" command.');
+
+		this.dragDetector = new VerticalDragDetector(this.cardAreaEl, {
+			onDragMove: (dy) => this.handleDragMove(dy),
+			onDragEnd: (dy, commit) => this.handleDragEnd(dy, commit),
+		});
 
 		// Keyboard: ↓/Space = next, ↑ = previous (scroll semantics, like
 		// short-video web apps). Registered on the view's keymap scope so
@@ -95,7 +108,10 @@ export class WordFlipView extends ItemView {
 	}
 
 	async onClose(): Promise<void> {
+		this.dragDetector?.destroy();
+		this.dragDetector = null;
 		this.card = null;
+		this.neighborCard = null;
 		this.cardAreaEl = null;
 		this.emptyEl = null;
 	}
@@ -198,16 +214,111 @@ export class WordFlipView extends ItemView {
 		this.emptyEl?.remove();
 		this.emptyEl = null;
 		this.card.rootEl.toggleClass('is-empty-state', false);
-		this.card.update({
+		this.card.update(this.cardStateFor(this.index, entry));
+	}
+
+	private cardStateFor(index: number, entry: ParsedWordBook['words'][number]): WordFlipCardState {
+		return {
 			entry,
-			index: this.index,
-			total: this.parsed.words.length,
+			index,
+			total: this.parsed?.words.length ?? 0,
 			revealed: this.revealed,
 			marked:
 				this.bookFile !== null &&
 				this.plugin.wordFlip.isMarked(this.bookFile.path, entry.word),
 			revealMode: this.plugin.settings.wordFlipRevealMode,
-		});
+		};
+	}
+
+	private canGo(direction: 1 | -1): boolean {
+		const words = this.parsed?.words;
+		if (!words || words.length === 0) return false;
+		return direction === 1 ? this.index < words.length - 1 : this.index > 0;
+	}
+
+	/**
+	 * Finger-tracking phase: the current card follows the finger and the
+	 * adjacent word slides in from the edge. At book boundaries the card
+	 * moves with rubber-band resistance instead (30%).
+	 */
+	private handleDragMove(dy: number): void {
+		if (!this.card || !this.neighborCard || !this.parsed || this.parsed.words.length === 0) {
+			return;
+		}
+		const dir: 1 | -1 | 0 = dy < 0 ? 1 : dy > 0 ? -1 : 0;
+		if (dir !== this.dragDir) {
+			this.dragDir = dir;
+			if (dir !== 0) this.renderNeighbor(dir);
+		}
+
+		this.card.rootEl.addClass('is-dragging');
+		this.neighborCard.rootEl.addClass('is-dragging');
+
+		if (dir !== 0 && this.canGo(dir)) {
+			this.card.rootEl.style.transform = `translateY(${dy}px)`;
+			const base = dir === 1 ? 100 : -100;
+			this.neighborCard.rootEl.style.visibility = 'visible';
+			this.neighborCard.rootEl.style.transform = `translateY(calc(${base}% + ${dy}px))`;
+		} else {
+			this.card.rootEl.style.transform = `translateY(${dy * 0.3}px)`;
+			this.neighborCard.rootEl.style.visibility = 'hidden';
+		}
+	}
+
+	/**
+	 * Release phase: commit the swipe (current card exits, neighbor takes
+	 * center, then content is swapped in) or spring everything back.
+	 */
+	private handleDragEnd(dy: number, commit: DragCommitDirection): void {
+		if (!this.card || !this.neighborCard) return;
+		const words = this.parsed?.words;
+		if (!words || words.length === 0 || dy === 0) {
+			this.clearDragStyles();
+			return;
+		}
+		const effective = commit !== 0 && this.canGo(commit) ? commit : 0;
+
+		this.card.rootEl.removeClass('is-dragging');
+		this.neighborCard.rootEl.removeClass('is-dragging');
+
+		if (effective !== 0 && this.dragDir === effective) {
+			this.card.rootEl.style.transform =
+				effective === 1 ? 'translateY(-100%)' : 'translateY(100%)';
+			this.neighborCard.rootEl.style.transform = 'translateY(0)';
+		} else {
+			this.card.rootEl.style.transform = 'translateY(0)';
+			if (this.dragDir !== 0) {
+				this.neighborCard.rootEl.style.transform =
+					this.dragDir === 1 ? 'translateY(100%)' : 'translateY(-100%)';
+			}
+		}
+
+		const targetIndex = effective !== 0 ? this.index + effective : -1;
+		this.dragDir = 0;
+		window.setTimeout(() => {
+			if (targetIndex >= 0) this.applyIndex(targetIndex);
+			this.clearDragStyles();
+		}, SWITCH_ANIMATION_MS + 20);
+	}
+
+	private clearDragStyles(): void {
+		if (!this.card || !this.neighborCard) return;
+		for (const el of [this.card.rootEl, this.neighborCard.rootEl]) {
+			el.removeClass('is-dragging');
+			el.style.transform = '';
+		}
+		this.neighborCard.rootEl.style.visibility = 'hidden';
+	}
+
+	private renderNeighbor(direction: 1 | -1): void {
+		if (!this.neighborCard || !this.parsed) return;
+		const target = this.index + direction;
+		const entry = this.parsed.words[target];
+		if (!entry) {
+			this.neighborCard.rootEl.style.visibility = 'hidden';
+			return;
+		}
+		this.neighborCard.update(this.cardStateFor(target, entry));
 	}
 
 	private renderEmpty(message: string): void {
