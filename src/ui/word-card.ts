@@ -1,22 +1,33 @@
-import { Platform } from 'obsidian';
+import { Notice, Platform, setIcon } from 'obsidian';
 
 const SHOW_DELAY_MS = 250;
 const HIDE_DELAY_MS = 200;
+const DEFAULT_LANG = 'en-US';
+
+export interface WordCardOptions {
+	/**
+	 * Returns the BCP 47 language tag used when pronouncing a word.
+	 * Read at speak time so settings changes apply without rebuilding panels.
+	 */
+	getLang?: () => string;
+}
 
 /**
  * Floating word card shown when the user hovers (desktop) or taps (mobile)
- * a word inside a subtitle line. For now the card only displays the word;
- * pronunciation and translation will be layered on in later iterations.
+ * a word inside a subtitle line. Shows the word plus a pronounce button
+ * backed by the Web Speech API; translation will be layered on later.
  *
- * The card is non-interactive (pointer-events: none) so it never steals
- * hover focus from the word that spawned it.
+ * On desktop the card stays open while the pointer rests on it, so the
+ * user can move from the word onto the card to press the button.
  */
 export class WordCard {
 	private cardEl: HTMLElement | null = null;
-	private wordEl: HTMLElement | null = null;
 	private activeWordEl: HTMLElement | null = null;
 	private showTimer: number | null = null;
 	private hideTimer: number | null = null;
+	private removeDismissListener: (() => void) | null = null;
+
+	constructor(private readonly options: WordCardOptions = {}) {}
 
 	/**
 	 * Wire hover/tap behavior onto a `.dial-subtitle-word` span.
@@ -24,7 +35,7 @@ export class WordCard {
 	 * Desktop: hovering the word for a short delay shows the card, leaving
 	 * hides it (also after a short delay so quick passes do not flicker);
 	 * clicking shows it immediately. Mobile: tapping the word toggles the
-	 * card; clicking anywhere else or scrolling dismisses it. Word taps
+	 * card; tapping anywhere else or scrolling dismisses it. Word taps
 	 * always stop propagation so they do not trigger the parent subtitle
 	 * line's seek-to-time click.
 	 */
@@ -62,10 +73,11 @@ export class WordCard {
 	/** Hide the card immediately (used on scroll, panel rebuild, etc.). */
 	hide(): void {
 		this.clearTimers();
+		this.removeDismissListener?.();
+		this.removeDismissListener = null;
 		this.activeWordEl = null;
 		this.cardEl?.remove();
 		this.cardEl = null;
-		this.wordEl = null;
 	}
 
 	/** Release all DOM owned by this card. Safe to call on plugin unload. */
@@ -80,13 +92,65 @@ export class WordCard {
 		this.activeWordEl = span;
 		this.cardEl = document.createElement('div');
 		this.cardEl.className = 'dial-word-card';
-		this.wordEl = this.cardEl.createSpan({ cls: 'dial-word-card-word' });
 
-		const word = span.dataset.word ?? span.textContent ?? '';
-		this.wordEl.textContent = word;
+		const wordEl = this.cardEl.createSpan({ cls: 'dial-word-card-word' });
+		wordEl.textContent = span.dataset.word ?? span.textContent ?? '';
+
+		const speakBtnEl = this.cardEl.createEl('button', {
+			cls: 'dial-word-card-speak',
+			attr: { 'aria-label': 'Pronounce word', title: 'Pronounce word' },
+		});
+		setIcon(speakBtnEl, 'volume-2');
+		speakBtnEl.addEventListener('click', (e) => {
+			e.stopPropagation();
+			this.speak(wordEl.textContent ?? '');
+		});
+
+		if (Platform.isMobile) {
+			this.attachDismissHandler();
+		} else {
+			// Keep the card alive while the pointer is on it so the user can
+			// travel from the word to the pronounce button.
+			this.cardEl.addEventListener('mouseenter', () => this.clearTimers());
+			this.cardEl.addEventListener('mouseleave', () => {
+				this.hideTimer = window.setTimeout(() => this.hide(), HIDE_DELAY_MS);
+			});
+		}
 
 		document.body.appendChild(this.cardEl);
 		this.position(span);
+	}
+
+	/**
+	 * Dismiss the card on any tap that lands outside the card and outside
+	 * the word that opened it (mobile only). The word itself is excluded so
+	 * the tap can toggle the card off via bindWordSpan's own handler.
+	 */
+	private attachDismissHandler(): void {
+		const handler = (e: Event) => {
+			const target = e.target as Node | null;
+			if (!target) return;
+			if (this.cardEl?.contains(target)) return;
+			if (this.activeWordEl?.contains(target)) return;
+			this.hide();
+		};
+		document.addEventListener('click', handler, true);
+		this.removeDismissListener = () =>
+			document.removeEventListener('click', handler, true);
+	}
+
+	/** Pronounce the word with the Web Speech API (offline TTS). */
+	private speak(word: string): void {
+		if (!word) return;
+		if (!('speechSynthesis' in window)) {
+			new Notice('Speech synthesis is not available in this environment');
+			return;
+		}
+		const utterance = new SpeechSynthesisUtterance(word);
+		utterance.lang = this.options.getLang?.() ?? DEFAULT_LANG;
+		// Replace any in-flight utterance so rapid taps do not queue up.
+		window.speechSynthesis.cancel();
+		window.speechSynthesis.speak(utterance);
 	}
 
 	/**

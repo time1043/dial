@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Subtitle } from '@/types';
 
@@ -9,6 +9,12 @@ const SUBS: Subtitle[] = [
 	{ id: 0, start: 0, end: 2, text: "Hello, world! It's fine." },
 	{ id: 1, start: 3, end: 5, text: ' café — naïve ' },
 ];
+
+/** Deterministic SpeechSynthesisUtterance stand-in for the browser env. */
+class StubUtterance {
+	lang = '';
+	constructor(public text: string) {}
+}
 
 function makeCallbacks(): SubtitlePanelCallbacks {
 	return {
@@ -52,15 +58,24 @@ describe('WordCard', () => {
 	let parent: HTMLElement;
 	let panel: SubtitlePanel;
 	let callbacks: SubtitlePanelCallbacks;
+	let speak: ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
 		vi.useFakeTimers();
 		document.body.innerHTML = '';
+		speak = vi.fn();
+		vi.stubGlobal('speechSynthesis', { speak, cancel: vi.fn() });
+		vi.stubGlobal('SpeechSynthesisUtterance', StubUtterance);
 		parent = document.createElement('div');
 		document.body.appendChild(parent);
 		panel = new SubtitlePanel(parent);
 		callbacks = makeCallbacks();
 		panel.setCallbacks(callbacks);
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.useRealTimers();
 	});
 
 	it('does not render a card before any word is hovered', () => {
@@ -79,7 +94,7 @@ describe('WordCard', () => {
 		vi.advanceTimersByTime(1);
 		const card = document.querySelector('.dial-word-card') as HTMLElement;
 		expect(card).not.toBeNull();
-		expect(card.textContent).toBe('Hello');
+		expect(card.textContent).toContain('Hello');
 
 		word.dispatchEvent(new MouseEvent('mouseleave'));
 		vi.advanceTimersByTime(200);
@@ -97,7 +112,52 @@ describe('WordCard', () => {
 		vi.advanceTimersByTime(250);
 		expect(
 			(document.querySelector('.dial-word-card') as HTMLElement)?.textContent,
-		).toBe('world');
+		).toContain('world');
+	});
+
+	it('keeps the card open while the pointer rests on the card itself', () => {
+		panel.setSubtitles(SUBS);
+		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;
+		word.dispatchEvent(new MouseEvent('mouseenter'));
+		vi.advanceTimersByTime(250);
+
+		const card = document.querySelector('.dial-word-card') as HTMLElement;
+		word.dispatchEvent(new MouseEvent('mouseleave'));
+		card.dispatchEvent(new MouseEvent('mouseenter'));
+		vi.advanceTimersByTime(500);
+		expect(document.querySelector('.dial-word-card')).not.toBeNull();
+
+		card.dispatchEvent(new MouseEvent('mouseleave'));
+		vi.advanceTimersByTime(200);
+		expect(document.querySelector('.dial-word-card')).toBeNull();
+	});
+
+	it('pronounces the word when the speak button is clicked', () => {
+		panel.setSubtitles(SUBS);
+		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;
+		word.dispatchEvent(new MouseEvent('mouseenter'));
+		vi.advanceTimersByTime(250);
+
+		const btn = document.querySelector('.dial-word-card-speak') as HTMLElement;
+		btn.click();
+
+		expect(speak).toHaveBeenCalledTimes(1);
+		const utterance = speak.mock.calls[0]?.[0] as StubUtterance;
+		expect(utterance.text).toBe('Hello');
+		expect(utterance.lang).toBe('en-US');
+	});
+
+	it('pronounces with the language provided by the panel options', () => {
+		panel = new SubtitlePanel(parent, undefined, () => 'de-DE');
+		panel.setCallbacks(callbacks);
+		panel.setSubtitles(SUBS);
+		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;
+		word.dispatchEvent(new MouseEvent('mouseenter'));
+		vi.advanceTimersByTime(250);
+
+		(document.querySelector('.dial-word-card-speak') as HTMLElement).click();
+		const utterance = speak.mock.calls[0]?.[0] as StubUtterance;
+		expect(utterance.lang).toBe('de-DE');
 	});
 
 	it('hides when the subtitle list scrolls', () => {

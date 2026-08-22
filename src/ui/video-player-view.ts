@@ -151,6 +151,9 @@ export class VideoPlayerView extends ItemView {
 		this.panel = new SubtitlePanel(
 			container,
 			this.plugin ? subtitlePanelVisibility(this.plugin.settings) : undefined,
+			this.plugin
+				? () => this.plugin!.settings.wordPronunciationLang
+				: undefined,
 		);
 		this.panel.setCallbacks({
 			onSubtitleClick: (sub) => {

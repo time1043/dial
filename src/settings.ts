@@ -16,6 +16,7 @@ export interface DialSettings {
 	showABLoop: boolean;
 	showSpeed: boolean;
 	showSubtitleSearch: boolean;
+	wordPronunciationLang: string;
 }
 
 export const DEFAULT_SETTINGS: DialSettings = {
@@ -31,6 +32,18 @@ export const DEFAULT_SETTINGS: DialSettings = {
 	showABLoop: true,
 	showSpeed: false,
 	showSubtitleSearch: true,
+	wordPronunciationLang: 'en-US',
+};
+
+/** Languages offered for word card pronunciation (BCP 47 → label). */
+export const PRONUNCIATION_LANG_OPTIONS: Record<string, string> = {
+	'en-US': 'English (US)',
+	'en-GB': 'English (UK)',
+	'fr-FR': 'French',
+	'de-DE': 'German',
+	'es-ES': 'Spanish',
+	'ja-JP': 'Japanese',
+	'ko-KR': 'Korean',
 };
 
 /**
@@ -262,6 +275,24 @@ export class DialSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 					this.plugin.applySubtitlePanelVisibility();
 				}),
+			);
+
+		new Setting(containerEl).setName('Word card').setHeading();
+
+		new Setting(containerEl)
+			.setName('Pronunciation language')
+			.setDesc(
+				'Language used to pronounce a word when you press the speaker ' +
+					'button on the word card. Applies to new pronunciations immediately.',
+			)
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOptions(PRONUNCIATION_LANG_OPTIONS)
+					.setValue(this.plugin.settings.wordPronunciationLang)
+					.onChange(async (value) => {
+						this.plugin.settings.wordPronunciationLang = value;
+						await this.plugin.saveSettings();
+					}),
 			);
 	}
 }

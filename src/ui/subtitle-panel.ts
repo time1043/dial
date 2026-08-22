@@ -41,7 +41,7 @@ export class SubtitlePanel {
 	private subtitleContainerEl: HTMLElement | null = null;
 
 	private search: SubtitleSearchController | null = null;
-	private wordCard = new WordCard();
+	private wordCard: WordCard;
 
 	private visibility: SubtitlePanelVisibility;
 	private callbacks: SubtitlePanelCallbacks | null = null;
@@ -49,9 +49,18 @@ export class SubtitlePanel {
 	/** Tracks the last reported play state so it can be restored after a rebuild. */
 	private isPlaying = false;
 
-	constructor(parent: HTMLElement, visibility?: SubtitlePanelVisibility) {
+	/**
+	 * @param getPronunciationLang Read at speak time so pronunciation
+	 * language settings changes apply to open panels without a rebuild.
+	 */
+	constructor(
+		parent: HTMLElement,
+		visibility?: SubtitlePanelVisibility,
+		getPronunciationLang?: () => string,
+	) {
 		this.containerEl = parent.createDiv({ cls: 'dial-subtitle-panel' });
 		this.visibility = visibility ?? { abLoop: true, speed: true, search: true };
+		this.wordCard = new WordCard({ getLang: getPronunciationLang });
 		this.buildUI();
 	}
 
