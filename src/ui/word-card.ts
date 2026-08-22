@@ -2,6 +2,7 @@ import { Notice, Platform, setIcon } from 'obsidian';
 
 import type { SpeechProvider } from '@/modules/speech/speech-provider';
 
+import { isSpeechChain } from '@/modules/speech/speech-chain';
 import { systemSpeechProvider } from '@/modules/speech/system-speech-provider';
 
 const SHOW_DELAY_MS = 250;
@@ -37,6 +38,8 @@ export interface WordCardOptions {
 	 * no translation UI at all; a null result hides the row quietly.
 	 */
 	getTranslation?: (word: string) => Promise<string | null>;
+	/** Notified after every pronunciation attempt, for query logging. */
+	onPronounced?: (info: { word: string; engine: string | null }) => void;
 }
 
 /**
@@ -222,11 +225,30 @@ export class WordCard {
 	 */
 	private pronounce(word: string, notifyOnError = true): void {
 		if (!word) return;
-		this.speech.speak({ word, lang: this.config.pronunciationLang }).catch(() => {
-			if (notifyOnError) {
-				new Notice('Pronunciation failed');
-			}
-		});
+		this.reportPronounce(word)
+			.then((engine) => {
+				this.options.onPronounced?.({ word, engine });
+				if (engine === null && notifyOnError) {
+					new Notice('Pronunciation failed');
+				}
+			})
+			.catch(() => {
+				this.options.onPronounced?.({ word, engine: null });
+				if (notifyOnError) {
+					new Notice('Pronunciation failed');
+				}
+			});
+	}
+
+	/** Speak and resolve with the engine id that spoke (null = none did). */
+	private async reportPronounce(word: string): Promise<string | null> {
+		const request = { word, lang: this.config.pronunciationLang };
+		if (isSpeechChain(this.speech)) {
+			const engine = await this.speech.speakAndReport(request);
+			return engine?.id ?? null;
+		}
+		await this.speech.speak(request);
+		return this.speech.id;
 	}
 
 	/**

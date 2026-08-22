@@ -85,3 +85,8 @@ function engineState(provider: SpeechProvider): SpeechEngineState {
 	if (provider.isAvailable()) return 'available';
 	return provider.kind === 'cloud' ? 'partial' : 'unavailable';
 }
+
+/** Narrow a provider to the chain, for callers that want the used engine. */
+export function isSpeechChain(provider: SpeechProvider): provider is SpeechChain & SpeechProvider {
+	return typeof (provider as SpeechChain).speakAndReport === 'function';
+}

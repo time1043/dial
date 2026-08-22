@@ -13,6 +13,8 @@ export interface CacheFileStore {
 	list(path: string): Promise<string[]>;
 	read(path: string): Promise<string>;
 	write(path: string, text: string): Promise<void>;
+	/** Appends text to a file, creating it (but not folders) if missing. */
+	append(path: string, text: string): Promise<void>;
 	readBinary(path: string): Promise<ArrayBuffer>;
 	writeBinary(path: string, data: ArrayBuffer): Promise<void>;
 	rename(from: string, to: string): Promise<void>;
@@ -58,6 +60,10 @@ export class VaultCacheFileStore implements CacheFileStore {
 		} else {
 			await this.vault.create(path, text);
 		}
+	}
+
+	async append(path: string, text: string): Promise<void> {
+		await this.vault.adapter.append(path, text);
 	}
 
 	async readBinary(path: string): Promise<ArrayBuffer> {

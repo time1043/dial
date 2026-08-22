@@ -30,6 +30,8 @@ export interface SubtitlePanelOptions {
 	wordCardSpeech?: SpeechProvider;
 	/** Translation lookup for the word card (cache-first pipeline). */
 	wordCardTranslation?: (word: string) => Promise<string | null>;
+	/** Notified after each pronunciation attempt, for query logging. */
+	wordCardOnPronounced?: (info: { word: string; engine: string | null }) => void;
 }
 
 /**
@@ -67,6 +69,7 @@ export class SubtitlePanel {
 			getConfig: opts.wordCardConfig,
 			speech: opts.wordCardSpeech,
 			getTranslation: opts.wordCardTranslation,
+			onPronounced: opts.wordCardOnPronounced,
 		});
 		this.buildUI();
 	}

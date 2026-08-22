@@ -35,6 +35,7 @@ import { parseSubtitle } from './modules/subtitle-parsers';
 import { TraceManager } from './modules/trace-manager/trace-manager';
 import { AudioCache } from './modules/word-cache/audio-cache';
 import { VaultCacheFileStore } from './modules/word-cache/file-store';
+import { QueryLogger } from './modules/word-cache/query-logger';
 import { TranslateCache } from './modules/word-cache/translate-cache';
 import { WordFlipStore } from './modules/word-flip/flip-store';
 import { DEFAULT_SETTINGS, DialSettingTab, subtitlePanelVisibility } from './settings';
@@ -61,6 +62,13 @@ export default class DialPlugin extends Plugin {
 	private cacheFileStore?: VaultCacheFileStore;
 	private translateCacheInstance?: TranslateCache;
 	private audioCacheInstance?: AudioCache;
+	private queryLoggerInstance?: QueryLogger;
+
+	/** Append-only query log under `_lib/logs`, one JSONL per month. */
+	get queryLogger(): QueryLogger {
+		this.queryLoggerInstance ??= new QueryLogger(this.wordCacheStore);
+		return this.queryLoggerInstance;
+	}
 
 	/** Month-tiered translation cache, shared by every panel and view. */
 	get translateCache(): TranslateCache {

@@ -562,6 +562,94 @@ export class DialSettingTab extends PluginSettingTab {
 					}),
 			);
 
+		new Setting(containerEl).setName('Lookup data').setHeading();
+
+		const formatBytes = (bytes: number): string => {
+			if (bytes < 1024) return `${bytes} B`;
+			if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+			return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+		};
+
+		const cacheStatsEl = containerEl.createDiv({ cls: 'dial-cache-stats' });
+		const renderCacheStats = async () => {
+			cacheStatsEl.empty();
+			try {
+				const [translate, audio, queries] = await Promise.all([
+					this.plugin.translateCache.stats(),
+					this.plugin.audioCache.stats(),
+					this.plugin.queryLogger.aggregate(),
+				]);
+				const translateBytes = translate.months.reduce((sum, m) => sum + m.bytes, 0);
+				const audioBytes = audio.months.reduce((sum, m) => sum + m.bytes, 0);
+				cacheStatsEl
+					.createDiv()
+					.setText(
+						`Translation cache: ${translate.totalEntries} entries ` +
+							`(${translate.totalStale} stale), ${formatBytes(translateBytes)}`,
+					);
+				cacheStatsEl
+					.createDiv()
+					.setText(`Audio cache: ${audio.totalFiles} files, ${formatBytes(audioBytes)}`);
+				cacheStatsEl
+					.createDiv()
+					.setText(
+						`Lookups: ${queries.total.lookups} total — ${queries.total.cacheHits} cache ` +
+							`hits, ${queries.total.apiRequests} API requests ` +
+							`(≈${queries.total.chars} chars), ${queries.total.failed} failed`,
+					);
+			} catch {
+				cacheStatsEl.createDiv().setText('Cache stats unavailable.');
+			}
+		};
+		void renderCacheStats();
+
+		new Setting(containerEl)
+			.setName('Clear stale translation records')
+			.setDesc('Safe: removes old-month copies whose data already lives in a newer month.')
+			.addButton((button) =>
+				button
+					.setButtonText('Clear stale')
+					.setClass('mod-warning')
+					.onClick(async () => {
+						const removed = await this.plugin.translateCache.clearStale();
+						new Notice(`Removed ${removed} stale translation records`);
+						await renderCacheStats();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName('Clear cache before this month')
+			.setDesc(
+				'Danger: deletes all older translation and audio months. ' +
+					'Words looked up again will re-request from your cloud engines.',
+			)
+			.addButton((button) =>
+				button
+					.setButtonText('Clear old months')
+					.setClass('mod-warning')
+					.onClick(async () => {
+						const translations =
+							await this.plugin.translateCache.clearBeforeCurrentMonth();
+						const audio = await this.plugin.audioCache.clearBeforeCurrentMonth();
+						new Notice(`Removed ${translations} translations and ${audio} audio files`);
+						await renderCacheStats();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName('Clear lookup logs')
+			.setDesc('Danger: deletes the query history under _lib/logs. Stats reset to zero.')
+			.addButton((button) =>
+				button
+					.setButtonText('Clear logs')
+					.setClass('mod-warning')
+					.onClick(async () => {
+						const removed = await this.plugin.queryLogger.clearAll();
+						new Notice(`Removed ${removed} log lines`);
+						await renderCacheStats();
+					}),
+			);
+
 		new Setting(containerEl).setName('Word flip').setHeading();
 
 		new Setting(containerEl)

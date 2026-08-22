@@ -52,20 +52,34 @@ export async function lookupTranslation(options: {
 }
 
 /**
- * The lookup closure the word card uses: honors the opt-in toggle, then
- * runs the cache-first pipeline with the plugin's settings and caches.
+ * The lookup closure the word card uses: honors the opt-in toggle, runs
+ * the cache-first pipeline, and appends a line to the query log.
  */
 export function createTranslationLookup(
 	plugin: DialPlugin,
 ): (word: string) => Promise<string | null> {
 	return async (word) => {
 		if (!plugin.settings.translationEnabled) return null;
+		const startedAt = performance.now();
 		const outcome = await lookupTranslation({
 			word,
 			cache: plugin.translateCache,
 			chain: createTranslationChain(() => plugin.settings),
 			from: plugin.settings.translationSourceLang,
 			to: plugin.settings.translationTargetLang,
+		});
+		void plugin.queryLogger.log({
+			kind: 'translation',
+			word,
+			engine:
+				outcome.source === 'engine'
+					? (outcome.record?.engine ?? 'unknown')
+					: `cache-${outcome.source === 'none' ? 'miss' : outcome.source}`,
+			source: outcome.source,
+			ok: outcome.record !== null,
+			// Only real API requests consume quota.
+			chars: outcome.source === 'engine' ? word.length : 0,
+			ms: Math.round(performance.now() - startedAt),
 		});
 		return outcome.record?.translation ?? null;
 	};

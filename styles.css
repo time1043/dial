@@ -592,6 +592,13 @@
 	background: var(--text-error, #e0563f);
 }
 
+/* Settings: lookup cache/log stats block. */
+.dial-cache-stats {
+	color: var(--text-muted);
+	font-size: 0.9em;
+	margin: 4px 0 12px;
+}
+
 /* Subtitle words are interactive targets for the word card. */
 .dial-subtitle-word {
 	cursor: pointer;

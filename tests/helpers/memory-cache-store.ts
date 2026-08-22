@@ -39,6 +39,15 @@ export class MemoryCacheFileStore implements CacheFileStore {
 		this.files.set(path, text);
 	}
 
+	async append(path: string, text: string): Promise<void> {
+		const existing = this.files.get(path);
+		if (typeof existing === 'string') {
+			this.files.set(path, existing + text);
+		} else if (existing === undefined) {
+			this.files.set(path, text);
+		}
+	}
+
 	async readBinary(path: string): Promise<ArrayBuffer> {
 		const value = this.files.get(path);
 		if (!(value instanceof ArrayBuffer)) throw new Error(`not found: ${path}`);

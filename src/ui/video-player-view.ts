@@ -162,6 +162,16 @@ export class VideoPlayerView extends ItemView {
 				? createSpeechChain(() => this.plugin!.settings, this.plugin.audioCache)
 				: undefined,
 			wordCardTranslation: this.plugin ? createTranslationLookup(this.plugin) : undefined,
+			wordCardOnPronounced: this.plugin
+				? ({ word, engine }) =>
+						void this.plugin!.queryLogger.log({
+							kind: 'speech',
+							word,
+							engine: engine ?? 'none',
+							source: engine ? 'engine' : 'none',
+							ok: engine !== null,
+						})
+				: undefined,
 		});
 		this.panel.setCallbacks({
 			onSubtitleClick: (sub) => {
