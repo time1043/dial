@@ -93,8 +93,9 @@ export class WordCard {
 		this.cardEl = document.createElement('div');
 		this.cardEl.className = 'dial-word-card';
 
+		const word = span.dataset.word ?? span.textContent ?? '';
 		const wordEl = this.cardEl.createSpan({ cls: 'dial-word-card-word' });
-		wordEl.textContent = span.dataset.word ?? span.textContent ?? '';
+		wordEl.textContent = word;
 
 		const speakBtnEl = this.cardEl.createEl('button', {
 			cls: 'dial-word-card-speak',
@@ -103,7 +104,7 @@ export class WordCard {
 		setIcon(speakBtnEl, 'volume-2');
 		speakBtnEl.addEventListener('click', (e) => {
 			e.stopPropagation();
-			this.speak(wordEl.textContent ?? '');
+			this.speak(word);
 		});
 
 		if (Platform.isMobile) {
@@ -119,6 +120,9 @@ export class WordCard {
 
 		document.body.appendChild(this.cardEl);
 		this.position(span);
+
+		// Auto-pronounce once on open; the button replays it on demand.
+		this.speak(word, false);
 	}
 
 	/**
@@ -139,11 +143,19 @@ export class WordCard {
 			document.removeEventListener('click', handler, true);
 	}
 
-	/** Pronounce the word with the Web Speech API (offline TTS). */
-	private speak(word: string): void {
+	/**
+	 * Pronounce the word with the Web Speech API (offline TTS).
+	 *
+	 * @param notifyIfUnavailable When false (auto-pronounce on card open),
+	 *   silently skip if the API is missing so accidental hovers never
+	 *   spam the unavailable-notice. Explicit button clicks keep it.
+	 */
+	private speak(word: string, notifyIfUnavailable = true): void {
 		if (!word) return;
 		if (!('speechSynthesis' in window)) {
-			new Notice('Speech synthesis is not available in this environment');
+			if (notifyIfUnavailable) {
+				new Notice('Speech synthesis is not available in this environment');
+			}
 			return;
 		}
 		const utterance = new SpeechSynthesisUtterance(word);

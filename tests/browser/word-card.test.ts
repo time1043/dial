@@ -132,19 +132,23 @@ describe('WordCard', () => {
 		expect(document.querySelector('.dial-word-card')).toBeNull();
 	});
 
-	it('pronounces the word when the speak button is clicked', () => {
+	it('auto-pronounces when the card opens and replays via the button', () => {
 		panel.setSubtitles(SUBS);
 		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;
 		word.dispatchEvent(new MouseEvent('mouseenter'));
 		vi.advanceTimersByTime(250);
 
+		// The card opens → the word is spoken once automatically.
+		expect(speak).toHaveBeenCalledTimes(1);
+		const auto = speak.mock.calls[0]?.[0] as StubUtterance;
+		expect(auto.text).toBe('Hello');
+		expect(auto.lang).toBe('en-US');
+
+		// The speaker button replays it on demand.
 		const btn = document.querySelector('.dial-word-card-speak') as HTMLElement;
 		btn.click();
-
-		expect(speak).toHaveBeenCalledTimes(1);
-		const utterance = speak.mock.calls[0]?.[0] as StubUtterance;
-		expect(utterance.text).toBe('Hello');
-		expect(utterance.lang).toBe('en-US');
+		expect(speak).toHaveBeenCalledTimes(2);
+		expect((speak.mock.calls[1]?.[0] as StubUtterance).text).toBe('Hello');
 	});
 
 	it('pronounces with the language provided by the panel options', () => {
@@ -155,8 +159,8 @@ describe('WordCard', () => {
 		word.dispatchEvent(new MouseEvent('mouseenter'));
 		vi.advanceTimersByTime(250);
 
-		(document.querySelector('.dial-word-card-speak') as HTMLElement).click();
 		const utterance = speak.mock.calls[0]?.[0] as StubUtterance;
+		expect(utterance.text).toBe('Hello');
 		expect(utterance.lang).toBe('de-DE');
 	});
 

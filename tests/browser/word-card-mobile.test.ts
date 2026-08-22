@@ -58,17 +58,19 @@ describe('WordCard (mobile)', () => {
 		expect(document.querySelector('.dial-word-card')).toBeNull();
 	});
 
-	it('pronounces the word from the card button without dismissing the card', () => {
+	it('auto-pronounces on tap and replays from the button without dismissing', () => {
 		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;
 		word.click();
 
+		// Opening the card speaks the word once automatically.
+		expect(speak).toHaveBeenCalledTimes(1);
+		const auto = speak.mock.calls[0]?.[0] as StubUtterance;
+		expect(auto.text).toBe('Hello');
+		expect(auto.lang).toBe('en-US');
+
 		const btn = document.querySelector('.dial-word-card-speak') as HTMLElement;
 		btn.click();
-
-		expect(speak).toHaveBeenCalledTimes(1);
-		const utterance = speak.mock.calls[0]?.[0] as StubUtterance;
-		expect(utterance.text).toBe('Hello');
-		expect(utterance.lang).toBe('en-US');
+		expect(speak).toHaveBeenCalledTimes(2);
 		expect(document.querySelector('.dial-word-card')).not.toBeNull();
 	});
 });
