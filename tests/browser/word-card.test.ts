@@ -33,9 +33,7 @@ describe('renderWordSpans', () => {
 		const parent = document.createElement('span');
 		renderWordSpans(parent, "Hello, world! It's fine.");
 
-		const words = Array.from(
-			parent.querySelectorAll<HTMLElement>('.dial-subtitle-word'),
-		);
+		const words = Array.from(parent.querySelectorAll<HTMLElement>('.dial-subtitle-word'));
 		expect(words.map((w) => w.dataset.word)).toEqual(['Hello', 'world', "It's", 'fine']);
 
 		// Punctuation and whitespace survive as text nodes between spans.
@@ -46,9 +44,7 @@ describe('renderWordSpans', () => {
 		const parent = document.createElement('span');
 		renderWordSpans(parent, ' café — naïve ');
 
-		const words = Array.from(
-			parent.querySelectorAll<HTMLElement>('.dial-subtitle-word'),
-		);
+		const words = Array.from(parent.querySelectorAll<HTMLElement>('.dial-subtitle-word'));
 		expect(words.map((w) => w.dataset.word)).toEqual(['café', 'naïve']);
 		expect(parent.textContent).toBe(' café — naïve ');
 	});
@@ -110,9 +106,9 @@ describe('WordCard', () => {
 		vi.advanceTimersByTime(250);
 		second.dispatchEvent(new MouseEvent('mouseenter'));
 		vi.advanceTimersByTime(250);
-		expect(
-			(document.querySelector('.dial-word-card') as HTMLElement)?.textContent,
-		).toContain('world');
+		expect((document.querySelector('.dial-word-card') as HTMLElement)?.textContent).toContain(
+			'world',
+		);
 	});
 
 	it('keeps the card open while the pointer rests on the card itself', () => {
@@ -182,6 +178,24 @@ describe('WordCard', () => {
 		(document.querySelector('.dial-word-card-speak') as HTMLElement).click();
 		expect(speak).toHaveBeenCalledTimes(1);
 		expect((speak.mock.calls[0]?.[0] as StubUtterance).text).toBe('Hello');
+	});
+
+	it('hides the speak button and stays silent when speech synthesis is missing', () => {
+		// Simulate Android WebView: the speech globals simply do not exist.
+		vi.stubGlobal('speechSynthesis', undefined);
+		vi.stubGlobal('SpeechSynthesisUtterance', undefined);
+
+		panel.setSubtitles(SUBS);
+		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;
+		word.dispatchEvent(new MouseEvent('mouseenter'));
+		vi.advanceTimersByTime(250);
+
+		// The card still opens and shows the word — it degrades quietly.
+		const card = document.querySelector('.dial-word-card') as HTMLElement;
+		expect(card).not.toBeNull();
+		expect(card.textContent).toContain('Hello');
+		expect(document.querySelector('.dial-word-card-speak')).toBeNull();
+		expect(speak).not.toHaveBeenCalled();
 	});
 
 	it('hides when the subtitle list scrolls', () => {

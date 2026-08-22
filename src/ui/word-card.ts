@@ -1,5 +1,7 @@
 import { Notice, Platform, setIcon } from 'obsidian';
 
+import { isSpeechSynthesisAvailable } from '@/utils/speech';
+
 const SHOW_DELAY_MS = 250;
 const HIDE_DELAY_MS = 200;
 const DEFAULT_LANG = 'en-US';
@@ -114,15 +116,20 @@ export class WordCard {
 		const wordEl = this.cardEl.createSpan({ cls: 'dial-word-card-word' });
 		wordEl.textContent = word;
 
-		const speakBtnEl = this.cardEl.createEl('button', {
-			cls: 'dial-word-card-speak',
-			attr: { 'aria-label': 'Pronounce word', title: 'Pronounce word' },
-		});
-		setIcon(speakBtnEl, 'volume-2');
-		speakBtnEl.addEventListener('click', (e) => {
-			e.stopPropagation();
-			this.speak(word);
-		});
+		// Hide the speak affordance entirely when the platform has no
+		// speech synthesis (Android WebView) — a dead button that only
+		// shows an error toast is worse than no button.
+		if (isSpeechSynthesisAvailable()) {
+			const speakBtnEl = this.cardEl.createEl('button', {
+				cls: 'dial-word-card-speak',
+				attr: { 'aria-label': 'Pronounce word', title: 'Pronounce word' },
+			});
+			setIcon(speakBtnEl, 'volume-2');
+			speakBtnEl.addEventListener('click', (e) => {
+				e.stopPropagation();
+				this.speak(word);
+			});
+		}
 
 		if (Platform.isMobile) {
 			this.attachDismissHandler();
@@ -138,8 +145,9 @@ export class WordCard {
 		document.body.appendChild(this.cardEl);
 		this.position(span);
 
-		// Auto-pronounce once on open (if enabled); the button replays on demand.
-		if (this.config.autoPronounce) {
+		// Auto-pronounce once on open (if enabled and the platform supports
+		// it); the button replays on demand.
+		if (this.config.autoPronounce && isSpeechSynthesisAvailable()) {
 			this.speak(word, false);
 		}
 	}
@@ -158,8 +166,7 @@ export class WordCard {
 			this.hide();
 		};
 		document.addEventListener('click', handler, true);
-		this.removeDismissListener = () =>
-			document.removeEventListener('click', handler, true);
+		this.removeDismissListener = () => document.removeEventListener('click', handler, true);
 	}
 
 	/**
@@ -171,7 +178,7 @@ export class WordCard {
 	 */
 	private speak(word: string, notifyIfUnavailable = true): void {
 		if (!word) return;
-		if (!('speechSynthesis' in window)) {
+		if (!isSpeechSynthesisAvailable()) {
 			if (notifyIfUnavailable) {
 				new Notice('Speech synthesis is not available in this environment');
 			}

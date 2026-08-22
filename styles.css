@@ -516,6 +516,33 @@
 	color: var(--text-normal);
 }
 
+/* Settings: speech synthesis traffic-light status (dot + text). */
+.dial-speech-status {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.dial-speech-dot {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.dial-speech-dot-checking {
+	background: var(--text-warning, #e0ac00);
+}
+
+.dial-speech-dot-available {
+	background: var(--text-success, #08b94e);
+}
+
+.dial-speech-dot-unavailable {
+	background: var(--text-error, #e0563f);
+}
+
 /* Subtitle words are interactive targets for the word card. */
 .dial-subtitle-word {
 	cursor: pointer;
