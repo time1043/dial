@@ -1,7 +1,7 @@
 import { ItemView, Notice, Platform, TFile, WorkspaceLeaf } from 'obsidian';
 
 import type DialPlugin from '@/main';
-import type { ABLoopState, LoopMode, Subtitle } from '@/types';
+import type { ABLoopState, LoopMode, Subtitle, SubtitlePanelVisibility } from '@/types';
 
 import { subtitlePanelVisibility } from '@/settings';
 
@@ -236,6 +236,11 @@ export class VideoPlayerView extends ItemView {
 
 	setPlayState(isPlaying: boolean): void {
 		this.panel?.setPlayState(isPlaying);
+	}
+
+	/** Re-render the embedded panel with updated control visibility. */
+	updateVisibility(visibility: SubtitlePanelVisibility): void {
+		this.panel?.setVisibility(visibility);
 	}
 
 	setSubtitleChangeCallback(cb: (id: number) => void): void {

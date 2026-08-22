@@ -26,7 +26,7 @@ import { PositionManager } from './modules/position-manager/position-manager';
 import { getJumpTarget } from './modules/subtitle-navigator/subtitle-navigator';
 import { parseSubtitle } from './modules/subtitle-parsers';
 import { TraceManager } from './modules/trace-manager/trace-manager';
-import { DEFAULT_SETTINGS, DialSettingTab } from './settings';
+import { DEFAULT_SETTINGS, DialSettingTab, subtitlePanelVisibility } from './settings';
 import { SUBTITLE_VIEW_TYPE, SubtitleView } from './ui/subtitle-view';
 import { TYPE_SUBTITLE_VIEW_TYPE, TypeSubtitleView } from './ui/type-subtitle-view';
 import { TYPE_VIEW_TYPE, TypeView } from './ui/type-view';
@@ -246,6 +246,28 @@ export default class DialPlugin extends Plugin {
 		const view = getVideoView(this);
 		if (view) {
 			view.setLoopMode(mode);
+		}
+	}
+
+	/**
+	 * Push the current subtitle panel visibility flags to every open panel.
+	 *
+	 * Called from the settings tab toggles so that showing/hiding the AB loop,
+	 * speed, or search controls takes effect immediately on already-open
+	 * SubtitleView and VideoPlayerView instances — without reopening them.
+	 * Iterates all leaves (not just the first) so multiple open panels update.
+	 */
+	applySubtitlePanelVisibility(): void {
+		const visibility = subtitlePanelVisibility(this.settings);
+		for (const leaf of this.app.workspace.getLeavesOfType(SUBTITLE_VIEW_TYPE)) {
+			if (leaf.view instanceof SubtitleView) {
+				leaf.view.updateVisibility(visibility);
+			}
+		}
+		for (const leaf of this.app.workspace.getLeavesOfType(VIDEO_PLAYER_VIEW_TYPE)) {
+			if (leaf.view instanceof VideoPlayerView) {
+				leaf.view.updateVisibility(visibility);
+			}
 		}
 	}
 

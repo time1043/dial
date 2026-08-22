@@ -238,6 +238,7 @@ export class DialSettingTab extends PluginSettingTab {
 				toggle.setValue(this.plugin.settings.showABLoop).onChange(async (value) => {
 					this.plugin.settings.showABLoop = value;
 					await this.plugin.saveSettings();
+					this.plugin.applySubtitlePanelVisibility();
 				}),
 			);
 
@@ -248,6 +249,7 @@ export class DialSettingTab extends PluginSettingTab {
 				toggle.setValue(this.plugin.settings.showSpeed).onChange(async (value) => {
 					this.plugin.settings.showSpeed = value;
 					await this.plugin.saveSettings();
+					this.plugin.applySubtitlePanelVisibility();
 				}),
 			);
 
@@ -258,6 +260,7 @@ export class DialSettingTab extends PluginSettingTab {
 				toggle.setValue(this.plugin.settings.showSubtitleSearch).onChange(async (value) => {
 					this.plugin.settings.showSubtitleSearch = value;
 					await this.plugin.saveSettings();
+					this.plugin.applySubtitlePanelVisibility();
 				}),
 			);
 	}
