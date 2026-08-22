@@ -7,6 +7,7 @@ import { WORD_ROW_FORMAT_HINT, type ParsedWordBook } from '@/modules/word-flip/b
 import { appendJourneySession, type JourneyWordSnapshot } from '@/modules/word-flip/journey-writer';
 import { WordFlipCard, type WordFlipCardState } from '@/ui/word-flip-card';
 import { VerticalDragDetector, type DragCommitDirection } from '@/ui/word-flip-drag';
+import { WordFlipProgressBar } from '@/ui/word-flip-progress';
 
 export const WORD_FLIP_VIEW_TYPE = 'dial-word-flip';
 
@@ -54,6 +55,8 @@ export class WordFlipView extends ItemView {
 	private footerEl: HTMLElement | null = null;
 	private sessionBtnEl: HTMLElement | null = null;
 	private markBtnEl: HTMLButtonElement | null = null;
+	private progressBar: WordFlipProgressBar | null = null;
+	private seekPreviewEl: HTMLElement | null = null;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -80,11 +83,17 @@ export class WordFlipView extends ItemView {
 		container.empty();
 		container.addClass('dial-word-flip');
 
+		this.progressBar = new WordFlipProgressBar(container, {
+			onSeekPreview: (index) => this.showSeekPreview(index),
+			onSeekCommit: (index) => this.commitSeek(index),
+		});
+
 		this.cardAreaEl = container.createDiv({ cls: 'dial-word-flip-area' });
 		this.card = new WordFlipCard(this.cardAreaEl, () => this.toggleReveal());
 		this.card.rootEl.toggleClass('is-empty-state', true);
 		this.neighborCard = new WordFlipCard(this.cardAreaEl, () => {});
 		this.neighborCard.rootEl.addClass('dial-word-flip-card-neighbor');
+		this.seekPreviewEl = this.cardAreaEl.createDiv({ cls: 'dial-word-flip-seek-preview' });
 		this.renderEmpty('No word book loaded. Open one via a "Flip words" command.');
 
 		this.dragDetector = new VerticalDragDetector(this.cardAreaEl, {
@@ -150,6 +159,8 @@ export class WordFlipView extends ItemView {
 		this.plugin.wordFlip.flush();
 		this.dragDetector?.destroy();
 		this.dragDetector = null;
+		this.progressBar?.destroy();
+		this.progressBar = null;
 		this.card = null;
 		this.neighborCard = null;
 		this.cardAreaEl = null;
@@ -157,6 +168,7 @@ export class WordFlipView extends ItemView {
 		this.footerEl = null;
 		this.sessionBtnEl = null;
 		this.markBtnEl = null;
+		this.seekPreviewEl = null;
 	}
 
 	/** The vault path of the loaded book, for session/persistence wiring. */
@@ -345,7 +357,32 @@ export class WordFlipView extends ItemView {
 			this.session.minIdx = Math.min(this.session.minIdx, this.index);
 			this.session.maxIdx = Math.max(this.session.maxIdx, this.index);
 		}
+		this.progressBar?.setPosition(this.index, words.length);
 		this.renderCard();
+	}
+
+	/** Live word preview while the progress bar is being dragged. */
+	private showSeekPreview(index: number): void {
+		if (!this.seekPreviewEl || !this.parsed) return;
+		const entry = this.parsed.words[index];
+		if (!entry) return;
+		this.seekPreviewEl.empty();
+		this.seekPreviewEl.createDiv({
+			cls: 'dial-word-flip-seek-preview-index',
+			text: `${index + 1} / ${this.parsed.words.length}`,
+		});
+		this.seekPreviewEl.createDiv({
+			cls: 'dial-word-flip-seek-preview-word',
+			text: entry.word,
+		});
+		this.seekPreviewEl.addClass('is-visible');
+	}
+
+	/** Release the seek: jump without a directional animation and hide the
+	 *  preview (the card re-renders unrevealed). */
+	private commitSeek(index: number): void {
+		this.seekPreviewEl?.removeClass('is-visible');
+		this.goToIndex(index);
 	}
 
 	/**

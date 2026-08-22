@@ -779,3 +779,74 @@
 .dial-word-flip-mark-btn.is-marked svg {
 	fill: currentColor;
 }
+
+/* Top progress bar: position indicator and drag-to-seek control. */
+.dial-word-flip-progress {
+	padding: 10px 16px 0;
+}
+
+.dial-word-flip-progress-track {
+	position: relative;
+	height: 6px;
+	border-radius: 3px;
+	background: var(--background-modifier-border, #dddddd);
+	cursor: pointer;
+	touch-action: none;
+}
+
+.dial-word-flip-progress-fill {
+	position: absolute;
+	left: 0;
+	top: 0;
+	bottom: 0;
+	width: 0%;
+	border-radius: 3px;
+	background: var(--text-accent, #7f5df2);
+}
+
+.dial-word-flip-progress-handle {
+	position: absolute;
+	top: 50%;
+	left: 0%;
+	width: 14px;
+	height: 14px;
+	border-radius: 50%;
+	background: var(--text-accent, #7f5df2);
+	transform: translate(-50%, -50%);
+	opacity: 0;
+	transition: opacity 120ms ease;
+}
+
+.dial-word-flip-progress-track:hover .dial-word-flip-progress-handle,
+.dial-word-flip-progress-track.is-seeking .dial-word-flip-progress-handle {
+	opacity: 1;
+}
+
+/* Word preview overlay while seeking. */
+.dial-word-flip-seek-preview {
+	position: absolute;
+	inset: 0;
+	z-index: 5;
+	display: none;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	background: var(--background-primary, #ffffff);
+	background: color-mix(in srgb, var(--background-primary, #ffffff) 88%, transparent);
+}
+
+.dial-word-flip-seek-preview.is-visible {
+	display: flex;
+}
+
+.dial-word-flip-seek-preview-index {
+	font-size: 16px;
+	color: var(--text-muted, #999999);
+}
+
+.dial-word-flip-seek-preview-word {
+	font-size: clamp(32px, 8vmin, 56px);
+	font-weight: 700;
+	color: var(--text-normal, #dcddde);
+}
