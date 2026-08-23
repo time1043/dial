@@ -119,7 +119,12 @@ export class WordFlipView extends ItemView {
 			cls: 'dial-word-flip-mark-btn',
 			attr: { 'aria-label': 'Mark word', title: 'Mark word' },
 		});
-		this.markBtnEl.addEventListener('click', () => this.toggleMark());
+		this.markBtnEl.addEventListener('click', () => {
+			this.toggleMark();
+			// Release focus so Space keeps reaching the keymap scope instead
+			// of re-triggering the button.
+			this.markBtnEl?.blur();
+		});
 
 		this.sessionBtnEl = this.footerEl.createEl('button', {
 			cls: 'dial-word-flip-session-btn',
@@ -127,14 +132,15 @@ export class WordFlipView extends ItemView {
 		this.sessionBtnEl.addEventListener('click', () => {
 			if (this.session) void this.finishSession();
 			else this.startSession();
+			this.sessionBtnEl?.blur();
 		});
 
 		this.updateFooterButtons();
 
-		// Keyboard: ↓/Space = next, ↑ = previous (scroll semantics, like
-		// short-video web apps). View.scope defaults to null — it must be
-		// created for the keymap stack to pick it up while the view is in
-		// focus (see obsidian.d.ts on View.scope).
+		// Keyboard: ↓ = next, ↑ = previous (scroll semantics, like
+		// short-video web apps), Space = toggle reveal. View.scope defaults
+		// to null — it must be created for the keymap stack to pick it up
+		// while the view is in focus (see obsidian.d.ts on View.scope).
 		this.scope = new Scope(this.app.scope);
 		this.scope.register([], 'ArrowDown', () => {
 			this.next();
@@ -145,7 +151,7 @@ export class WordFlipView extends ItemView {
 			return false;
 		});
 		this.scope.register([], 'Space', () => {
-			this.next();
+			this.toggleReveal();
 			return false;
 		});
 

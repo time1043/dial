@@ -44,8 +44,9 @@ stays disabled until you press **Start** (browsing records nothing). Each
 settled session is appended once to `_lib/vocabulary-journey/<book>.md` —
 one `# Epoch N` heading per round (a session started at word 1 opens a new
 epoch), and per session a `## date time → time (duration)` heading with a
-trail list (resume link + start/end word numbers) followed by the covered
-words and their mark state. Marks and resume positions live in plugin
+trail list — a plain resume marker plus linked start/end word numbers that
+jump back to those positions — followed by the covered words and their
+mark state. Marks and resume positions live in plugin
 storage and carry over across epochs.
 
 **Commands**: `Flip words` (resume the last book), `Flip words: from the
