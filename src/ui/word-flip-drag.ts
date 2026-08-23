@@ -31,6 +31,7 @@ export interface VerticalDragCallbacks {
 
 export class VerticalDragDetector {
 	private activePointerId: number | null = null;
+	private hasCapture = false;
 	private startY = 0;
 	private startX = 0;
 	private axisLocked: 'vertical' | 'horizontal' | null = null;
@@ -69,7 +70,10 @@ export class VerticalDragDetector {
 		this.lastDy = 0;
 		this.suppressClick = false;
 		this.velocitySamples = [{ t: evt.timeStamp, y: evt.clientY }];
-		this.el.setPointerCapture(evt.pointerId);
+		// Deliberately NO pointer capture here: capturing on mouse-down
+		// retargets the trailing click to this element, which silently
+		// breaks click handling on the card (reveal) and the word
+		// (pronounce). Capture is taken only once a vertical drag is real.
 	};
 
 	private onPointerMove = (evt: PointerEvent): void => {
@@ -88,6 +92,10 @@ export class VerticalDragDetector {
 		if (this.axisLocked === null) {
 			if (Math.abs(dy) >= AXIS_LOCK_PX && Math.abs(dy) > Math.abs(dx)) {
 				this.axisLocked = 'vertical';
+				// Real vertical drag — safe to capture so the gesture keeps
+				// tracking when the pointer leaves the element.
+				this.el.setPointerCapture(evt.pointerId);
+				this.hasCapture = true;
 			} else if (Math.abs(dx) >= AXIS_LOCK_PX) {
 				this.axisLocked = 'horizontal';
 				this.reset();
@@ -125,9 +133,14 @@ export class VerticalDragDetector {
 	};
 
 	private reset(): void {
-		if (this.activePointerId !== null) {
-			this.el.releasePointerCapture?.(this.activePointerId);
+		if (this.activePointerId !== null && this.hasCapture) {
+			try {
+				this.el.releasePointerCapture(this.activePointerId);
+			} catch {
+				// Capture already lost (pointercancel path) — nothing to do.
+			}
 		}
+		this.hasCapture = false;
 		this.activePointerId = null;
 		this.axisLocked = null;
 		this.lastDy = 0;
