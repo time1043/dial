@@ -19,7 +19,7 @@ interface BaiduToken {
 }
 
 /**
- * Baidu Cloud speech (语音合成, short-text TTS). Signup needs only a
+ * Baidu Cloud speech (speech synthesis, short-text TTS). Signup needs only a
  * Chinese phone number plus real-name verification — no international
  * payment method. The credentials here are the AI-platform **API Key /
  * Secret Key** (used to mint an `access_token`), which are separate from

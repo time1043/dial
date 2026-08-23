@@ -73,4 +73,38 @@ describe('WordCard (mobile)', () => {
 		expect(speak).toHaveBeenCalledTimes(2);
 		expect(document.querySelector('.dial-word-card')).not.toBeNull();
 	});
+
+	it('shows a copy button after the speak button on mobile', () => {
+		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;
+		word.click();
+		const card = document.querySelector('.dial-word-card') as HTMLElement;
+		const buttons = card.querySelectorAll('button');
+		expect(buttons[0]?.className).toContain('dial-word-card-speak');
+		expect(buttons[1]?.className).toContain('dial-word-card-copy');
+	});
+
+	it('dismisses on document scroll and on touchmove outside the card', () => {
+		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;
+		word.click();
+		expect(document.querySelector('.dial-word-card')).not.toBeNull();
+
+		// A scroll anywhere in the document dismisses — covers swipes
+		// that originate outside the subtitle list (e.g. the leaf view).
+		document.body.dispatchEvent(new Event('scroll'));
+		expect(document.querySelector('.dial-word-card')).toBeNull();
+
+		// Open again, this time simulate a touch swipe.
+		word.click();
+		expect(document.querySelector('.dial-word-card')).not.toBeNull();
+		document.body.dispatchEvent(new Event('touchmove'));
+		expect(document.querySelector('.dial-word-card')).toBeNull();
+	});
+
+	it('keeps the card open when touch scroll fires inside the card itself', () => {
+		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;
+		word.click();
+		const card = document.querySelector('.dial-word-card') as HTMLElement;
+		card.dispatchEvent(new Event('touchmove'));
+		expect(document.querySelector('.dial-word-card')).not.toBeNull();
+	});
 });

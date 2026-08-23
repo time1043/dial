@@ -1,3 +1,5 @@
+import { Notice } from 'obsidian';
+
 import type { SpeakRequest, SpeechProvider } from './speech-provider';
 
 export type SpeechEngineState = 'available' | 'partial' | 'unavailable';
@@ -44,8 +46,13 @@ export class SpeechChain implements SpeechProvider {
 			try {
 				await provider.speak(request);
 				return provider;
-			} catch {
-				// Engine failed mid-request — fall through to the next one.
+			} catch (err) {
+				// Engine failed mid-request — fall through to the next one,
+				// but surface the real cause so silent failures are debuggable.
+				console.error(`[speech-chain] ${provider.label} failed:`, err);
+				new Notice(
+					`${provider.label} speech failed: ${err instanceof Error ? err.message : String(err)}`,
+				);
 			}
 		}
 		return null;

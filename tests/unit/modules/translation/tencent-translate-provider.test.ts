@@ -60,7 +60,7 @@ describe('tc3SignedHeaders', () => {
 });
 
 describe('TencentTranslateProvider', () => {
-	it('sends a signed TextTranslate request and extracts TranslatedText', async () => {
+	it('sends a signed TextTranslate request and extracts TargetText', async () => {
 		const requests: HttpTextRequest[] = [];
 		const provider = new TencentTranslateProvider(
 			() => CREDENTIALS,
@@ -68,7 +68,7 @@ describe('TencentTranslateProvider', () => {
 				requests.push(req);
 				return {
 					status: 200,
-					text: JSON.stringify({ Response: { TranslatedText: '你好' } }),
+					text: JSON.stringify({ Response: { TargetText: '你好' } }),
 				};
 			},
 		);

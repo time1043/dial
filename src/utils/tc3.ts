@@ -20,6 +20,13 @@ export interface Tc3Request {
 	version: string;
 	/** JSON-serialized request body. */
 	payload: string;
+	/**
+	 * Optional region. TC3 sends it as the `X-TC-Region` HTTP header, which
+	 * is a common parameter (not part of canonical headers / SignedHeaders).
+	 * TMT requires it; TTS does not. Default for new Tencent Cloud
+	 * accounts is `ap-guangzhou`.
+	 */
+	region?: string;
 }
 
 const encoder = new TextEncoder();
@@ -79,11 +86,15 @@ export async function tc3SignedHeaders(
 		`TC3-HMAC-SHA256 Credential=${credentials.secretId}/${credentialScope}, ` +
 		`SignedHeaders=content-type;host, Signature=${signature}`;
 
-	return {
+	const headers: Record<string, string> = {
 		Authorization: authorization,
 		'Content-Type': 'application/json; charset=utf-8',
 		'X-TC-Action': request.action,
 		'X-TC-Version': request.version,
 		'X-TC-Timestamp': String(timestamp),
 	};
+	if (request.region) {
+		headers['X-TC-Region'] = request.region;
+	}
+	return headers;
 }
