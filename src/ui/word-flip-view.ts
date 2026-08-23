@@ -1,7 +1,10 @@
 import { ItemView, Notice, Scope, setIcon, TFile, type WorkspaceLeaf } from 'obsidian';
 
 import type DialPlugin from '@/main';
+import type { SpeechProvider } from '@/modules/speech/speech-provider';
 
+import { createSpeechChain } from '@/modules/speech/create-speech-chain';
+import { isSpeechChain } from '@/modules/speech/speech-chain';
 import { bookDisplayName, readWordBook } from '@/modules/word-flip/book-finder';
 import { WORD_ROW_FORMAT_HINT, type ParsedWordBook } from '@/modules/word-flip/book-parser';
 import {
@@ -12,7 +15,6 @@ import {
 import { WordFlipCard, type WordFlipCardState } from '@/ui/word-flip-card';
 import { VerticalDragDetector, type DragCommitDirection } from '@/ui/word-flip-drag';
 import { WordFlipProgressBar } from '@/ui/word-flip-progress';
-import { isSpeechSynthesisAvailable, speakWord } from '@/utils/speech';
 
 export const WORD_FLIP_VIEW_TYPE = 'dial-word-flip';
 
@@ -64,12 +66,14 @@ export class WordFlipView extends ItemView {
 	private seekPreviewEl: HTMLElement | null = null;
 	private endCardEl: HTMLElement | null = null;
 	private endCardShown = false;
+	private readonly speech: SpeechProvider;
 
 	constructor(
 		leaf: WorkspaceLeaf,
 		private readonly plugin: DialPlugin,
 	) {
 		super(leaf);
+		this.speech = createSpeechChain(() => this.plugin.settings, this.plugin.audioCache);
 	}
 
 	getViewType(): string {
@@ -99,7 +103,7 @@ export class WordFlipView extends ItemView {
 		this.card = new WordFlipCard(
 			this.cardAreaEl,
 			() => this.toggleReveal(),
-			() => this.speakCurrentWord(),
+			() => void this.speakCurrentWord(),
 		);
 		this.card.rootEl.toggleClass('is-empty-state', true);
 		this.neighborCard = new WordFlipCard(this.cardAreaEl, () => {});
@@ -333,11 +337,35 @@ export class WordFlipView extends ItemView {
 	}
 
 	/** Pronounce the current word: book lang overrides the global setting. */
-	private speakCurrentWord(notifyIfUnavailable = true): void {
+	private async speakCurrentWord(notifyIfUnavailable = true): Promise<void> {
 		const entry = this.parsed?.words[this.index];
 		if (!entry) return;
 		const lang = this.parsed?.lang ?? this.plugin.settings.wordPronunciationLang;
-		speakWord(entry.word, lang, notifyIfUnavailable);
+		const request = { word: entry.word, lang };
+		let engine: SpeechProvider | null = null;
+
+		try {
+			if (isSpeechChain(this.speech)) {
+				engine = await this.speech.speakAndReport(request);
+			} else {
+				await this.speech.speak(request);
+				engine = this.speech;
+			}
+		} catch (error) {
+			console.error('[word-flip] pronunciation failed:', error);
+		}
+
+		void this.plugin.queryLogger.log({
+			kind: 'speech',
+			word: entry.word,
+			engine: engine?.id ?? 'none',
+			source: engine ? 'engine' : 'none',
+			ok: engine !== null,
+		});
+
+		if (!engine && notifyIfUnavailable) {
+			new Notice('Pronunciation failed');
+		}
 	}
 
 	private updateSessionButton(): void {
@@ -414,8 +442,8 @@ export class WordFlipView extends ItemView {
 		}
 		this.progressBar?.setPosition(this.index, words.length);
 		this.renderCard();
-		if (this.plugin.settings.wordAutoPronounce && isSpeechSynthesisAvailable()) {
-			this.speakCurrentWord(false);
+		if (this.plugin.settings.wordAutoPronounce && this.speech.isAvailable()) {
+			void this.speakCurrentWord(false);
 		}
 	}
 
