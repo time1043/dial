@@ -13,7 +13,7 @@ function makeCache(now: () => number) {
 }
 
 function bytes(text: string): ArrayBuffer {
-	return new TextEncoder().encode(text).buffer as ArrayBuffer;
+	return new TextEncoder().encode(text).buffer;
 }
 
 function text(data: ArrayBuffer): string {

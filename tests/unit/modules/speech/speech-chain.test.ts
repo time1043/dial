@@ -56,14 +56,30 @@ describe('SpeechChain', () => {
 	});
 
 	it('skips unavailable engines and falls back when one fails mid-speak', async () => {
-		const broken = fakeEngine('broken', true, false);
-		const fallback = fakeEngine('fallback', true);
+		// Mocks are held in locals (not read off the objects) so the
+		// unbound-method lint rule stays quiet.
+		const brokenSpeak = vi.fn().mockRejectedValue(new Error('broken'));
+		const fallbackSpeak = vi.fn().mockResolvedValue(undefined);
+		const broken: SpeechProvider = {
+			id: 'broken',
+			label: 'broken',
+			kind: 'system',
+			isAvailable: () => true,
+			speak: brokenSpeak,
+		};
+		const fallback: SpeechProvider = {
+			id: 'fallback',
+			label: 'fallback',
+			kind: 'system',
+			isAvailable: () => true,
+			speak: fallbackSpeak,
+		};
 		const chain = new SpeechChain([broken, fallback]);
 
 		const engine = await chain.speakAndReport(REQUEST);
 		expect(engine?.id).toBe('fallback');
-		expect(broken.speak).toHaveBeenCalled();
-		expect(fallback.speak).toHaveBeenCalled();
+		expect(brokenSpeak).toHaveBeenCalled();
+		expect(fallbackSpeak).toHaveBeenCalled();
 	});
 
 	it('resolves null when no engine can speak', async () => {

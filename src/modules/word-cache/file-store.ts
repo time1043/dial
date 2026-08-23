@@ -1,4 +1,4 @@
-import { TFile, TFolder, type Vault } from 'obsidian';
+import { TFile, TFolder, type FileManager, type Vault } from 'obsidian';
 
 /**
  * Minimal filesystem port the caches run on. The real implementation
@@ -23,7 +23,10 @@ export interface CacheFileStore {
 }
 
 export class VaultCacheFileStore implements CacheFileStore {
-	constructor(private readonly vault: Vault) {}
+	constructor(
+		private readonly vault: Vault,
+		private readonly fileManager: FileManager,
+	) {}
 
 	async exists(path: string): Promise<boolean> {
 		return this.vault.getAbstractFileByPath(path) !== null;
@@ -90,6 +93,8 @@ export class VaultCacheFileStore implements CacheFileStore {
 	async remove(path: string): Promise<void> {
 		const file = this.vault.getAbstractFileByPath(path);
 		if (!file) return;
-		await this.vault.delete(file);
+		// Trash (not hard-delete) so cache cleanup respects the user's
+		// deletion preference and stays recoverable.
+		await this.fileManager.trashFile(file);
 	}
 }

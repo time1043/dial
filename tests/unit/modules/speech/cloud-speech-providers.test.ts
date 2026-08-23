@@ -13,7 +13,7 @@ function binaryHttp(body: Uint8Array, capture?: (req: HttpTextRequest) => void) 
 		return {
 			status: 200,
 			text: '',
-			arrayBuffer: body.slice().buffer as ArrayBuffer,
+			arrayBuffer: body.slice().buffer,
 		};
 	};
 }

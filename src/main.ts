@@ -83,7 +83,7 @@ export default class DialPlugin extends Plugin {
 	}
 
 	private get wordCacheStore(): VaultCacheFileStore {
-		this.cacheFileStore ??= new VaultCacheFileStore(this.app.vault);
+		this.cacheFileStore ??= new VaultCacheFileStore(this.app.vault, this.app.fileManager);
 		return this.cacheFileStore;
 	}
 

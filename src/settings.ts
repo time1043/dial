@@ -369,9 +369,9 @@ export class DialSettingTab extends PluginSettingTab {
 		);
 
 		new Setting(containerEl)
-			.setName('Azure Speech key')
+			.setName('Azure speech key')
 			.setDesc(
-				'API key of your Speech resource (F0 free tier works). The yellow dot ' +
+				'Key of your Azure speech resource (the free tier works). The yellow dot ' +
 					'above turns green once key and region are set.',
 			)
 			.addText((text) => {
@@ -384,8 +384,8 @@ export class DialSettingTab extends PluginSettingTab {
 			});
 
 		new Setting(containerEl)
-			.setName('Azure Speech region')
-			.setDesc('Region of your Speech resource, e.g. eastus.')
+			.setName('Azure speech region')
+			.setDesc('Region of the speech resource, for example eastus')
 			.addText((text) =>
 				text.setValue(this.plugin.settings.azureSpeechRegion).onChange(async (value) => {
 					this.plugin.settings.azureSpeechRegion = value.trim();
@@ -395,8 +395,8 @@ export class DialSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName('Google TTS key')
-			.setDesc('API key of your Cloud Text-to-Speech enabled project.')
+			.setName('Google text-to-speech key')
+			.setDesc('API key of the project with the text-to-speech API enabled')
 			.addText((text) => {
 				text.inputEl.type = 'password';
 				text.setValue(this.plugin.settings.googleSpeechKey).onChange(async (value) => {
@@ -529,7 +529,7 @@ export class DialSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Azure region')
-			.setDesc('Region of your Translator resource, e.g. eastus or global.')
+			.setDesc('Region of the translator resource, for example eastus or global')
 			.addText((text) =>
 				text.setValue(this.plugin.settings.azureRegion).onChange(async (value) => {
 					this.plugin.settings.azureRegion = value.trim();
@@ -549,8 +549,8 @@ export class DialSettingTab extends PluginSettingTab {
 		);
 
 		new Setting(containerEl)
-			.setName('DeepL plan')
-			.setDesc('Free keys use api-free.deepl.com; pro keys use api.deepl.com.')
+			.setName('Plan')
+			.setDesc('Choose the matching host for your key tier')
 			.addDropdown((dropdown) =>
 				dropdown
 					.addOption('free', 'Free')
@@ -723,16 +723,18 @@ export class DialSettingTab extends PluginSettingTab {
 				});
 				setIcon(btn, icon);
 				btn.disabled = index + delta < 0 || index + delta >= rows.length;
-				btn.addEventListener('click', async () => {
-					const target = index + delta;
-					const current = order[index];
-					const swapWith = order[target];
-					if (current === undefined || swapWith === undefined) return;
-					order[index] = swapWith;
-					order[target] = current;
-					this.plugin.settings[orderSettingKey] = [...order];
-					await this.plugin.saveSettings();
-					this.renderEngineList(listEl, getRows, orderSettingKey);
+				btn.addEventListener('click', () => {
+					void (async () => {
+						const target = index + delta;
+						const current = order[index];
+						const swapWith = order[target];
+						if (current === undefined || swapWith === undefined) return;
+						order[index] = swapWith;
+						order[target] = current;
+						this.plugin.settings[orderSettingKey] = [...order];
+						await this.plugin.saveSettings();
+						this.renderEngineList(listEl, getRows, orderSettingKey);
+					})();
 				});
 			};
 			move(-1, 'chevron-up');

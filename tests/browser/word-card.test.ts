@@ -221,9 +221,7 @@ describe('WordCard', () => {
 
 		// While the pipeline runs the row shows a pending marker, then the
 		// resolved translation replaces it.
-		const translationEl = document.querySelector(
-			'.dial-word-card-translation',
-		) as HTMLElement | null;
+		const translationEl = document.querySelector('.dial-word-card-translation');
 		expect(translationEl?.textContent).toBe('你好');
 		expect((document.querySelector('.dial-word-card-word') as HTMLElement)?.textContent).toBe(
 			'Hello',
