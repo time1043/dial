@@ -1,4 +1,4 @@
-import { ItemView, Notice, setIcon, TFile, type WorkspaceLeaf } from 'obsidian';
+import { ItemView, Notice, Scope, setIcon, TFile, type WorkspaceLeaf } from 'obsidian';
 
 import type DialPlugin from '@/main';
 
@@ -134,17 +134,19 @@ export class WordFlipView extends ItemView {
 		this.updateFooterButtons();
 
 		// Keyboard: ↓/Space = next, ↑ = previous (scroll semantics, like
-		// short-video web apps). Registered on the view's keymap scope so
-		// they only fire while this view is the active leaf.
-		this.scope?.register([], 'ArrowDown', () => {
+		// short-video web apps). View.scope defaults to null — it must be
+		// created for the keymap stack to pick it up while the view is in
+		// focus (see obsidian.d.ts on View.scope).
+		this.scope = new Scope(this.app.scope);
+		this.scope.register([], 'ArrowDown', () => {
 			this.next();
 			return false;
 		});
-		this.scope?.register([], 'ArrowUp', () => {
+		this.scope.register([], 'ArrowUp', () => {
 			this.prev();
 			return false;
 		});
-		this.scope?.register([], 'Space', () => {
+		this.scope.register([], 'Space', () => {
 			this.next();
 			return false;
 		});
