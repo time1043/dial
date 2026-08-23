@@ -50,6 +50,9 @@ export class TencentTranslateProvider implements TranslationProvider {
 				action: 'TextTranslate',
 				version: '2018-03-21',
 				payload,
+				// TC3 common param — sent as the `X-TC-Region` header (not in body).
+				// Change if your resources live in another region.
+				region: 'ap-guangzhou',
 			},
 			credentials,
 		);

@@ -1,3 +1,5 @@
+import { Notice } from 'obsidian';
+
 import type {
 	TranslateRequest,
 	TranslateResult,
@@ -31,8 +33,13 @@ export class TranslationChain {
 			if (!provider.isConfigured()) continue;
 			try {
 				return { result: await provider.translate(request), provider };
-			} catch {
-				// Engine failed — fall through to the next one.
+			} catch (err) {
+				// Engine failed — fall through to the next one, but surface
+				// the real cause so silent failures are debuggable.
+				console.error(`[translation-chain] ${provider.label} failed:`, err);
+				new Notice(
+					`${provider.label} translation failed: ${err instanceof Error ? err.message : String(err)}`,
+				);
 			}
 		}
 		return null;

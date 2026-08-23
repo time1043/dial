@@ -10,7 +10,7 @@ import type { SpeakRequest, SynthesizingSpeechProvider } from './speech-provider
 export const TENCENT_SPEECH_ID = 'tencent';
 
 /**
- * Tencent Cloud speech (语音合成, TextToVoice). Reuses the SAME
+ * Tencent Cloud speech (speech synthesis, TextToVoice). Reuses the SAME
  * SecretId/SecretKey as the Tencent translator — one Tencent Cloud account
  * covers every service, and signup needs only a Chinese phone number plus
  * real-name verification (no international payment method).
@@ -77,7 +77,7 @@ export class TencentSpeechProvider implements SynthesizingSpeechProvider {
 				host: 'tts.tencentcloudapi.com',
 				service: 'tts',
 				action: 'TextToVoice',
-				version: '2019-03-19',
+				version: '2019-08-23',
 				payload,
 			},
 			credentials,

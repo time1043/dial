@@ -17,7 +17,7 @@ export interface AliyunSpeechCredentials {
 }
 
 /**
- * Alibaba Cloud speech (智能语音交互, short-text TTS over the RESTful
+ * Alibaba Cloud speech (intelligent speech interaction, short-text TTS over the RESTful
  * `/stream/v1/tts` endpoint). Signup needs only a Chinese phone number
  * plus real-name verification — no international payment method.
  *

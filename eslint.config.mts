@@ -39,5 +39,7 @@ export default tseslint.config(
 		'version-bump.mjs',
 		'versions.json',
 		'main.js',
+		// Standalone Node CLI tooling (not bundled into the plugin).
+		'scripts/*.mjs',
 	]),
 );
