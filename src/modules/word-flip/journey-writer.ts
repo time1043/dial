@@ -32,14 +32,14 @@ export function journeyFilePath(bookPath: string): string {
 }
 
 /**
- * Quick-return link at the top of a journey file. Lands in browse mode at
- * the given (0-based) word position; the index is 1-based in the URL for
- * human readability.
+ * Resume URL for a journey trail link. Lands in browse mode at the given
+ * (0-based) word position; the index is 1-based in the URL for human
+ * readability.
  */
-export function buildResumeLink(bookPath: string, index: number): string {
+export function buildResumeUrl(bookPath: string, index: number): string {
 	return (
-		`[▶ Resume word flip](obsidian://dial?type=word-flip` +
-		`&book=${encodeURIComponent(bookPath)}&index=${index + 1})`
+		`obsidian://dial?type=word-flip&book=${encodeURIComponent(bookPath)}` +
+		`&index=${index + 1}`
 	);
 }
 
@@ -91,11 +91,15 @@ function formatSessionBlock(record: JourneySessionRecord): string {
 	const lines: string[] = [];
 	lines.push(`## ${formatDate(record.startTime)} ${from} → ${to} (${minutes}min)`);
 	lines.push('');
-	// Session trail: resume link (lands on the last word reached) plus the
-	// word range covered, as list items directly under the session heading.
-	lines.push(`- ${buildResumeLink(record.bookPath, record.maxIdx)}`);
-	lines.push(`- Start word: ${record.startIdx + 1}`);
-	lines.push(`- End word: ${record.maxIdx + 1}`);
+	// Session trail directly under the heading: a plain marker line, then
+	// the covered word range as links that jump back to those positions.
+	lines.push('- ▶ Resume word flip');
+	lines.push(
+		`- [Start word: ${record.startIdx + 1}](${buildResumeUrl(record.bookPath, record.startIdx)})`,
+	);
+	lines.push(
+		`- [End word: ${record.maxIdx + 1}](${buildResumeUrl(record.bookPath, record.maxIdx)})`,
+	);
 	lines.push('');
 	lines.push('| # | word | ipa | meaning | forms | marked |');
 	lines.push('| - | ---- | --- | ------- | ----- | ------ |');

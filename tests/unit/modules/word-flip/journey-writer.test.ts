@@ -4,7 +4,7 @@ import type { WordEntry } from '@/modules/word-flip/book-parser';
 
 import {
 	buildJourneyAppend,
-	buildResumeLink,
+	buildResumeUrl,
 	countEpochs,
 	journeyFilePath,
 	type JourneySessionRecord,
@@ -39,11 +39,10 @@ describe('journeyFilePath', () => {
 	});
 });
 
-describe('buildResumeLink', () => {
+describe('buildResumeUrl', () => {
 	it('encodes the book path and uses a 1-based index', () => {
-		expect(buildResumeLink('_lib/vocabulary-bucket/cet4.md', 117)).toBe(
-			'[▶ Resume word flip](obsidian://dial?type=word-flip' +
-				'&book=_lib%2Fvocabulary-bucket%2Fcet4.md&index=118)',
+		expect(buildResumeUrl('_lib/vocabulary-bucket/cet4.md', 117)).toBe(
+			'obsidian://dial?type=word-flip&book=_lib%2Fvocabulary-bucket%2Fcet4.md&index=118',
 		);
 	});
 });
@@ -60,12 +59,15 @@ describe('buildJourneyAppend', () => {
 		const content = buildJourneyAppend('', record());
 		expect(content).toContain('# Epoch 1');
 		expect(content).toContain('## 2026-08-22 10:00 → 10:30 (30min)');
+		expect(content).toContain('- ▶ Resume word flip');
 		expect(content).toContain(
-			`- [▶ Resume word flip](obsidian://dial?type=word-flip` +
+			`- [Start word: 100](obsidian://dial?type=word-flip` +
+				`&book=_lib%2Fvocabulary-bucket%2Fcet4.md&index=100)`,
+		);
+		expect(content).toContain(
+			`- [End word: 102](obsidian://dial?type=word-flip` +
 				`&book=_lib%2Fvocabulary-bucket%2Fcet4.md&index=102)`,
 		);
-		expect(content).toContain('- Start word: 100');
-		expect(content).toContain('- End word: 102');
 		expect(content).toContain('| # | word | ipa | meaning | forms | marked |');
 		expect(content).toContain('| 100 | abandon |  | v. 放弃 |  | ★ |');
 		expect(content).toContain('| 101 | benefit |  |  |  |  |');
@@ -96,16 +98,16 @@ describe('buildJourneyAppend', () => {
 		expect(content.match(/^## /gm)).toHaveLength(2);
 		expect(content).toContain('## 2026-08-22 10:00 → 10:30 (30min)');
 		expect(content).toContain('## 2026-08-22 11:00 → 11:10 (10min)');
-		expect(content).toContain('- Start word: 100');
-		expect(content).toContain('- Start word: 103');
+		expect(content).toContain('[Start word: 100](');
+		expect(content).toContain('[Start word: 103](');
 	});
 
 	it('opens Epoch 2 when the session starts at the first word', () => {
 		const existing = '# Epoch 1\n\n## old';
 		const content = buildJourneyAppend(existing, record({ startIdx: 0, minIdx: 0, maxIdx: 2 }));
 		expect(content).toContain('# Epoch 2');
-		expect(content).toContain('- Start word: 1');
-		expect(content).toContain('- End word: 3');
+		expect(content).toContain('[Start word: 1](');
+		expect(content).toContain('[End word: 3](');
 	});
 
 	it('creates Epoch 1 for a mid-book session when the file is new', () => {
