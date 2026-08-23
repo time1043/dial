@@ -4,7 +4,11 @@ import type DialPlugin from '@/main';
 
 import { bookDisplayName, readWordBook } from '@/modules/word-flip/book-finder';
 import { WORD_ROW_FORMAT_HINT, type ParsedWordBook } from '@/modules/word-flip/book-parser';
-import { appendJourneySession, type JourneyWordSnapshot } from '@/modules/word-flip/journey-writer';
+import {
+	appendJourneySession,
+	journeyFilePath,
+	type JourneyWordSnapshot,
+} from '@/modules/word-flip/journey-writer';
 import { WordFlipCard, type WordFlipCardState } from '@/ui/word-flip-card';
 import { VerticalDragDetector, type DragCommitDirection } from '@/ui/word-flip-drag';
 import { WordFlipProgressBar } from '@/ui/word-flip-progress';
@@ -121,7 +125,7 @@ export class WordFlipView extends ItemView {
 			cls: 'dial-word-flip-session-btn',
 		});
 		this.sessionBtnEl.addEventListener('click', () => {
-			if (this.session) this.endSession();
+			if (this.session) void this.finishSession();
 			else this.startSession();
 		});
 
@@ -254,6 +258,23 @@ export class WordFlipView extends ItemView {
 	/** Close the session and record it to the journey file (fire & forget). */
 	endSession(): void {
 		void this.settleSession();
+	}
+
+	/**
+	 * End button flow: settle the session, then close the flip view and
+	 * open the book's journey file so the fresh record is right in front
+	 * of the user.
+	 */
+	private async finishSession(): Promise<void> {
+		const bookPath = this.bookFile?.path ?? null;
+		await this.settleSession();
+		if (bookPath) {
+			const journeyFile = this.app.vault.getAbstractFileByPath(journeyFilePath(bookPath));
+			if (journeyFile instanceof TFile) {
+				await this.app.workspace.getLeaf('tab').openFile(journeyFile);
+			}
+		}
+		this.leaf?.detach();
 	}
 
 	/**
