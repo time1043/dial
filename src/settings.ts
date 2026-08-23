@@ -1,5 +1,9 @@
 import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
 
+import { createSpeechChain } from '@/modules/speech/create-speech-chain';
+import { createTranslationChain } from '@/modules/translation/create-translation-chain';
+import { renderEngineList } from './engine-list';
+
 import type DialPlugin from './main';
 import type {
 	FolderOrderMode,
@@ -148,7 +152,28 @@ export class DialSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
-		new Setting(containerEl)
+		// In-page tab switcher: keep a single "Dial" settings entry. Tab 1
+		// (General) holds behaviour config plus the reorderable engine lists;
+		// tab 2 (API keys) holds only the credential fields.
+		const tabBar = containerEl.createDiv({ cls: 'dial-settings-tabs' });
+		const generalTab = tabBar.createEl('button', {
+			cls: 'dial-settings-tab is-active',
+			text: 'General',
+		});
+		const keysTab = tabBar.createEl('button', { cls: 'dial-settings-tab', text: 'API keys' });
+		const generalPane = containerEl.createDiv({ cls: 'dial-settings-pane' });
+		const keysPane = containerEl.createDiv({ cls: 'dial-settings-pane is-hidden' });
+		const activate = (which: 'general' | 'keys') => {
+			const general = which === 'general';
+			generalPane.classList.toggle('is-hidden', !general);
+			keysPane.classList.toggle('is-hidden', general);
+			generalTab.classList.toggle('is-active', general);
+			keysTab.classList.toggle('is-active', !general);
+		};
+		generalTab.addEventListener('click', () => activate('general'));
+		keysTab.addEventListener('click', () => activate('keys'));
+
+		new Setting(generalPane)
 			.setName('Video library path')
 			.setDesc('Vault-relative path to the directory containing video files.')
 			.addText((text) =>
@@ -162,7 +187,7 @@ export class DialSettingTab extends PluginSettingTab {
 					}),
 			);
 
-		new Setting(containerEl)
+		new Setting(generalPane)
 			.setName('Subtitle library path')
 			.setDesc('Vault-relative path to the directory containing subtitle files.')
 			.addText((text) =>
@@ -176,7 +201,7 @@ export class DialSettingTab extends PluginSettingTab {
 					}),
 			);
 
-		new Setting(containerEl)
+		new Setting(generalPane)
 			.setName('Default volume')
 			.setDesc('Volume level applied when loading a video (0–100%).')
 			.addSlider((slider) =>
@@ -192,7 +217,7 @@ export class DialSettingTab extends PluginSettingTab {
 					}),
 			);
 
-		new Setting(containerEl)
+		new Setting(generalPane)
 			.setName('Loop mode')
 			.setDesc(
 				'Behavior when the current video finishes. ' +
@@ -220,7 +245,7 @@ export class DialSettingTab extends PluginSettingTab {
 		// show them only then. They are kept mounted (values persist) and
 		// toggled via display:none to avoid calling the deprecated display().
 		// Rendered as indented children of "Loop mode" for visual hierarchy.
-		const folderSettingsEl = containerEl.createDiv({ cls: 'dial-loop-subsettings' });
+		const folderSettingsEl = generalPane.createDiv({ cls: 'dial-loop-subsettings' });
 		folderSettingsEl.style.display = this.plugin.settings.loopMode === 'folder' ? '' : 'none';
 
 		new Setting(folderSettingsEl)
@@ -265,7 +290,7 @@ export class DialSettingTab extends PluginSettingTab {
 		// All-files-loop-attached settings: only meaningful in "all" mode, so
 		// show them only then. Same nested/conditional treatment as the folder
 		// settings above, rendered as indented children of "Loop mode".
-		const allSettingsEl = containerEl.createDiv({ cls: 'dial-loop-subsettings' });
+		const allSettingsEl = generalPane.createDiv({ cls: 'dial-loop-subsettings' });
 		allSettingsEl.style.display = this.plugin.settings.loopMode === 'all' ? '' : 'none';
 
 		new Setting(allSettingsEl)
@@ -303,7 +328,7 @@ export class DialSettingTab extends PluginSettingTab {
 				}),
 			);
 
-		new Setting(containerEl)
+		new Setting(generalPane)
 			.setName('Auto-play on open')
 			.setDesc(
 				'Start playback automatically when the player opens, and when it ' +
@@ -316,9 +341,9 @@ export class DialSettingTab extends PluginSettingTab {
 				}),
 			);
 
-		new Setting(containerEl).setName('Subtitle panel').setHeading();
+		new Setting(generalPane).setName('Subtitle panel').setHeading();
 
-		new Setting(containerEl)
+		new Setting(generalPane)
 			.setName('Show loop controls')
 			.setDesc('Display the start/end loop buttons on the subtitle panel.')
 			.addToggle((toggle) =>
@@ -329,7 +354,7 @@ export class DialSettingTab extends PluginSettingTab {
 				}),
 			);
 
-		new Setting(containerEl)
+		new Setting(generalPane)
 			.setName('Show playback speed control')
 			.setDesc('Display the playback speed slider on the subtitle panel.')
 			.addToggle((toggle) =>
@@ -340,7 +365,7 @@ export class DialSettingTab extends PluginSettingTab {
 				}),
 			);
 
-		new Setting(containerEl)
+		new Setting(generalPane)
 			.setName('Show subtitle search')
 			.setDesc('Display the subtitle search box on the subtitle panel.')
 			.addToggle((toggle) =>
@@ -351,9 +376,9 @@ export class DialSettingTab extends PluginSettingTab {
 				}),
 			);
 
-		new Setting(containerEl).setName('Word card').setHeading();
+		new Setting(generalPane).setName('Word card').setHeading();
 
-		new Setting(containerEl)
+		new Setting(generalPane)
 			.setName('Pronunciation language')
 			.setDesc(
 				'Language used to pronounce a word when you press the speaker ' +
@@ -369,12 +394,12 @@ export class DialSettingTab extends PluginSettingTab {
 					}),
 			);
 
-		new Setting(containerEl)
+		new Setting(generalPane)
 			.setName('Auto-pronounce on card open')
 			.setDesc(
 				'Speak the word automatically when the word card appears. ' +
 					'The speaker button on the card still works where a pronunciation ' +
-					'engine is available (see the engine list above).',
+					'engine is available (see the engine list on this tab).',
 			)
 			.addToggle((toggle) =>
 				toggle.setValue(this.plugin.settings.wordAutoPronounce).onChange(async (value) => {
@@ -383,9 +408,40 @@ export class DialSettingTab extends PluginSettingTab {
 				}),
 			);
 
-		new Setting(containerEl).setName('Translation').setHeading();
+		// Pronunciation engine priority list: one traffic-light row per engine,
+		// reorderable with arrows. Cloud engines light up once their key is set
+		// on the API keys tab. The dot reflects whether the engine works here.
+		const speechEnginesSetting = new Setting(generalPane)
+			.setName('Pronunciation engines')
+			.setDesc(
+				'Engines tried top to bottom when pronouncing a word. The dot shows ' +
+					'whether an engine works on this device; cloud engines light up once ' +
+					'their API key is set on the API keys tab. Use the arrows to reorder.',
+			);
+		const speechListEl = speechEnginesSetting.descEl.createDiv({ cls: 'dial-speech-engines' });
+		const renderEngines = () =>
+			renderEngineList(
+				this.plugin,
+				speechListEl,
+				() =>
+					createSpeechChain(() => this.plugin.settings)
+						.statuses()
+						.map((status) => ({
+							id: status.id,
+							label: status.label,
+							dot: status.state,
+						})),
+				'speechEngineOrder',
+			);
+		renderEngines();
 
-		new Setting(containerEl)
+		new Setting(generalPane).addButton((button) =>
+			button.setButtonText('Re-detect engines').onClick(() => renderEngines()),
+		);
+
+		new Setting(generalPane).setName('Translation').setHeading();
+
+		new Setting(generalPane)
 			.setName('Enable cloud translation')
 			.setDesc(
 				'Opt-in: show word translations on the word card. Words that are not ' +
@@ -400,7 +456,7 @@ export class DialSettingTab extends PluginSettingTab {
 				}),
 			);
 
-		new Setting(containerEl)
+		new Setting(generalPane)
 			.setName('Source language')
 			.setDesc('Language of the subtitle words being looked up.')
 			.addDropdown((dropdown) =>
@@ -413,7 +469,7 @@ export class DialSettingTab extends PluginSettingTab {
 					}),
 			);
 
-		new Setting(containerEl)
+		new Setting(generalPane)
 			.setName('Target language')
 			.setDesc('Language the translation is shown in.')
 			.addDropdown((dropdown) =>
@@ -426,7 +482,33 @@ export class DialSettingTab extends PluginSettingTab {
 					}),
 			);
 
-		new Setting(containerEl).setName('Lookup data').setHeading();
+		// Translation engine priority list.
+		const translationEnginesSetting = new Setting(generalPane)
+			.setName('Translation engines')
+			.setDesc(
+				'Engines tried top to bottom. Green = API key configured, yellow = needs ' +
+					'a key (set on the API keys tab). Use the arrows to reorder.',
+			);
+		const translationListEl = translationEnginesSetting.descEl.createDiv({
+			cls: 'dial-speech-engines',
+		});
+		const renderTranslationEngines = () =>
+			renderEngineList(
+				this.plugin,
+				translationListEl,
+				() =>
+					createTranslationChain(() => this.plugin.settings)
+						.statuses()
+						.map((status) => ({
+							id: status.id,
+							label: status.label,
+							dot: status.configured ? ('available' as const) : ('partial' as const),
+						})),
+				'translationEngineOrder',
+			);
+		renderTranslationEngines();
+
+		new Setting(generalPane).setName('Lookup data').setHeading();
 
 		const formatBytes = (bytes: number): string => {
 			if (bytes < 1024) return `${bytes} B`;
@@ -434,7 +516,7 @@ export class DialSettingTab extends PluginSettingTab {
 			return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 		};
 
-		const cacheStatsEl = containerEl.createDiv({ cls: 'dial-cache-stats' });
+		const cacheStatsEl = generalPane.createDiv({ cls: 'dial-cache-stats' });
 		const renderCacheStats = async () => {
 			cacheStatsEl.empty();
 			try {
@@ -467,7 +549,7 @@ export class DialSettingTab extends PluginSettingTab {
 		};
 		void renderCacheStats();
 
-		new Setting(containerEl)
+		new Setting(generalPane)
 			.setName('Clear stale translation records')
 			.setDesc('Safe: removes old-month copies whose data already lives in a newer month.')
 			.addButton((button) =>
@@ -481,7 +563,7 @@ export class DialSettingTab extends PluginSettingTab {
 					}),
 			);
 
-		new Setting(containerEl)
+		new Setting(generalPane)
 			.setName('Clear cache before this month')
 			.setDesc(
 				'Danger: deletes all older translation and audio months. ' +
@@ -500,7 +582,7 @@ export class DialSettingTab extends PluginSettingTab {
 					}),
 			);
 
-		new Setting(containerEl)
+		new Setting(generalPane)
 			.setName('Clear lookup logs')
 			.setDesc('Danger: deletes the query history under _lib/logs. Stats reset to zero.')
 			.addButton((button) =>
@@ -514,9 +596,9 @@ export class DialSettingTab extends PluginSettingTab {
 					}),
 			);
 
-		new Setting(containerEl).setName('Word flip').setHeading();
+		new Setting(generalPane).setName('Word flip').setHeading();
 
-		new Setting(containerEl)
+		new Setting(generalPane)
 			.setName('Vocabulary bucket path')
 			.setDesc(
 				'Vault-relative folder that holds word books. Every .md file in it ' +
@@ -534,7 +616,7 @@ export class DialSettingTab extends PluginSettingTab {
 					}),
 			);
 
-		new Setting(containerEl)
+		new Setting(generalPane)
 			.setName('Meaning visibility')
 			.setDesc(
 				'"Reveal on tap" shows only the word first — tap the card to reveal ' +
@@ -551,5 +633,231 @@ export class DialSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					}),
 			);
+
+		// ---- API keys pane (credential fields only) ----
+		keysPane
+			.createDiv({ cls: 'setting-item-description' })
+			.setText(
+				'All keys are stored locally in your vault settings and are only sent ' +
+					'when calling the matching cloud service. Leave a field blank to keep ' +
+					'that engine disabled. No key is needed for the system (browser) ' +
+					'pronunciation engine.',
+			);
+
+		new Setting(keysPane).setName('Pronunciation credentials').setHeading();
+
+		new Setting(keysPane)
+			.setName('Azure speech key')
+			.setDesc(
+				'Key of your Azure speech resource (the free tier works). The dot on the ' +
+					'General tab turns green once key and region are set.',
+			)
+			.addText((text) => {
+				text.inputEl.type = 'password';
+				text.setValue(this.plugin.settings.azureSpeechKey).onChange(async (value) => {
+					this.plugin.settings.azureSpeechKey = value;
+					await this.plugin.saveSettings();
+					renderEngines();
+				});
+			});
+
+		new Setting(keysPane)
+			.setName('Azure speech region')
+			.setDesc('Region of the speech resource, for example eastus')
+			.addText((text) =>
+				text.setValue(this.plugin.settings.azureSpeechRegion).onChange(async (value) => {
+					this.plugin.settings.azureSpeechRegion = value.trim();
+					await this.plugin.saveSettings();
+					renderEngines();
+				}),
+			);
+
+		new Setting(keysPane)
+			.setName('Google text-to-speech key')
+			.setDesc('API key of the project with the text-to-speech API enabled')
+			.addText((text) => {
+				text.inputEl.type = 'password';
+				text.setValue(this.plugin.settings.googleSpeechKey).onChange(async (value) => {
+					this.plugin.settings.googleSpeechKey = value;
+					await this.plugin.saveSettings();
+					renderEngines();
+				});
+			});
+
+		new Setting(keysPane)
+			.setName('Tencent speech')
+			.setDesc(
+				'Tencent speech reuses the Tencent Cloud secret ID and secret key you set ' +
+					'under translation credentials below, so no separate key is needed.',
+			);
+
+		new Setting(keysPane)
+			.setName('Baidu speech API key')
+			.setDesc('API key of the application with the speech service enabled')
+			.addText((text) => {
+				text.inputEl.type = 'password';
+				text.setValue(this.plugin.settings.baiduSpeechApiKey).onChange(async (value) => {
+					this.plugin.settings.baiduSpeechApiKey = value;
+					await this.plugin.saveSettings();
+					renderEngines();
+				});
+			});
+
+		new Setting(keysPane)
+			.setName('Baidu speech secret key')
+			.setDesc('Secret key paired with the speech API key above')
+			.addText((text) => {
+				text.inputEl.type = 'password';
+				text.setValue(this.plugin.settings.baiduSpeechSecretKey).onChange(async (value) => {
+					this.plugin.settings.baiduSpeechSecretKey = value;
+					await this.plugin.saveSettings();
+					renderEngines();
+				});
+			});
+
+		new Setting(keysPane)
+			.setName('Alibaba access key ID')
+			.setDesc('Access key ID for your cloud account, used to mint a speech token')
+			.addText((text) => {
+				text.inputEl.type = 'password';
+				text.setValue(this.plugin.settings.aliyunAccessKeyId).onChange(async (value) => {
+					this.plugin.settings.aliyunAccessKeyId = value.trim();
+					await this.plugin.saveSettings();
+					renderEngines();
+				});
+			});
+
+		new Setting(keysPane)
+			.setName('Alibaba access key secret')
+			.setDesc('Access key secret paired with the access key ID above')
+			.addText((text) => {
+				text.inputEl.type = 'password';
+				text.setValue(this.plugin.settings.aliyunAccessKeySecret).onChange(async (value) => {
+					this.plugin.settings.aliyunAccessKeySecret = value;
+					await this.plugin.saveSettings();
+					renderEngines();
+				});
+			});
+
+		new Setting(keysPane)
+			.setName('Alibaba speech appkey')
+			.setDesc('Appkey of the speech interaction project, separate from the access key')
+			.addText((text) => {
+				text.inputEl.type = 'password';
+				text.setValue(this.plugin.settings.aliyunAppKey).onChange(async (value) => {
+					this.plugin.settings.aliyunAppKey = value.trim();
+					await this.plugin.saveSettings();
+					renderEngines();
+				});
+			});
+
+		new Setting(keysPane).setName('Translation credentials').setHeading();
+
+		const keyField = (
+			name: string,
+			getValue: () => string,
+			save: (value: string) => Promise<void>,
+			onRefresh: () => void,
+		) =>
+			new Setting(keysPane)
+				.setName(name)
+				.addText((text) => {
+					text.inputEl.type = 'password';
+					text.setValue(getValue()).onChange(async (value) => {
+						await save(value);
+						onRefresh();
+					});
+				});
+
+		keyField(
+			'Azure Translator key',
+			() => this.plugin.settings.azureTranslateKey,
+			async (value) => {
+				this.plugin.settings.azureTranslateKey = value;
+				await this.plugin.saveSettings();
+			},
+			renderTranslationEngines,
+		);
+
+		new Setting(keysPane)
+			.setName('Azure region')
+			.setDesc('Region of the translator resource, for example eastus or global')
+			.addText((text) =>
+				text.setValue(this.plugin.settings.azureRegion).onChange(async (value) => {
+					this.plugin.settings.azureRegion = value.trim();
+					await this.plugin.saveSettings();
+					renderTranslationEngines();
+				}),
+			);
+
+		keyField(
+			'DeepL API key',
+			() => this.plugin.settings.deeplKey,
+			async (value) => {
+				this.plugin.settings.deeplKey = value;
+				await this.plugin.saveSettings();
+			},
+			renderTranslationEngines,
+		);
+
+		new Setting(keysPane)
+			.setName('Plan')
+			.setDesc('Choose the matching host for your key tier')
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOption('free', 'Free')
+					.addOption('pro', 'Pro')
+					.setValue(this.plugin.settings.deeplPlan)
+					.onChange(async (value) => {
+						this.plugin.settings.deeplPlan = value as 'free' | 'pro';
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(keysPane)
+			.setName('Baidu translate app ID')
+			.setDesc('App ID of the translate app you created on the open platform')
+			.addText((text) =>
+				text.setValue(this.plugin.settings.baiduTranslateAppId).onChange(async (value) => {
+					this.plugin.settings.baiduTranslateAppId = value.trim();
+					await this.plugin.saveSettings();
+					renderTranslationEngines();
+				}),
+			);
+
+		new Setting(keysPane)
+			.setName('Baidu translate secret')
+			.setDesc('Secret key paired with the app ID above')
+			.addText((text) => {
+				text.inputEl.type = 'password';
+				text.setValue(this.plugin.settings.baiduTranslateSecret).onChange(async (value) => {
+					this.plugin.settings.baiduTranslateSecret = value;
+					await this.plugin.saveSettings();
+					renderTranslationEngines();
+				});
+			});
+
+		new Setting(keysPane)
+			.setName('Tencent secret ID')
+			.setDesc('Tencent cloud secret ID, created in the console')
+			.addText((text) =>
+				text.setValue(this.plugin.settings.tencentSecretId).onChange(async (value) => {
+					this.plugin.settings.tencentSecretId = value.trim();
+					await this.plugin.saveSettings();
+					renderTranslationEngines();
+				}),
+			);
+
+		new Setting(keysPane)
+			.setName('Tencent secret key')
+			.setDesc('Secret key, paired with the secret ID above')
+			.addText((text) => {
+				text.inputEl.type = 'password';
+				text.setValue(this.plugin.settings.tencentSecretKey).onChange(async (value) => {
+					this.plugin.settings.tencentSecretKey = value;
+					await this.plugin.saveSettings();
+					renderTranslationEngines();
+				});
+			});
 	}
 }

@@ -6,9 +6,15 @@ export type EngineDot = 'available' | 'partial' | 'unavailable';
 
 /**
  * Render one reorderable engine priority list (shared by the speech and
- * translation credential tabs). Rows are recomputed through `getRows` on every
- * render, so availability dots refresh after a reorder, a key edit, or a
- * Re-detect press.
+ * translation engine lists).
+ *
+ * The displayed rows come from the live chain in the user's current priority
+ * order, so each up/down click swaps two real engine ids and rewrites the
+ * stored order from those ids. Rebuilding the order from the visible rows
+ * makes the arrows robust to any stray/id mismatch in the stored order (for
+ * example an old alias that no longer matches a provider), so every engine —
+ * including ones added later — stays reorderable instead of getting stuck
+ * behind a phantom entry.
  */
 export function renderEngineList(
 	plugin: DialPlugin,
@@ -18,7 +24,10 @@ export function renderEngineList(
 ): void {
 	listEl.empty();
 	const rows = getRows();
-	const order = plugin.settings[orderSettingKey];
+	// Mirror the displayed rows: every id is taken from the live chain, so it
+	// always matches a real provider. Swapping two of these and writing them
+	// back produces a clean, fully-matched order.
+	const ids = rows.map((row) => row.id);
 
 	rows.forEach((row, index) => {
 		const rowEl = listEl.createDiv({ cls: 'dial-speech-engine-row' });
@@ -34,16 +43,20 @@ export function renderEngineList(
 				},
 			});
 			setIcon(btn, icon);
-			btn.disabled = index + delta < 0 || index + delta >= rows.length;
+			// Disable at the ends using the visible row positions.
+			const target = index + delta;
+			btn.disabled = target < 0 || target >= rows.length;
 			btn.addEventListener('click', () => {
 				void (async () => {
-					const target = index + delta;
-					const current = order[index];
-					const swapWith = order[target];
-					if (current === undefined || swapWith === undefined) return;
-					order[index] = swapWith;
-					order[target] = current;
-					plugin.settings[orderSettingKey] = [...order];
+					const from = ids.indexOf(row.id);
+					const to = from + delta;
+					if (from < 0 || to < 0 || to >= ids.length) return;
+					// Bounds are checked above, so both reads are defined.
+					const moved = ids[from]!;
+					const other = ids[to]!;
+					ids[from] = other;
+					ids[to] = moved;
+					plugin.settings[orderSettingKey] = [...ids];
 					await plugin.saveSettings();
 					renderEngineList(plugin, listEl, getRows, orderSettingKey);
 				})();

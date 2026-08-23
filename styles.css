@@ -599,6 +599,41 @@
 	margin: 4px 0 12px;
 }
 
+/* Settings: in-page tab switcher at the top of the Dial tab. One "Dial"
+   entry in Obsidian's list; General / API keys toggle the visible pane. */
+.dial-settings-tabs {
+	display: flex;
+	gap: 4px;
+	margin-bottom: 12px;
+	border-bottom: 1px solid var(--background-modifier-border);
+	padding-bottom: 8px;
+}
+
+.dial-settings-tab {
+	padding: 4px 14px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s, 4px);
+	background: var(--interactive-normal);
+	color: var(--text-normal);
+	cursor: pointer;
+	font-size: 13px;
+	font-weight: 500;
+}
+
+.dial-settings-tab:hover {
+	background: var(--interactive-hover);
+}
+
+.dial-settings-tab.is-active {
+	background: var(--interactive-accent, var(--text-accent));
+	color: var(--text-on-accent, #ffffff);
+	border-color: var(--interactive-accent, var(--text-accent));
+}
+
+.dial-settings-pane.is-hidden {
+	display: none;
+}
+
 /* Subtitle words are interactive targets for the word card. */
 .dial-subtitle-word {
 	cursor: pointer;
