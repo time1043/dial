@@ -26,7 +26,11 @@ async function hmacSha1(key: string, message: string): Promise<Uint8Array> {
 		false,
 		['sign'],
 	);
-	const signature = await crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(message));
+	const signature = await crypto.subtle.sign(
+		'HMAC',
+		cryptoKey,
+		new TextEncoder().encode(message),
+	);
 	return new Uint8Array(signature);
 }
 
@@ -88,7 +92,11 @@ export function createNlsTokenProvider(
 
 	async function fetchToken(): Promise<NlsToken> {
 		const credentials = getCredentials();
-		if (!credentials || !credentials.accessKeyId.trim() || !credentials.accessKeySecret.trim()) {
+		if (
+			!credentials ||
+			!credentials.accessKeyId.trim() ||
+			!credentials.accessKeySecret.trim()
+		) {
 			throw new Error('alibaba cloud is not configured');
 		}
 		const timestamp = Math.floor(now().getTime() / 1000);

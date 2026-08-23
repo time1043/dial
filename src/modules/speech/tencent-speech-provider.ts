@@ -1,9 +1,9 @@
 import type { HttpFn } from '@/utils/http';
 import type { Tc3Credentials } from '@/utils/tc3';
 
+import { playAudioBuffer } from '@/utils/audio';
 import { obsidianHttp } from '@/utils/http';
 import { tc3SignedHeaders } from '@/utils/tc3';
-import { playAudioBuffer } from '@/utils/audio';
 
 import type { SpeakRequest, SynthesizingSpeechProvider } from './speech-provider';
 

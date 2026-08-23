@@ -1,7 +1,7 @@
 import type { HttpFn } from '@/utils/http';
 
-import { obsidianHttp } from '@/utils/http';
 import { playAudioBuffer } from '@/utils/audio';
+import { obsidianHttp } from '@/utils/http';
 
 import type { SpeakRequest, SynthesizingSpeechProvider } from './speech-provider';
 

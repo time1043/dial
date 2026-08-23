@@ -92,7 +92,10 @@ describe('TencentSpeechProvider', () => {
 			() => ({ secretId: 'AKIDtest', secretKey: 'Gu5tKey' }),
 			async (req) => {
 				sent = req;
-				return { status: 200, text: JSON.stringify({ Response: { Audio: toBase64(mp3) } }) };
+				return {
+					status: 200,
+					text: JSON.stringify({ Response: { Audio: toBase64(mp3) } }),
+				};
 			},
 		);
 
@@ -123,9 +126,9 @@ describe('TencentSpeechProvider', () => {
 	});
 
 	it('is unavailable without credentials', () => {
-		expect(new TencentSpeechProvider(() => ({ secretId: ' ', secretKey: ' ' })).isAvailable()).toBe(
-			false,
-		);
+		expect(
+			new TencentSpeechProvider(() => ({ secretId: ' ', secretKey: ' ' })).isAvailable(),
+		).toBe(false);
 	});
 });
 
@@ -138,7 +141,10 @@ describe('BaiduSpeechProvider', () => {
 			async (req) => {
 				requests.push(req);
 				if (req.url.includes('oauth/2.0/token')) {
-					return { status: 200, text: JSON.stringify({ access_token: 'TK', expires_in: 3600 }) };
+					return {
+						status: 200,
+						text: JSON.stringify({ access_token: 'TK', expires_in: 3600 }),
+					};
 				}
 				return { status: 200, text: '', arrayBuffer: mp3.slice().buffer };
 			},
@@ -162,7 +168,10 @@ describe('BaiduSpeechProvider', () => {
 			async (req) => {
 				if (req.url.includes('oauth/2.0/token')) {
 					tokenCalls++;
-					return { status: 200, text: JSON.stringify({ access_token: 'TK', expires_in: 3600 }) };
+					return {
+						status: 200,
+						text: JSON.stringify({ access_token: 'TK', expires_in: 3600 }),
+					};
 				}
 				return { status: 200, text: '', arrayBuffer: new Uint8Array([1]).buffer };
 			},
@@ -189,7 +198,10 @@ describe('AliyunSpeechProvider', () => {
 				requests.push(req);
 				if (req.url.includes('nls-meta.cn-shanghai.aliyuncs.com')) {
 					const future = Math.floor(Date.now() / 1000) + 3600;
-					return { status: 200, text: JSON.stringify({ Token: { Id: 'TOK', ExpireTime: future } }) };
+					return {
+						status: 200,
+						text: JSON.stringify({ Token: { Id: 'TOK', ExpireTime: future } }),
+					};
 				}
 				return { status: 200, text: '', arrayBuffer: mp3.slice().buffer };
 			},
@@ -213,7 +225,10 @@ describe('AliyunSpeechProvider', () => {
 				if (req.url.includes('nls-meta.cn-shanghai.aliyuncs.com')) {
 					tokenCalls++;
 					const future = Math.floor(Date.now() / 1000) + 3600;
-					return { status: 200, text: JSON.stringify({ Token: { Id: 'TOK', ExpireTime: future } }) };
+					return {
+						status: 200,
+						text: JSON.stringify({ Token: { Id: 'TOK', ExpireTime: future } }),
+					};
 				}
 				return { status: 200, text: '', arrayBuffer: new Uint8Array([1]).buffer };
 			},
@@ -225,8 +240,11 @@ describe('AliyunSpeechProvider', () => {
 
 	it('is unavailable without the appkey', () => {
 		expect(
-			new AliyunSpeechProvider(() => ({ accessKeyId: 'id', accessKeySecret: 'secret', appKey: '' }))
-				.isAvailable(),
+			new AliyunSpeechProvider(() => ({
+				accessKeyId: 'id',
+				accessKeySecret: 'secret',
+				appKey: '',
+			})).isAvailable(),
 		).toBe(false);
 	});
 });

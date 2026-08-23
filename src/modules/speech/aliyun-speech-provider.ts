@@ -1,9 +1,9 @@
-import type { HttpFn } from '@/utils/http';
 import type { NlsTokenProvider } from '@/utils/aliyun';
+import type { HttpFn } from '@/utils/http';
 
 import { createNlsTokenProvider } from '@/utils/aliyun';
-import { obsidianHttp } from '@/utils/http';
 import { playAudioBuffer } from '@/utils/audio';
+import { obsidianHttp } from '@/utils/http';
 
 import type { SpeakRequest, SynthesizingSpeechProvider } from './speech-provider';
 
@@ -47,7 +47,10 @@ export class AliyunSpeechProvider implements SynthesizingSpeechProvider {
 			() => {
 				const credentials = this.getCredentials();
 				return credentials
-					? { accessKeyId: credentials.accessKeyId, accessKeySecret: credentials.accessKeySecret }
+					? {
+							accessKeyId: credentials.accessKeyId,
+							accessKeySecret: credentials.accessKeySecret,
+						}
 					: null;
 			},
 			http,

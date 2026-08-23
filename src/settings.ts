@@ -2,7 +2,6 @@ import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
 
 import { createSpeechChain } from '@/modules/speech/create-speech-chain';
 import { createTranslationChain } from '@/modules/translation/create-translation-chain';
-import { renderEngineList } from './engine-list';
 
 import type DialPlugin from './main';
 import type {
@@ -11,6 +10,8 @@ import type {
 	SubtitlePanelVisibility,
 	WordFlipRevealMode,
 } from './types';
+
+import { renderEngineList } from './engine-list';
 
 export type DeeplPlan = 'free' | 'pro';
 
@@ -162,7 +163,9 @@ export class DialSettingTab extends PluginSettingTab {
 		});
 		const keysTab = tabBar.createEl('button', { cls: 'dial-settings-tab', text: 'API keys' });
 		const generalPane = containerEl.createDiv({ cls: 'dial-settings-pane' });
-		const keysPane = containerEl.createDiv({ cls: 'dial-settings-pane dial-settings-pane-keys is-hidden' });
+		const keysPane = containerEl.createDiv({
+			cls: 'dial-settings-pane dial-settings-pane-keys is-hidden',
+		});
 		const activate = (which: 'general' | 'keys') => {
 			const general = which === 'general';
 			generalPane.classList.toggle('is-hidden', !general);
@@ -732,11 +735,13 @@ export class DialSettingTab extends PluginSettingTab {
 			.setDesc('Access key secret paired with the access key ID above')
 			.addText((text) => {
 				text.inputEl.type = 'password';
-				text.setValue(this.plugin.settings.aliyunAccessKeySecret).onChange(async (value) => {
-					this.plugin.settings.aliyunAccessKeySecret = value;
-					await this.plugin.saveSettings();
-					renderEngines();
-				});
+				text.setValue(this.plugin.settings.aliyunAccessKeySecret).onChange(
+					async (value) => {
+						this.plugin.settings.aliyunAccessKeySecret = value;
+						await this.plugin.saveSettings();
+						renderEngines();
+					},
+				);
 			});
 
 		new Setting(keysPane)
@@ -759,15 +764,13 @@ export class DialSettingTab extends PluginSettingTab {
 			save: (value: string) => Promise<void>,
 			onRefresh: () => void,
 		) =>
-			new Setting(keysPane)
-				.setName(name)
-				.addText((text) => {
-					text.inputEl.type = 'password';
-					text.setValue(getValue()).onChange(async (value) => {
-						await save(value);
-						onRefresh();
-					});
+			new Setting(keysPane).setName(name).addText((text) => {
+				text.inputEl.type = 'password';
+				text.setValue(getValue()).onChange(async (value) => {
+					await save(value);
+					onRefresh();
 				});
+			});
 
 		keyField(
 			'Azure Translator key',
