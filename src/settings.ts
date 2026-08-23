@@ -48,6 +48,15 @@ export interface DialSettings {
 	deeplPlan: DeeplPlan;
 	baiduTranslateAppId: string;
 	baiduTranslateSecret: string;
+	tencentSecretId: string;
+	tencentSecretKey: string;
+	/** Baidu Cloud speech (TTS) API Key / Secret Key (AI platform, not translate). */
+	baiduSpeechApiKey: string;
+	baiduSpeechSecretKey: string;
+	/** Alibaba Cloud speech (TTS) AccessKey pair + NLS project appkey. */
+	aliyunAccessKeyId: string;
+	aliyunAccessKeySecret: string;
+	aliyunAppKey: string;
 	vocabularyBucketPath: string;
 	wordFlipRevealMode: WordFlipRevealMode;
 }
@@ -67,20 +76,27 @@ export const DEFAULT_SETTINGS: DialSettings = {
 	showSubtitleSearch: true,
 	wordPronunciationLang: 'en-US',
 	wordAutoPronounce: true,
-	speechEngineOrder: ['system', 'azure', 'google'],
+	speechEngineOrder: ['system', 'azure', 'google', 'tencent', 'alibaba', 'baidu'],
 	azureSpeechKey: '',
 	azureSpeechRegion: '',
 	googleSpeechKey: '',
+	baiduSpeechApiKey: '',
+	baiduSpeechSecretKey: '',
+	aliyunAccessKeyId: '',
+	aliyunAccessKeySecret: '',
+	aliyunAppKey: '',
 	translationEnabled: false,
 	translationSourceLang: 'en',
 	translationTargetLang: 'zh',
-	translationEngineOrder: ['azure-translate', 'deepl', 'baidu-translate'],
+	translationEngineOrder: ['azure-translate', 'deepl', 'baidu-translate', 'tencent-translate'],
 	azureTranslateKey: '',
 	azureRegion: '',
 	deeplKey: '',
 	deeplPlan: 'free',
 	baiduTranslateAppId: '',
 	baiduTranslateSecret: '',
+	tencentSecretId: '',
+	tencentSecretKey: '',
 	vocabularyBucketPath: '_lib/vocabulary-bucket',
 	wordFlipRevealMode: 'hidden',
 };
@@ -399,16 +415,86 @@ export class DialSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName('Google text-to-speech key')
-			.setDesc('API key of the project with the text-to-speech API enabled')
-			.addText((text) => {
-				text.inputEl.type = 'password';
-				text.setValue(this.plugin.settings.googleSpeechKey).onChange(async (value) => {
-					this.plugin.settings.googleSpeechKey = value;
-					await this.plugin.saveSettings();
-					renderEngines();
-				});
+		.setName('Google text-to-speech key')
+		.setDesc('API key of the project with the text-to-speech API enabled')
+		.addText((text) => {
+			text.inputEl.type = 'password';
+			text.setValue(this.plugin.settings.googleSpeechKey).onChange(async (value) => {
+				this.plugin.settings.googleSpeechKey = value;
+				await this.plugin.saveSettings();
+				renderEngines();
 			});
+		});
+
+	// The three Chinese clouds need no international payment method, so they
+	// are the realistic choice for many users. Tencent speech reuses the
+	// Tencent Cloud secret configured under Translation below.
+	new Setting(containerEl)
+		.setName('Tencent speech')
+		.setDesc(
+			'Tencent speech reuses the secret ID and secret key you set under translation ' +
+				'below, so no separate key is needed.',
+		);
+
+	new Setting(containerEl)
+		.setName('Baidu speech API key')
+		.setDesc('AI platform API key of the application with the speech service enabled')
+		.addText((text) => {
+			text.inputEl.type = 'password';
+			text.setValue(this.plugin.settings.baiduSpeechApiKey).onChange(async (value) => {
+				this.plugin.settings.baiduSpeechApiKey = value;
+				await this.plugin.saveSettings();
+				renderEngines();
+			});
+		});
+
+	new Setting(containerEl)
+		.setName('Baidu speech secret key')
+		.setDesc('Secret key paired with the speech API key above')
+		.addText((text) => {
+			text.inputEl.type = 'password';
+			text.setValue(this.plugin.settings.baiduSpeechSecretKey).onChange(async (value) => {
+				this.plugin.settings.baiduSpeechSecretKey = value;
+				await this.plugin.saveSettings();
+				renderEngines();
+			});
+		});
+
+	new Setting(containerEl)
+		.setName('Alibaba access key ID')
+		.setDesc('Access key ID for your cloud account, used to mint a speech token')
+		.addText((text) => {
+			text.inputEl.type = 'password';
+			text.setValue(this.plugin.settings.aliyunAccessKeyId).onChange(async (value) => {
+				this.plugin.settings.aliyunAccessKeyId = value.trim();
+				await this.plugin.saveSettings();
+				renderEngines();
+			});
+		});
+
+	new Setting(containerEl)
+		.setName('Alibaba access key secret')
+		.setDesc('Access key secret paired with the access key ID above')
+		.addText((text) => {
+			text.inputEl.type = 'password';
+			text.setValue(this.plugin.settings.aliyunAccessKeySecret).onChange(async (value) => {
+				this.plugin.settings.aliyunAccessKeySecret = value;
+				await this.plugin.saveSettings();
+				renderEngines();
+			});
+		});
+
+	new Setting(containerEl)
+		.setName('Alibaba speech appkey')
+		.setDesc('Appkey of the speech interaction project, separate from the access key')
+		.addText((text) => {
+			text.inputEl.type = 'password';
+			text.setValue(this.plugin.settings.aliyunAppKey).onChange(async (value) => {
+				this.plugin.settings.aliyunAppKey = value.trim();
+				await this.plugin.saveSettings();
+				renderEngines();
+			});
+		});
 
 		new Setting(containerEl)
 			.setName('Pronunciation language')
@@ -584,6 +670,29 @@ export class DialSettingTab extends PluginSettingTab {
 				text.inputEl.type = 'password';
 				text.setValue(this.plugin.settings.baiduTranslateSecret).onChange(async (value) => {
 					this.plugin.settings.baiduTranslateSecret = value;
+					await this.plugin.saveSettings();
+					renderTranslationEngines();
+				});
+			});
+
+		new Setting(containerEl)
+			.setName('Tencent secret ID')
+			.setDesc('Tencent secret ID of the key you created in the console')
+			.addText((text) =>
+				text.setValue(this.plugin.settings.tencentSecretId).onChange(async (value) => {
+					this.plugin.settings.tencentSecretId = value.trim();
+					await this.plugin.saveSettings();
+					renderTranslationEngines();
+				}),
+			);
+
+		new Setting(containerEl)
+			.setName('Tencent secret key')
+			.setDesc('Tencent secret key, paired with the secret ID above')
+			.addText((text) => {
+				text.inputEl.type = 'password';
+				text.setValue(this.plugin.settings.tencentSecretKey).onChange(async (value) => {
+					this.plugin.settings.tencentSecretKey = value;
 					await this.plugin.saveSettings();
 					renderTranslationEngines();
 				});
