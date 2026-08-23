@@ -147,6 +147,70 @@ describe('WordCard', () => {
 		expect((speak.mock.calls[1]?.[0] as StubUtterance).text).toBe('Hello');
 	});
 
+	it('shows a copy button next to the speak button and writes the word on click', async () => {
+		const writeText = vi.fn().mockResolvedValue(undefined);
+		vi.stubGlobal('navigator', { clipboard: { writeText } });
+
+		panel.setSubtitles(SUBS);
+		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;
+		word.dispatchEvent(new MouseEvent('mouseenter'));
+		vi.advanceTimersByTime(250);
+
+		const copyBtn = document.querySelector('.dial-word-card-copy') as HTMLElement;
+		expect(copyBtn).not.toBeNull();
+		// Order matches the speaking toolbar: speak first, copy on the right.
+		const card = document.querySelector('.dial-word-card') as HTMLElement;
+		const buttons = card.querySelectorAll('button');
+		expect(buttons[0]?.className).toContain('dial-word-card-speak');
+		expect(buttons[1]?.className).toContain('dial-word-card-copy');
+
+		copyBtn.click();
+		await Promise.resolve();
+		expect(writeText).toHaveBeenCalledWith('Hello');
+
+		vi.unstubAllGlobals();
+	});
+
+	it('shows the copy button even when no speech engine is available', () => {
+		// Speech engine is gated on speech synthesis existing — verify
+		// the copy affordance still appears when speak is hidden.
+		vi.stubGlobal('speechSynthesis', undefined);
+		vi.stubGlobal('SpeechSynthesisUtterance', undefined);
+
+		panel.setSubtitles(SUBS);
+		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;
+		word.dispatchEvent(new MouseEvent('mouseenter'));
+		vi.advanceTimersByTime(250);
+
+		expect(document.querySelector('.dial-word-card-speak')).toBeNull();
+		expect(document.querySelector('.dial-word-card-copy')).not.toBeNull();
+	});
+
+	it('hides when a scroll bubbles up from a non-card container (document-level capture)', () => {
+		panel.setSubtitles(SUBS);
+		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;
+		word.dispatchEvent(new MouseEvent('mouseenter'));
+		vi.advanceTimersByTime(250);
+		expect(document.querySelector('.dial-word-card')).not.toBeNull();
+
+		// A scroll on the body (e.g. the user scrolls the parent view
+		// rather than the subtitle list) still dismisses — capture
+		// phase on document catches every nested scroll.
+		document.body.dispatchEvent(new Event('scroll'));
+		expect(document.querySelector('.dial-word-card')).toBeNull();
+	});
+
+	it('keeps the card open when a scroll fires inside the card itself', () => {
+		panel.setSubtitles(SUBS);
+		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;
+		word.dispatchEvent(new MouseEvent('mouseenter'));
+		vi.advanceTimersByTime(250);
+		const card = document.querySelector('.dial-word-card') as HTMLElement;
+
+		card.dispatchEvent(new Event('scroll'));
+		expect(document.querySelector('.dial-word-card')).not.toBeNull();
+	});
+
 	it('pronounces with the language provided by the panel options', () => {
 		panel = new SubtitlePanel(parent, {
 			wordCardConfig: () => ({ pronunciationLang: 'de-DE' }),

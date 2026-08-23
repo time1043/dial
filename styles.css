@@ -509,9 +509,10 @@
 	color: var(--text-muted);
 }
 
-/* Pronounce button inside the word card. Overrides Obsidian's global
-   `button` styling so it reads as a compact icon affordance. */
-.dial-word-card .dial-word-card-speak {
+/* Pronounce + copy buttons inside the word card. Overrides Obsidian's
+   global `button` styling so they read as compact icon affordances. */
+.dial-word-card .dial-word-card-speak,
+.dial-word-card .dial-word-card-copy {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
@@ -524,7 +525,8 @@
 	cursor: pointer;
 }
 
-.dial-word-card .dial-word-card-speak:hover {
+.dial-word-card .dial-word-card-speak:hover,
+.dial-word-card .dial-word-card-copy:hover {
 	background: var(--background-modifier-hover);
 	color: var(--text-normal);
 }

@@ -56,6 +56,8 @@ export class WordCard {
 	private showTimer: number | null = null;
 	private hideTimer: number | null = null;
 	private removeDismissListener: (() => void) | null = null;
+	/** Desktop scroll dismiss; set when the card opens without mobile handlers. */
+	private removeScrollListener: (() => void) | null = null;
 	/** Bumped on every hide/show so stale async translations are dropped. */
 	private translationToken = 0;
 
@@ -115,6 +117,8 @@ export class WordCard {
 		this.clearTimers();
 		this.removeDismissListener?.();
 		this.removeDismissListener = null;
+		this.removeScrollListener?.();
+		this.removeScrollListener = null;
 		this.activeWordEl = null;
 		this.cardEl?.remove();
 		this.cardEl = null;
@@ -154,6 +158,19 @@ export class WordCard {
 			});
 		}
 
+		// Copy-to-clipboard button. Always rendered (clipboard is
+		// browser-native and does not depend on any engine) so the
+		// user can grab a word even when speech is unavailable.
+		const copyBtnEl = this.cardEl.createEl('button', {
+			cls: 'dial-word-card-copy',
+			attr: { 'aria-label': 'Copy word', title: 'Copy word' },
+		});
+		setIcon(copyBtnEl, 'copy');
+		copyBtnEl.addEventListener('click', (e) => {
+			e.stopPropagation();
+			void this.copyToClipboard(word);
+		});
+
 		if (Platform.isMobile) {
 			this.attachDismissHandler();
 		} else {
@@ -163,6 +180,16 @@ export class WordCard {
 			this.cardEl.addEventListener('mouseleave', () => {
 				this.hideTimer = window.setTimeout(() => this.hide(), HIDE_DELAY_MS);
 			});
+			// On desktop, scrolling the page also counts as leaving the
+			// card (the word travels away from under it). Listen on the
+			// document with capture so we catch scrolls that fire on any
+			// nested container — the subtitle list, the panel viewport,
+			// or the surrounding leaf — without having to know which
+			// one is actually scrolling. (Scroll events don't bubble,
+			// but capture-phase on document sees them on the way down.)
+			document.addEventListener('scroll', this.handleDocumentScroll, true);
+			this.removeScrollListener = () =>
+				document.removeEventListener('scroll', this.handleDocumentScroll, true);
 		}
 
 		document.body.appendChild(this.cardEl);
@@ -200,9 +227,18 @@ export class WordCard {
 	}
 
 	/**
-	 * Dismiss the card on any tap that lands outside the card and outside
-	 * the word that opened it (mobile only). The word itself is excluded so
-	 * the tap can toggle the card off via bindWordSpan's own handler.
+	 * Dismiss the card on:
+	 *  - any tap that lands outside the card and the word (mobile);
+	 *  - any document scroll that takes the word out from under the card
+	 *    (both mobile and desktop). Capture phase lets us catch scrolls
+	 *    fired on any nested container — including the subtitle list,
+	 *    the panel viewport, and the surrounding leaf — without having
+	 *    to know which one is actually scrolling;
+	 *  - any touchmove outside the card (mobile swipe gesture); clicks
+	 *    inside the card already stop propagation.
+	 *
+	 * The word itself is excluded so a tap on the word can toggle the
+	 * card off via bindWordSpan's own handler.
 	 */
 	private attachDismissHandler(): void {
 		const handler = (e: Event) => {
@@ -212,9 +248,29 @@ export class WordCard {
 			if (this.activeWordEl?.contains(target)) return;
 			this.hide();
 		};
+		// Click-outside for taps. Scroll (capture on document) catches
+		// touchpad/wheel drags and programmatic scrolls (e.g.
+		// setCurrentSubtitle's scrollIntoView). touchmove covers mobile
+		// swipes that don't always fire scroll on the first touchmove —
+		// dismissing on first finger move feels immediate.
 		document.addEventListener('click', handler, true);
-		this.removeDismissListener = () => document.removeEventListener('click', handler, true);
+		document.addEventListener('scroll', handler, true);
+		document.addEventListener('touchmove', handler, true);
+		this.removeDismissListener = () => {
+			document.removeEventListener('click', handler, true);
+			document.removeEventListener('scroll', handler, true);
+			document.removeEventListener('touchmove', handler, true);
+		};
 	}
+
+	/** Bound reference kept so removeScrollListener can detach it later. */
+	private readonly handleDocumentScroll = (e: Event) => {
+		const target = e.target as Node | null;
+		if (!target) return;
+		if (this.cardEl?.contains(target)) return;
+		if (this.activeWordEl?.contains(target)) return;
+		this.hide();
+	};
 
 	/**
 	 * Pronounce the word through the configured speech engine.
@@ -249,6 +305,23 @@ export class WordCard {
 		}
 		await this.speech.speak(request);
 		return this.speech.id;
+	}
+
+	/**
+	 * Copy the word to the system clipboard. Clipboard is browser-native,
+	 * so this works whether or not a speech engine is available. Failures
+	 * (insecure context, denied permission) are logged to the console so
+	 * the user still sees feedback from the click without a noisy toast.
+	 */
+	private async copyToClipboard(word: string): Promise<void> {
+		if (!word) return;
+		try {
+			await navigator.clipboard.writeText(word);
+			new Notice(`Copied "${word}"`);
+		} catch (err) {
+			console.error('[word-card] clipboard write failed:', err);
+			new Notice('Copy failed — clipboard access denied');
+		}
 	}
 
 	/**

@@ -1,5 +1,3 @@
-import { Notice } from 'obsidian';
-
 import type {
 	TranslateRequest,
 	TranslateResult,
@@ -9,6 +7,13 @@ import type {
 /**
  * Ordered translation pipeline, mirroring the speech chain: configured
  * engines are tried top to bottom until one succeeds.
+ *
+ * Per-engine failures are logged to the console but not turned into
+ * toasts: a benign "no translation returned" is not something the
+ * user can act on, and surfacing it crowds out useful signals. The
+ * chain still appends a line to the query log with the real outcome,
+ * which is the right surface for investigating why a word came back
+ * empty.
  */
 export class TranslationChain {
 	constructor(private readonly providers: readonly TranslationProvider[]) {}
@@ -34,12 +39,10 @@ export class TranslationChain {
 			try {
 				return { result: await provider.translate(request), provider };
 			} catch (err) {
-				// Engine failed — fall through to the next one, but surface
-				// the real cause so silent failures are debuggable.
+				// Engine failed — fall through to the next one. The real
+				// cause stays in the console for debuggability; the query
+				// log records the eventual outcome for the user.
 				console.error(`[translation-chain] ${provider.label} failed:`, err);
-				new Notice(
-					`${provider.label} translation failed: ${err instanceof Error ? err.message : String(err)}`,
-				);
 			}
 		}
 		return null;
