@@ -4,8 +4,10 @@ import type { TranslationProvider } from '@/modules/translation/translation-prov
 import type { HttpTextRequest, HttpTextResponse } from '@/utils/http';
 
 import { AzureTranslateProvider } from '@/modules/translation/azure-translate-provider';
+import { BaiduTranslateProvider } from '@/modules/translation/baidu-translate-provider';
 import { DeeplTranslateProvider } from '@/modules/translation/deepl-translate-provider';
 import { orderTranslationEngines, TranslationChain } from '@/modules/translation/translation-chain';
+import { md5 } from '@/utils/md5';
 
 function okHttp(body: unknown, capture?: (req: HttpTextRequest) => void) {
 	return async (req: HttpTextRequest): Promise<HttpTextResponse> => {
@@ -108,6 +110,64 @@ describe('TranslationChain', () => {
 	it('rejects when no engine can translate', async () => {
 		const chain = new TranslationChain([fakeEngine('azure', false)]);
 		await expect(chain.translate(REQUEST)).rejects.toThrow(/no configured translation engine/i);
+	});
+});
+
+describe('BaiduTranslateProvider', () => {
+	it('signs with md5(appid+q+salt+secret) and joins the results', async () => {
+		let sent: HttpTextRequest | undefined;
+		const provider = new BaiduTranslateProvider(
+			() => ({ appId: 'app1', secret: 'sec1' }),
+			async (req) => {
+				sent = req;
+				return {
+					status: 200,
+					text: JSON.stringify({
+						from: 'en',
+						to: 'zh',
+						trans_result: [{ src: 'Hello', dst: '你好' }],
+					}),
+				};
+			},
+		);
+
+		const result = await provider.translate(REQUEST);
+		expect(result).toEqual({ translation: '你好', engine: 'baidu-translate' });
+
+		const body = new URLSearchParams(sent?.body ?? '');
+		expect(body.get('q')).toBe('hello');
+		expect(body.get('from')).toBe('en');
+		expect(body.get('to')).toBe('zh');
+		expect(body.get('appid')).toBe('app1');
+		const salt = body.get('salt') ?? '';
+		expect(body.get('sign')).toBe(md5(`app1hello${salt}sec1`));
+	});
+
+	it('shortens language tags to their primary subtag', async () => {
+		let sent: HttpTextRequest | undefined;
+		const provider = new BaiduTranslateProvider(
+			() => ({ appId: 'app1', secret: 'sec1' }),
+			async (req) => {
+				sent = req;
+				return { status: 200, text: JSON.stringify({ trans_result: [{ dst: '你好' }] }) };
+			},
+		);
+		await provider.translate({ word: 'hello', from: 'en-US', to: 'zh-CN' });
+		const body = new URLSearchParams(sent?.body ?? '');
+		expect(body.get('from')).toBe('en');
+		expect(body.get('to')).toBe('zh');
+	});
+
+	it('is unconfigured without credentials', () => {
+		expect(new BaiduTranslateProvider(() => null).isConfigured()).toBe(false);
+	});
+
+	it('surfaces the platform error code', async () => {
+		const provider = new BaiduTranslateProvider(
+			() => ({ appId: 'app1', secret: 'sec1' }),
+			async () => ({ status: 200, text: JSON.stringify({ error_code: '54003' }) }),
+		);
+		await expect(provider.translate(REQUEST)).rejects.toThrow(/54003/);
 	});
 });
 
