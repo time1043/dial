@@ -634,6 +634,10 @@
 	display: none;
 }
 
+.dial-settings-pane-keys .setting-item-heading {
+	margin-top: 16px;
+}
+
 /* Subtitle words are interactive targets for the word card. */
 .dial-subtitle-word {
 	cursor: pointer;

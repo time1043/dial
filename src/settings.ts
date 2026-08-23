@@ -162,7 +162,7 @@ export class DialSettingTab extends PluginSettingTab {
 		});
 		const keysTab = tabBar.createEl('button', { cls: 'dial-settings-tab', text: 'API keys' });
 		const generalPane = containerEl.createDiv({ cls: 'dial-settings-pane' });
-		const keysPane = containerEl.createDiv({ cls: 'dial-settings-pane is-hidden' });
+		const keysPane = containerEl.createDiv({ cls: 'dial-settings-pane dial-settings-pane-keys is-hidden' });
 		const activate = (which: 'general' | 'keys') => {
 			const general = which === 'general';
 			generalPane.classList.toggle('is-hidden', !general);
