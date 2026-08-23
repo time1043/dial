@@ -68,3 +68,8 @@ export class Modal {
 }
 
 export function setIcon(_el: HTMLElement, _icon: string): void {}
+
+/** Tests never hit the network: providers get an injected fake HttpFn. */
+export function requestUrl(): Promise<never> {
+	return Promise.reject(new Error('requestUrl is stubbed out in tests'));
+}

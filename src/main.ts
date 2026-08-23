@@ -33,6 +33,10 @@ import { PositionManager } from './modules/position-manager/position-manager';
 import { getJumpTarget } from './modules/subtitle-navigator/subtitle-navigator';
 import { parseSubtitle } from './modules/subtitle-parsers';
 import { TraceManager } from './modules/trace-manager/trace-manager';
+import { AudioCache } from './modules/word-cache/audio-cache';
+import { VaultCacheFileStore } from './modules/word-cache/file-store';
+import { QueryLogger } from './modules/word-cache/query-logger';
+import { TranslateCache } from './modules/word-cache/translate-cache';
 import { WordFlipStore } from './modules/word-flip/flip-store';
 import { DEFAULT_SETTINGS, DialSettingTab, subtitlePanelVisibility } from './settings';
 import { SUBTITLE_VIEW_TYPE, SubtitleView } from './ui/subtitle-view';
@@ -54,6 +58,35 @@ export default class DialPlugin extends Plugin {
 	readonly trace = new TraceManager();
 
 	readonly wordFlip = new WordFlipStore();
+
+	private cacheFileStore?: VaultCacheFileStore;
+	private translateCacheInstance?: TranslateCache;
+	private audioCacheInstance?: AudioCache;
+	private queryLoggerInstance?: QueryLogger;
+
+	/** Append-only query log under `_lib/logs`, one JSONL per month. */
+	get queryLogger(): QueryLogger {
+		this.queryLoggerInstance ??= new QueryLogger(this.wordCacheStore);
+		return this.queryLoggerInstance;
+	}
+
+	/** Month-tiered translation cache, shared by every panel and view. */
+	get translateCache(): TranslateCache {
+		this.translateCacheInstance ??= new TranslateCache(this.wordCacheStore);
+		return this.translateCacheInstance;
+	}
+
+	/** Month-tiered audio cache for cloud TTS replay. */
+	get audioCache(): AudioCache {
+		this.audioCacheInstance ??= new AudioCache(this.wordCacheStore);
+		return this.audioCacheInstance;
+	}
+
+	private get wordCacheStore(): VaultCacheFileStore {
+		this.cacheFileStore ??= new VaultCacheFileStore(this.app.vault, this.app.fileManager);
+		return this.cacheFileStore;
+	}
+
 	private subtitles: Subtitle[] = [];
 	activeNotePath: string | null = null;
 	activeTypeSessionId: string | null = null;

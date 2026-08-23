@@ -31,7 +31,9 @@ describe('SubtitlePanel.setVisibility', () => {
 		document.body.innerHTML = '';
 		parent = document.createElement('div');
 		document.body.appendChild(parent);
-		panel = new SubtitlePanel(parent, { abLoop: true, speed: true, search: true });
+		panel = new SubtitlePanel(parent, {
+			visibility: { abLoop: true, speed: true, search: true },
+		});
 		panel.setCallbacks(makeCallbacks());
 	});
 

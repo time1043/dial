@@ -1,5 +1,6 @@
 import { Notice, setIcon } from 'obsidian';
 
+import type { SpeechProvider } from '@/modules/speech/speech-provider';
 import type { ABLoopState, Subtitle, SubtitlePanelVisibility } from '@/types';
 
 import { formatTime } from '@/utils/time';
@@ -19,6 +20,18 @@ export interface SubtitlePanelCallbacks {
 	onGetCurrentTime: () => number;
 	onTogglePlay: () => void;
 	onSpeedChange: (rate: number) => void;
+}
+
+export interface SubtitlePanelOptions {
+	visibility?: SubtitlePanelVisibility;
+	/** Word card behavior knobs, read at open/speak time. */
+	wordCardConfig?: () => Partial<WordCardConfig>;
+	/** Pronunciation engine (a SpeechChain in the app). */
+	wordCardSpeech?: SpeechProvider;
+	/** Translation lookup for the word card (cache-first pipeline). */
+	wordCardTranslation?: (word: string) => Promise<string | null>;
+	/** Notified after each pronunciation attempt, for query logging. */
+	wordCardOnPronounced?: (info: { word: string; engine: string | null }) => void;
 }
 
 /**
@@ -49,18 +62,15 @@ export class SubtitlePanel {
 	/** Tracks the last reported play state so it can be restored after a rebuild. */
 	private isPlaying = false;
 
-	/**
-	 * @param getWordCardConfig Read at card-open and speak time so word card
-	 * settings changes apply to open panels without a rebuild.
-	 */
-	constructor(
-		parent: HTMLElement,
-		visibility?: SubtitlePanelVisibility,
-		getWordCardConfig?: () => Partial<WordCardConfig>,
-	) {
+	constructor(parent: HTMLElement, opts: SubtitlePanelOptions = {}) {
 		this.containerEl = parent.createDiv({ cls: 'dial-subtitle-panel' });
-		this.visibility = visibility ?? { abLoop: true, speed: true, search: true };
-		this.wordCard = new WordCard({ getConfig: getWordCardConfig });
+		this.visibility = opts.visibility ?? { abLoop: true, speed: true, search: true };
+		this.wordCard = new WordCard({
+			getConfig: opts.wordCardConfig,
+			speech: opts.wordCardSpeech,
+			getTranslation: opts.wordCardTranslation,
+			onPronounced: opts.wordCardOnPronounced,
+		});
 		this.buildUI();
 	}
 

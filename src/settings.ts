@@ -1,8 +1,7 @@
-import type { ButtonComponent } from 'obsidian';
+import { App, Notice, PluginSettingTab, Setting, setIcon } from 'obsidian';
 
-import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
-
-import { isSpeechSynthesisAvailable } from '@/utils/speech';
+import { createSpeechChain } from '@/modules/speech/create-speech-chain';
+import { createTranslationChain } from '@/modules/translation/create-translation-chain';
 
 import type DialPlugin from './main';
 import type {
@@ -11,6 +10,8 @@ import type {
 	SubtitlePanelVisibility,
 	WordFlipRevealMode,
 } from './types';
+
+export type DeeplPlan = 'free' | 'pro';
 
 export interface DialSettings {
 	videoLibraryPath: string;
@@ -27,6 +28,24 @@ export interface DialSettings {
 	showSubtitleSearch: boolean;
 	wordPronunciationLang: string;
 	wordAutoPronounce: boolean;
+	/**
+	 * Speech engine ids in user priority order (tried top to bottom).
+	 * Ids not yet in the registry are skipped; registry engines missing
+	 * here are appended at the end.
+	 */
+	speechEngineOrder: string[];
+	azureSpeechKey: string;
+	azureSpeechRegion: string;
+	googleSpeechKey: string;
+	/** Master opt-in for cloud translation (policy: default off). */
+	translationEnabled: boolean;
+	translationSourceLang: string;
+	translationTargetLang: string;
+	translationEngineOrder: string[];
+	azureTranslateKey: string;
+	azureRegion: string;
+	deeplKey: string;
+	deeplPlan: DeeplPlan;
 	vocabularyBucketPath: string;
 	wordFlipRevealMode: WordFlipRevealMode;
 }
@@ -46,6 +65,18 @@ export const DEFAULT_SETTINGS: DialSettings = {
 	showSubtitleSearch: true,
 	wordPronunciationLang: 'en-US',
 	wordAutoPronounce: true,
+	speechEngineOrder: ['system', 'azure', 'google'],
+	azureSpeechKey: '',
+	azureSpeechRegion: '',
+	googleSpeechKey: '',
+	translationEnabled: false,
+	translationSourceLang: 'en',
+	translationTargetLang: 'zh',
+	translationEngineOrder: ['azure-translate', 'deepl'],
+	azureTranslateKey: '',
+	azureRegion: '',
+	deeplKey: '',
+	deeplPlan: 'free',
 	vocabularyBucketPath: '_lib/vocabulary-bucket',
 	wordFlipRevealMode: 'hidden',
 };
@@ -59,6 +90,17 @@ export const PRONUNCIATION_LANG_OPTIONS: Record<string, string> = {
 	'es-ES': 'Spanish',
 	'ja-JP': 'Japanese',
 	'ko-KR': 'Korean',
+};
+
+/** Languages offered for translation source/target. */
+export const TRANSLATION_LANG_OPTIONS: Record<string, string> = {
+	en: 'English',
+	zh: 'Chinese',
+	fr: 'French',
+	de: 'German',
+	es: 'Spanish',
+	ja: 'Japanese',
+	ko: 'Korean',
 };
 
 /**
@@ -75,28 +117,6 @@ export function subtitlePanelVisibility(settings: DialSettings): SubtitlePanelVi
 
 export function trimTrailingSlash(path: string): string {
 	return path.replace(/[/\\]+$/, '');
-}
-
-/** Visual states for the speech synthesis detection row in settings. */
-export type SpeechStatus = 'checking' | 'available' | 'unavailable';
-
-/** How long Re-detect shows its "Detecting…" state. The underlying typeof
- *  check resolves instantly, so this window exists purely as feedback. */
-export const SPEECH_DETECT_FEEDBACK_MS = 500;
-
-/** Status text for the speech synthesis detection row in settings. */
-export function speechStatusText(status: SpeechStatus): string {
-	switch (status) {
-		case 'checking':
-			return 'Detecting…';
-		case 'available':
-			return 'Available on this device. Pronunciation and auto-pronounce are active.';
-		case 'unavailable':
-			return (
-				'Not available on this device (common on Android). The speaker ' +
-				'button is hidden and words are not spoken.'
-			);
-	}
 }
 
 export class DialSettingTab extends PluginSettingTab {
@@ -316,39 +336,75 @@ export class DialSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl).setName('Word card').setHeading();
 
-		// Live detection status: Android WebView has no speech synthesis at
-		// all, so a colored dot + text tells the user why pronunciation does
-		// not work there instead of leaving them to discover it via an error
-		// toast.
-		const speechSetting = new Setting(containerEl).setName('Speech synthesis');
-		const speechStatusEl = speechSetting.descEl.createDiv({
-			cls: 'dial-speech-status',
-		});
-		const speechDotEl = speechStatusEl.createSpan({ cls: 'dial-speech-dot' });
-		const speechTextEl = speechStatusEl.createSpan({ cls: 'dial-speech-text' });
-
-		const renderSpeechStatus = (status: SpeechStatus) => {
-			speechDotEl.className = `dial-speech-dot dial-speech-dot-${status}`;
-			speechTextEl.textContent = speechStatusText(status);
+		// Pronunciation engine priority list: one traffic-light row per
+		// engine, reorderable with arrows. Android WebView has no system
+		// speech at all (red dot), so the order decides whether a cloud
+		// engine takes over — that is the point of letting users set it.
+		const enginesSetting = new Setting(containerEl)
+			.setName('Pronunciation engines')
+			.setDesc(
+				'Engines tried top to bottom when pronouncing a word. The dot ' +
+					'shows whether an engine works on this device. Cloud engines ' +
+					'appear here once their API key is configured.',
+			);
+		const enginesListEl = enginesSetting.descEl.createDiv({ cls: 'dial-speech-engines' });
+		const renderEngines = () => {
+			this.renderEngineList(
+				enginesListEl,
+				() =>
+					createSpeechChain(() => this.plugin.settings)
+						.statuses()
+						.map((status) => ({
+							id: status.id,
+							label: status.label,
+							dot: status.state,
+						})),
+				'speechEngineOrder',
+			);
 		};
+		renderEngines();
 
-		// Opening the settings page shows the result instantly; Re-detect
-		// replays the check behind a brief "Detecting…" window so the press
-		// has visible feedback (the check itself resolves in the same tick).
-		renderSpeechStatus(isSpeechSynthesisAvailable() ? 'available' : 'unavailable');
+		new Setting(containerEl).addButton((button) =>
+			button.setButtonText('Re-detect engines').onClick(() => renderEngines()),
+		);
 
-		let reDetectBtn: ButtonComponent | null = null;
-		speechSetting.addButton((button) => {
-			reDetectBtn = button;
-			return button.setButtonText('Re-detect').onClick(() => {
-				renderSpeechStatus('checking');
-				reDetectBtn?.setDisabled(true);
-				window.setTimeout(() => {
-					renderSpeechStatus(isSpeechSynthesisAvailable() ? 'available' : 'unavailable');
-					reDetectBtn?.setDisabled(false);
-				}, SPEECH_DETECT_FEEDBACK_MS);
+		new Setting(containerEl)
+			.setName('Azure speech key')
+			.setDesc(
+				'Key of your Azure speech resource (the free tier works). The yellow dot ' +
+					'above turns green once key and region are set.',
+			)
+			.addText((text) => {
+				text.inputEl.type = 'password';
+				text.setValue(this.plugin.settings.azureSpeechKey).onChange(async (value) => {
+					this.plugin.settings.azureSpeechKey = value;
+					await this.plugin.saveSettings();
+					renderEngines();
+				});
 			});
-		});
+
+		new Setting(containerEl)
+			.setName('Azure speech region')
+			.setDesc('Region of the speech resource, for example eastus')
+			.addText((text) =>
+				text.setValue(this.plugin.settings.azureSpeechRegion).onChange(async (value) => {
+					this.plugin.settings.azureSpeechRegion = value.trim();
+					await this.plugin.saveSettings();
+					renderEngines();
+				}),
+			);
+
+		new Setting(containerEl)
+			.setName('Google text-to-speech key')
+			.setDesc('API key of the project with the text-to-speech API enabled')
+			.addText((text) => {
+				text.inputEl.type = 'password';
+				text.setValue(this.plugin.settings.googleSpeechKey).onChange(async (value) => {
+					this.plugin.settings.googleSpeechKey = value;
+					await this.plugin.saveSettings();
+					renderEngines();
+				});
+			});
 
 		new Setting(containerEl)
 			.setName('Pronunciation language')
@@ -370,14 +426,228 @@ export class DialSettingTab extends PluginSettingTab {
 			.setName('Auto-pronounce on card open')
 			.setDesc(
 				'Speak the word automatically when the word card appears. ' +
-					'The speaker button on the card still works where speech synthesis ' +
-					'is available (see the status above).',
+					'The speaker button on the card still works where a pronunciation ' +
+					'engine is available (see the engine list above).',
 			)
 			.addToggle((toggle) =>
 				toggle.setValue(this.plugin.settings.wordAutoPronounce).onChange(async (value) => {
 					this.plugin.settings.wordAutoPronounce = value;
 					await this.plugin.saveSettings();
 				}),
+			);
+
+		new Setting(containerEl).setName('Translation').setHeading();
+
+		new Setting(containerEl)
+			.setName('Enable cloud translation')
+			.setDesc(
+				'Opt-in: show word translations on the word card. Words that are not ' +
+					'in the local cache are sent to the cloud service configured below; ' +
+					'results are cached in your vault and reused without further requests.',
+			)
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.translationEnabled).onChange(async (value) => {
+					this.plugin.settings.translationEnabled = value;
+					await this.plugin.saveSettings();
+				}),
+			);
+
+		const translationEnginesSetting = new Setting(containerEl)
+			.setName('Translation engines')
+			.setDesc(
+				'Tried top to bottom. Green = API key configured, yellow = needs a ' +
+					'key (fields below).',
+			);
+		const translationListEl = translationEnginesSetting.descEl.createDiv({
+			cls: 'dial-speech-engines',
+		});
+		const renderTranslationEngines = () => {
+			this.renderEngineList(
+				translationListEl,
+				() =>
+					createTranslationChain(() => this.plugin.settings)
+						.statuses()
+						.map((status) => ({
+							id: status.id,
+							label: status.label,
+							dot: status.configured ? ('available' as const) : ('partial' as const),
+						})),
+				'translationEngineOrder',
+			);
+		};
+		renderTranslationEngines();
+
+		new Setting(containerEl)
+			.setName('Source language')
+			.setDesc('Language of the subtitle words being looked up.')
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOptions(TRANSLATION_LANG_OPTIONS)
+					.setValue(this.plugin.settings.translationSourceLang)
+					.onChange(async (value) => {
+						this.plugin.settings.translationSourceLang = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName('Target language')
+			.setDesc('Language the translation is shown in.')
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOptions(TRANSLATION_LANG_OPTIONS)
+					.setValue(this.plugin.settings.translationTargetLang)
+					.onChange(async (value) => {
+						this.plugin.settings.translationTargetLang = value;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		const keyField = (
+			name: string,
+			getValue: () => string,
+			save: (value: string) => Promise<void>,
+			onRefresh: () => void,
+		) =>
+			new Setting(containerEl).setName(name).addText((text) => {
+				text.inputEl.type = 'password';
+				text.setValue(getValue()).onChange(async (value) => {
+					await save(value);
+					onRefresh();
+				});
+			});
+
+		keyField(
+			'Azure Translator key',
+			() => this.plugin.settings.azureTranslateKey,
+			async (value) => {
+				this.plugin.settings.azureTranslateKey = value;
+				await this.plugin.saveSettings();
+			},
+			renderTranslationEngines,
+		);
+
+		new Setting(containerEl)
+			.setName('Azure region')
+			.setDesc('Region of the translator resource, for example eastus or global')
+			.addText((text) =>
+				text.setValue(this.plugin.settings.azureRegion).onChange(async (value) => {
+					this.plugin.settings.azureRegion = value.trim();
+					await this.plugin.saveSettings();
+					renderTranslationEngines();
+				}),
+			);
+
+		keyField(
+			'DeepL API key',
+			() => this.plugin.settings.deeplKey,
+			async (value) => {
+				this.plugin.settings.deeplKey = value;
+				await this.plugin.saveSettings();
+			},
+			renderTranslationEngines,
+		);
+
+		new Setting(containerEl)
+			.setName('Plan')
+			.setDesc('Choose the matching host for your key tier')
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOption('free', 'Free')
+					.addOption('pro', 'Pro')
+					.setValue(this.plugin.settings.deeplPlan)
+					.onChange(async (value) => {
+						this.plugin.settings.deeplPlan = value as DeeplPlan;
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl).setName('Lookup data').setHeading();
+
+		const formatBytes = (bytes: number): string => {
+			if (bytes < 1024) return `${bytes} B`;
+			if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+			return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+		};
+
+		const cacheStatsEl = containerEl.createDiv({ cls: 'dial-cache-stats' });
+		const renderCacheStats = async () => {
+			cacheStatsEl.empty();
+			try {
+				const [translate, audio, queries] = await Promise.all([
+					this.plugin.translateCache.stats(),
+					this.plugin.audioCache.stats(),
+					this.plugin.queryLogger.aggregate(),
+				]);
+				const translateBytes = translate.months.reduce((sum, m) => sum + m.bytes, 0);
+				const audioBytes = audio.months.reduce((sum, m) => sum + m.bytes, 0);
+				cacheStatsEl
+					.createDiv()
+					.setText(
+						`Translation cache: ${translate.totalEntries} entries ` +
+							`(${translate.totalStale} stale), ${formatBytes(translateBytes)}`,
+					);
+				cacheStatsEl
+					.createDiv()
+					.setText(`Audio cache: ${audio.totalFiles} files, ${formatBytes(audioBytes)}`);
+				cacheStatsEl
+					.createDiv()
+					.setText(
+						`Lookups: ${queries.total.lookups} total — ${queries.total.cacheHits} cache ` +
+							`hits, ${queries.total.apiRequests} API requests ` +
+							`(≈${queries.total.chars} chars), ${queries.total.failed} failed`,
+					);
+			} catch {
+				cacheStatsEl.createDiv().setText('Cache stats unavailable.');
+			}
+		};
+		void renderCacheStats();
+
+		new Setting(containerEl)
+			.setName('Clear stale translation records')
+			.setDesc('Safe: removes old-month copies whose data already lives in a newer month.')
+			.addButton((button) =>
+				button
+					.setButtonText('Clear stale')
+					.setClass('mod-warning')
+					.onClick(async () => {
+						const removed = await this.plugin.translateCache.clearStale();
+						new Notice(`Removed ${removed} stale translation records`);
+						await renderCacheStats();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName('Clear cache before this month')
+			.setDesc(
+				'Danger: deletes all older translation and audio months. ' +
+					'Words looked up again will re-request from your cloud engines.',
+			)
+			.addButton((button) =>
+				button
+					.setButtonText('Clear old months')
+					.setClass('mod-warning')
+					.onClick(async () => {
+						const translations =
+							await this.plugin.translateCache.clearBeforeCurrentMonth();
+						const audio = await this.plugin.audioCache.clearBeforeCurrentMonth();
+						new Notice(`Removed ${translations} translations and ${audio} audio files`);
+						await renderCacheStats();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName('Clear lookup logs')
+			.setDesc('Danger: deletes the query history under _lib/logs. Stats reset to zero.')
+			.addButton((button) =>
+				button
+					.setButtonText('Clear logs')
+					.setClass('mod-warning')
+					.onClick(async () => {
+						const removed = await this.plugin.queryLogger.clearAll();
+						new Notice(`Removed ${removed} log lines`);
+						await renderCacheStats();
+					}),
 			);
 
 		new Setting(containerEl).setName('Word flip').setHeading();
@@ -417,5 +687,58 @@ export class DialSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					}),
 			);
+	}
+
+	/**
+	 * Render one reorderable engine priority list (shared by the speech
+	 * and translation engine settings). Rows are recomputed through
+	 * `getRows` on every render, so availability dots refresh after a
+	 * reorder, a key edit, or a Re-detect press.
+	 */
+	private renderEngineList(
+		listEl: HTMLElement,
+		getRows: () => {
+			id: string;
+			label: string;
+			dot: 'available' | 'partial' | 'unavailable';
+		}[],
+		orderSettingKey: 'speechEngineOrder' | 'translationEngineOrder',
+	): void {
+		listEl.empty();
+		const rows = getRows();
+		const order = this.plugin.settings[orderSettingKey];
+
+		rows.forEach((row, index) => {
+			const rowEl = listEl.createDiv({ cls: 'dial-speech-engine-row' });
+			rowEl.createSpan({ cls: `dial-speech-dot dial-speech-dot-${row.dot}` });
+			rowEl.createSpan({ cls: 'dial-speech-engine-label', text: row.label });
+
+			const move = (delta: number, icon: string) => {
+				const btn = rowEl.createEl('button', {
+					cls: 'dial-speech-engine-move',
+					attr: {
+						'aria-label': delta < 0 ? 'Move up' : 'Move down',
+						title: delta < 0 ? 'Move up' : 'Move down',
+					},
+				});
+				setIcon(btn, icon);
+				btn.disabled = index + delta < 0 || index + delta >= rows.length;
+				btn.addEventListener('click', () => {
+					void (async () => {
+						const target = index + delta;
+						const current = order[index];
+						const swapWith = order[target];
+						if (current === undefined || swapWith === undefined) return;
+						order[index] = swapWith;
+						order[target] = current;
+						this.plugin.settings[orderSettingKey] = [...order];
+						await this.plugin.saveSettings();
+						this.renderEngineList(listEl, getRows, orderSettingKey);
+					})();
+				});
+			};
+			move(-1, 'chevron-up');
+			move(1, 'chevron-down');
+		});
 	}
 }

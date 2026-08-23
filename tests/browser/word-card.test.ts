@@ -148,9 +148,9 @@ describe('WordCard', () => {
 	});
 
 	it('pronounces with the language provided by the panel options', () => {
-		panel = new SubtitlePanel(parent, undefined, () => ({
-			pronunciationLang: 'de-DE',
-		}));
+		panel = new SubtitlePanel(parent, {
+			wordCardConfig: () => ({ pronunciationLang: 'de-DE' }),
+		});
 		panel.setCallbacks(callbacks);
 		panel.setSubtitles(SUBS);
 		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;
@@ -163,9 +163,7 @@ describe('WordCard', () => {
 	});
 
 	it('skips auto-pronounce when the config disables it, but the button still speaks', () => {
-		panel = new SubtitlePanel(parent, undefined, () => ({
-			autoPronounce: false,
-		}));
+		panel = new SubtitlePanel(parent, { wordCardConfig: () => ({ autoPronounce: false }) });
 		panel.setCallbacks(callbacks);
 		panel.setSubtitles(SUBS);
 		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;
@@ -207,6 +205,64 @@ describe('WordCard', () => {
 		expect(document.querySelector('.dial-word-card')).not.toBeNull();
 
 		parent.querySelector('.dial-subtitle-list')?.dispatchEvent(new Event('scroll'));
+		expect(document.querySelector('.dial-word-card')).toBeNull();
+	});
+
+	it('shows the translation under the word once it resolves', async () => {
+		panel = new SubtitlePanel(parent, {
+			wordCardTranslation: () => Promise.resolve('你好'),
+		});
+		panel.setCallbacks(callbacks);
+		panel.setSubtitles(SUBS);
+		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;
+
+		word.dispatchEvent(new MouseEvent('mouseenter'));
+		await vi.advanceTimersByTimeAsync(250);
+
+		// While the pipeline runs the row shows a pending marker, then the
+		// resolved translation replaces it.
+		const translationEl = document.querySelector('.dial-word-card-translation');
+		expect(translationEl?.textContent).toBe('你好');
+		expect((document.querySelector('.dial-word-card-word') as HTMLElement)?.textContent).toBe(
+			'Hello',
+		);
+	});
+
+	it('removes the translation row quietly when the lookup finds nothing', async () => {
+		panel = new SubtitlePanel(parent, {
+			wordCardTranslation: () => Promise.resolve(null),
+		});
+		panel.setCallbacks(callbacks);
+		panel.setSubtitles(SUBS);
+		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;
+
+		word.dispatchEvent(new MouseEvent('mouseenter'));
+		await vi.advanceTimersByTimeAsync(250);
+
+		expect(document.querySelector('.dial-word-card')).not.toBeNull();
+		expect(document.querySelector('.dial-word-card-translation')).toBeNull();
+	});
+
+	it('drops a late translation that arrives after the card hid', async () => {
+		let resolveTranslation: ((value: string | null) => void) | undefined;
+		panel = new SubtitlePanel(parent, {
+			wordCardTranslation: () =>
+				new Promise((resolve) => {
+					resolveTranslation = resolve;
+				}),
+		});
+		panel.setCallbacks(callbacks);
+		panel.setSubtitles(SUBS);
+		const word = parent.querySelector('.dial-subtitle-word') as HTMLElement;
+
+		word.dispatchEvent(new MouseEvent('mouseenter'));
+		await vi.advanceTimersByTimeAsync(250);
+
+		// Card hides (e.g. list scroll), then the translation resolves —
+		// it must not resurrect or leak into the next card.
+		word.closest('.dial-subtitle-list')?.dispatchEvent(new Event('scroll'));
+		resolveTranslation?.('你好');
+		await vi.advanceTimersByTimeAsync(0);
 		expect(document.querySelector('.dial-word-card')).toBeNull();
 	});
 

@@ -496,6 +496,19 @@
 	color: var(--text-normal);
 }
 
+/* Word + translation stack on the card's left; speak button sits right. */
+.dial-word-card-main {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-width: 0;
+}
+
+.dial-word-card-translation {
+	font-size: 0.85em;
+	color: var(--text-muted);
+}
+
 /* Pronounce button inside the word card. Overrides Obsidian's global
    `button` styling so it reads as a compact icon affordance. */
 .dial-word-card .dial-word-card-speak {
@@ -516,11 +529,46 @@
 	color: var(--text-normal);
 }
 
-/* Settings: speech synthesis traffic-light status (dot + text). */
-.dial-speech-status {
+/* Settings: pronunciation engine priority rows (traffic light + arrows). */
+.dial-speech-engines {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin-top: 8px;
+}
+
+.dial-speech-engine-row {
 	display: flex;
 	align-items: center;
-	gap: 6px;
+	gap: 8px;
+}
+
+.dial-speech-engine-label {
+	flex: 1;
+}
+
+/* Compact icon button overriding Obsidian's global `button` styling. */
+.dial-speech-engine-move {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 2px;
+	margin: 0;
+	background: transparent;
+	border: none;
+	box-shadow: none;
+	color: var(--text-muted);
+	cursor: pointer;
+}
+
+.dial-speech-engine-move:hover:not(:disabled) {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
+.dial-speech-engine-move:disabled {
+	opacity: 0.35;
+	cursor: default;
 }
 
 .dial-speech-dot {
@@ -531,16 +579,24 @@
 	flex-shrink: 0;
 }
 
-.dial-speech-dot-checking {
-	background: var(--text-warning, #e0ac00);
-}
-
 .dial-speech-dot-available {
 	background: var(--text-success, #08b94e);
 }
 
+/* Amber: engine exists but needs an API key before it can run. */
+.dial-speech-dot-partial {
+	background: var(--text-warning, #e0ac00);
+}
+
 .dial-speech-dot-unavailable {
 	background: var(--text-error, #e0563f);
+}
+
+/* Settings: lookup cache/log stats block. */
+.dial-cache-stats {
+	color: var(--text-muted);
+	font-size: 0.9em;
+	margin: 4px 0 12px;
 }
 
 /* Subtitle words are interactive targets for the word card. */
