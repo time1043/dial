@@ -39,6 +39,7 @@ import { QueryLogger } from './modules/word-cache/query-logger';
 import { TranslateCache } from './modules/word-cache/translate-cache';
 import { WordFlipStore } from './modules/word-flip/flip-store';
 import { DEFAULT_SETTINGS, DialSettingTab, subtitlePanelVisibility } from './settings';
+import { DialApiKeysTab } from './api-keys-tab';
 import { SUBTITLE_VIEW_TYPE, SubtitleView } from './ui/subtitle-view';
 import { TYPE_SUBTITLE_VIEW_TYPE, TypeSubtitleView } from './ui/type-subtitle-view';
 import { TYPE_VIEW_TYPE, TypeView } from './ui/type-view';
@@ -220,6 +221,7 @@ export default class DialPlugin extends Plugin {
 		});
 
 		this.addSettingTab(new DialSettingTab(this.app, this));
+		this.addSettingTab(new DialApiKeysTab(this.app, this));
 
 		// Re-wire sync after vault reload restores views.
 		// layout-change may fire before every view's onOpen() completes,

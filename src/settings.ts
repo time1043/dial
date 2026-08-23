@@ -1,7 +1,4 @@
-import { App, Notice, PluginSettingTab, Setting, setIcon } from 'obsidian';
-
-import { createSpeechChain } from '@/modules/speech/create-speech-chain';
-import { createTranslationChain } from '@/modules/translation/create-translation-chain';
+import { App, Notice, PluginSettingTab, Setting } from 'obsidian';
 
 import type DialPlugin from './main';
 import type {
@@ -356,146 +353,6 @@ export class DialSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl).setName('Word card').setHeading();
 
-		// Pronunciation engine priority list: one traffic-light row per
-		// engine, reorderable with arrows. Android WebView has no system
-		// speech at all (red dot), so the order decides whether a cloud
-		// engine takes over — that is the point of letting users set it.
-		const enginesSetting = new Setting(containerEl)
-			.setName('Pronunciation engines')
-			.setDesc(
-				'Engines tried top to bottom when pronouncing a word. The dot ' +
-					'shows whether an engine works on this device. Cloud engines ' +
-					'appear here once their API key is configured.',
-			);
-		const enginesListEl = enginesSetting.descEl.createDiv({ cls: 'dial-speech-engines' });
-		const renderEngines = () => {
-			this.renderEngineList(
-				enginesListEl,
-				() =>
-					createSpeechChain(() => this.plugin.settings)
-						.statuses()
-						.map((status) => ({
-							id: status.id,
-							label: status.label,
-							dot: status.state,
-						})),
-				'speechEngineOrder',
-			);
-		};
-		renderEngines();
-
-		new Setting(containerEl).addButton((button) =>
-			button.setButtonText('Re-detect engines').onClick(() => renderEngines()),
-		);
-
-		new Setting(containerEl)
-			.setName('Azure speech key')
-			.setDesc(
-				'Key of your Azure speech resource (the free tier works). The yellow dot ' +
-					'above turns green once key and region are set.',
-			)
-			.addText((text) => {
-				text.inputEl.type = 'password';
-				text.setValue(this.plugin.settings.azureSpeechKey).onChange(async (value) => {
-					this.plugin.settings.azureSpeechKey = value;
-					await this.plugin.saveSettings();
-					renderEngines();
-				});
-			});
-
-		new Setting(containerEl)
-			.setName('Azure speech region')
-			.setDesc('Region of the speech resource, for example eastus')
-			.addText((text) =>
-				text.setValue(this.plugin.settings.azureSpeechRegion).onChange(async (value) => {
-					this.plugin.settings.azureSpeechRegion = value.trim();
-					await this.plugin.saveSettings();
-					renderEngines();
-				}),
-			);
-
-		new Setting(containerEl)
-		.setName('Google text-to-speech key')
-		.setDesc('API key of the project with the text-to-speech API enabled')
-		.addText((text) => {
-			text.inputEl.type = 'password';
-			text.setValue(this.plugin.settings.googleSpeechKey).onChange(async (value) => {
-				this.plugin.settings.googleSpeechKey = value;
-				await this.plugin.saveSettings();
-				renderEngines();
-			});
-		});
-
-	// The three Chinese clouds need no international payment method, so they
-	// are the realistic choice for many users. Tencent speech reuses the
-	// Tencent Cloud secret configured under Translation below.
-	new Setting(containerEl)
-		.setName('Tencent speech')
-		.setDesc(
-			'Tencent speech reuses the secret ID and secret key you set under translation ' +
-				'below, so no separate key is needed.',
-		);
-
-	new Setting(containerEl)
-		.setName('Baidu speech API key')
-		.setDesc('AI platform API key of the application with the speech service enabled')
-		.addText((text) => {
-			text.inputEl.type = 'password';
-			text.setValue(this.plugin.settings.baiduSpeechApiKey).onChange(async (value) => {
-				this.plugin.settings.baiduSpeechApiKey = value;
-				await this.plugin.saveSettings();
-				renderEngines();
-			});
-		});
-
-	new Setting(containerEl)
-		.setName('Baidu speech secret key')
-		.setDesc('Secret key paired with the speech API key above')
-		.addText((text) => {
-			text.inputEl.type = 'password';
-			text.setValue(this.plugin.settings.baiduSpeechSecretKey).onChange(async (value) => {
-				this.plugin.settings.baiduSpeechSecretKey = value;
-				await this.plugin.saveSettings();
-				renderEngines();
-			});
-		});
-
-	new Setting(containerEl)
-		.setName('Alibaba access key ID')
-		.setDesc('Access key ID for your cloud account, used to mint a speech token')
-		.addText((text) => {
-			text.inputEl.type = 'password';
-			text.setValue(this.plugin.settings.aliyunAccessKeyId).onChange(async (value) => {
-				this.plugin.settings.aliyunAccessKeyId = value.trim();
-				await this.plugin.saveSettings();
-				renderEngines();
-			});
-		});
-
-	new Setting(containerEl)
-		.setName('Alibaba access key secret')
-		.setDesc('Access key secret paired with the access key ID above')
-		.addText((text) => {
-			text.inputEl.type = 'password';
-			text.setValue(this.plugin.settings.aliyunAccessKeySecret).onChange(async (value) => {
-				this.plugin.settings.aliyunAccessKeySecret = value;
-				await this.plugin.saveSettings();
-				renderEngines();
-			});
-		});
-
-	new Setting(containerEl)
-		.setName('Alibaba speech appkey')
-		.setDesc('Appkey of the speech interaction project, separate from the access key')
-		.addText((text) => {
-			text.inputEl.type = 'password';
-			text.setValue(this.plugin.settings.aliyunAppKey).onChange(async (value) => {
-				this.plugin.settings.aliyunAppKey = value.trim();
-				await this.plugin.saveSettings();
-				renderEngines();
-			});
-		});
-
 		new Setting(containerEl)
 			.setName('Pronunciation language')
 			.setDesc(
@@ -532,8 +389,9 @@ export class DialSettingTab extends PluginSettingTab {
 			.setName('Enable cloud translation')
 			.setDesc(
 				'Opt-in: show word translations on the word card. Words that are not ' +
-					'in the local cache are sent to the cloud service configured below; ' +
-					'results are cached in your vault and reused without further requests.',
+					'in the local cache are sent to the cloud service you configured on ' +
+					'the API keys tab; results are cached in your vault and reused ' +
+					'without further requests.',
 			)
 			.addToggle((toggle) =>
 				toggle.setValue(this.plugin.settings.translationEnabled).onChange(async (value) => {
@@ -541,31 +399,6 @@ export class DialSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}),
 			);
-
-		const translationEnginesSetting = new Setting(containerEl)
-			.setName('Translation engines')
-			.setDesc(
-				'Tried top to bottom. Green = API key configured, yellow = needs a ' +
-					'key (fields below).',
-			);
-		const translationListEl = translationEnginesSetting.descEl.createDiv({
-			cls: 'dial-speech-engines',
-		});
-		const renderTranslationEngines = () => {
-			this.renderEngineList(
-				translationListEl,
-				() =>
-					createTranslationChain(() => this.plugin.settings)
-						.statuses()
-						.map((status) => ({
-							id: status.id,
-							label: status.label,
-							dot: status.configured ? ('available' as const) : ('partial' as const),
-						})),
-				'translationEngineOrder',
-			);
-		};
-		renderTranslationEngines();
 
 		new Setting(containerEl)
 			.setName('Source language')
@@ -592,111 +425,6 @@ export class DialSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					}),
 			);
-
-		const keyField = (
-			name: string,
-			getValue: () => string,
-			save: (value: string) => Promise<void>,
-			onRefresh: () => void,
-		) =>
-			new Setting(containerEl).setName(name).addText((text) => {
-				text.inputEl.type = 'password';
-				text.setValue(getValue()).onChange(async (value) => {
-					await save(value);
-					onRefresh();
-				});
-			});
-
-		keyField(
-			'Azure Translator key',
-			() => this.plugin.settings.azureTranslateKey,
-			async (value) => {
-				this.plugin.settings.azureTranslateKey = value;
-				await this.plugin.saveSettings();
-			},
-			renderTranslationEngines,
-		);
-
-		new Setting(containerEl)
-			.setName('Azure region')
-			.setDesc('Region of the translator resource, for example eastus or global')
-			.addText((text) =>
-				text.setValue(this.plugin.settings.azureRegion).onChange(async (value) => {
-					this.plugin.settings.azureRegion = value.trim();
-					await this.plugin.saveSettings();
-					renderTranslationEngines();
-				}),
-			);
-
-		keyField(
-			'DeepL API key',
-			() => this.plugin.settings.deeplKey,
-			async (value) => {
-				this.plugin.settings.deeplKey = value;
-				await this.plugin.saveSettings();
-			},
-			renderTranslationEngines,
-		);
-
-		new Setting(containerEl)
-			.setName('Plan')
-			.setDesc('Choose the matching host for your key tier')
-			.addDropdown((dropdown) =>
-				dropdown
-					.addOption('free', 'Free')
-					.addOption('pro', 'Pro')
-					.setValue(this.plugin.settings.deeplPlan)
-					.onChange(async (value) => {
-						this.plugin.settings.deeplPlan = value as DeeplPlan;
-						await this.plugin.saveSettings();
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName('Baidu translate app ID')
-			.setDesc('App ID of the translate app you created on the open platform')
-			.addText((text) =>
-				text.setValue(this.plugin.settings.baiduTranslateAppId).onChange(async (value) => {
-					this.plugin.settings.baiduTranslateAppId = value.trim();
-					await this.plugin.saveSettings();
-					renderTranslationEngines();
-				}),
-			);
-
-		new Setting(containerEl)
-			.setName('Baidu translate secret')
-			.setDesc('Secret key paired with the app ID above')
-			.addText((text) => {
-				text.inputEl.type = 'password';
-				text.setValue(this.plugin.settings.baiduTranslateSecret).onChange(async (value) => {
-					this.plugin.settings.baiduTranslateSecret = value;
-					await this.plugin.saveSettings();
-					renderTranslationEngines();
-				});
-			});
-
-		new Setting(containerEl)
-			.setName('Tencent secret ID')
-			.setDesc('Tencent secret ID of the key you created in the console')
-			.addText((text) =>
-				text.setValue(this.plugin.settings.tencentSecretId).onChange(async (value) => {
-					this.plugin.settings.tencentSecretId = value.trim();
-					await this.plugin.saveSettings();
-					renderTranslationEngines();
-				}),
-			);
-
-		new Setting(containerEl)
-			.setName('Tencent secret key')
-			.setDesc('Tencent secret key, paired with the secret ID above')
-			.addText((text) => {
-				text.inputEl.type = 'password';
-				text.setValue(this.plugin.settings.tencentSecretKey).onChange(async (value) => {
-					this.plugin.settings.tencentSecretKey = value;
-					await this.plugin.saveSettings();
-					renderTranslationEngines();
-				});
-			});
 
 		new Setting(containerEl).setName('Lookup data').setHeading();
 
@@ -823,58 +551,5 @@ export class DialSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					}),
 			);
-	}
-
-	/**
-	 * Render one reorderable engine priority list (shared by the speech
-	 * and translation engine settings). Rows are recomputed through
-	 * `getRows` on every render, so availability dots refresh after a
-	 * reorder, a key edit, or a Re-detect press.
-	 */
-	private renderEngineList(
-		listEl: HTMLElement,
-		getRows: () => {
-			id: string;
-			label: string;
-			dot: 'available' | 'partial' | 'unavailable';
-		}[],
-		orderSettingKey: 'speechEngineOrder' | 'translationEngineOrder',
-	): void {
-		listEl.empty();
-		const rows = getRows();
-		const order = this.plugin.settings[orderSettingKey];
-
-		rows.forEach((row, index) => {
-			const rowEl = listEl.createDiv({ cls: 'dial-speech-engine-row' });
-			rowEl.createSpan({ cls: `dial-speech-dot dial-speech-dot-${row.dot}` });
-			rowEl.createSpan({ cls: 'dial-speech-engine-label', text: row.label });
-
-			const move = (delta: number, icon: string) => {
-				const btn = rowEl.createEl('button', {
-					cls: 'dial-speech-engine-move',
-					attr: {
-						'aria-label': delta < 0 ? 'Move up' : 'Move down',
-						title: delta < 0 ? 'Move up' : 'Move down',
-					},
-				});
-				setIcon(btn, icon);
-				btn.disabled = index + delta < 0 || index + delta >= rows.length;
-				btn.addEventListener('click', () => {
-					void (async () => {
-						const target = index + delta;
-						const current = order[index];
-						const swapWith = order[target];
-						if (current === undefined || swapWith === undefined) return;
-						order[index] = swapWith;
-						order[target] = current;
-						this.plugin.settings[orderSettingKey] = [...order];
-						await this.plugin.saveSettings();
-						this.renderEngineList(listEl, getRows, orderSettingKey);
-					})();
-				});
-			};
-			move(-1, 'chevron-up');
-			move(1, 'chevron-down');
-		});
 	}
 }
