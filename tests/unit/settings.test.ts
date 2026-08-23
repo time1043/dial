@@ -48,7 +48,7 @@ describe('DEFAULT_SETTINGS', () => {
 			showSubtitleSearch: true,
 			wordPronunciationLang: 'en-US',
 			wordAutoPronounce: true,
-			speechEngineOrder: ['system', 'azure', 'google', 'tencent', 'alibaba', 'baidu'],
+			speechEngineOrder: ['system', 'azure', 'google', 'tencent', 'aliyun', 'baidu'],
 			azureSpeechKey: '',
 			azureSpeechRegion: '',
 			googleSpeechKey: '',
