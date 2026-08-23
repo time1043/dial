@@ -56,7 +56,6 @@ export class WordFlipView extends ItemView {
 	private footerEl: HTMLElement | null = null;
 	private sessionBtnEl: HTMLElement | null = null;
 	private markBtnEl: HTMLButtonElement | null = null;
-	private speakBtnEl: HTMLButtonElement | null = null;
 	private progressBar: WordFlipProgressBar | null = null;
 	private seekPreviewEl: HTMLElement | null = null;
 	private endCardEl: HTMLElement | null = null;
@@ -93,7 +92,11 @@ export class WordFlipView extends ItemView {
 		});
 
 		this.cardAreaEl = container.createDiv({ cls: 'dial-word-flip-area' });
-		this.card = new WordFlipCard(this.cardAreaEl, () => this.toggleReveal());
+		this.card = new WordFlipCard(
+			this.cardAreaEl,
+			() => this.toggleReveal(),
+			() => this.speakCurrentWord(),
+		);
 		this.card.rootEl.toggleClass('is-empty-state', true);
 		this.neighborCard = new WordFlipCard(this.cardAreaEl, () => {});
 		this.neighborCard.rootEl.addClass('dial-word-flip-card-neighbor');
@@ -121,15 +124,6 @@ export class WordFlipView extends ItemView {
 			if (this.session) this.endSession();
 			else this.startSession();
 		});
-
-		// No dead speaker button on platforms without speech synthesis.
-		if (isSpeechSynthesisAvailable()) {
-			this.speakBtnEl = this.footerEl.createEl('button', {
-				cls: 'dial-word-flip-speak-btn',
-				attr: { 'aria-label': 'Pronounce word', title: 'Pronounce word' },
-			});
-			this.speakBtnEl.addEventListener('click', () => this.speakCurrentWord());
-		}
 
 		this.updateFooterButtons();
 
@@ -184,7 +178,6 @@ export class WordFlipView extends ItemView {
 		this.footerEl = null;
 		this.sessionBtnEl = null;
 		this.markBtnEl = null;
-		this.speakBtnEl = null;
 		this.seekPreviewEl = null;
 		this.endCardEl = null;
 	}
@@ -310,12 +303,6 @@ export class WordFlipView extends ItemView {
 	private updateFooterButtons(): void {
 		this.updateSessionButton();
 		this.updateMarkButton();
-		if (this.speakBtnEl) {
-			this.speakBtnEl.empty();
-			const iconEl = this.speakBtnEl.createSpan({ cls: 'dial-word-flip-btn-icon' });
-			setIcon(iconEl, 'volume-2');
-			this.speakBtnEl.disabled = !this.parsed || this.parsed.words.length === 0;
-		}
 	}
 
 	/** Pronounce the current word: book lang overrides the global setting. */

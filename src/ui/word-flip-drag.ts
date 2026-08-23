@@ -78,6 +78,13 @@ export class VerticalDragDetector {
 		const dx = evt.clientX - this.startX;
 		const dy = evt.clientY - this.startY;
 
+		// Any directional movement beyond a few px counts as a drag, so the
+		// trailing click (reveal toggle / pronounce) must be swallowed —
+		// horizontal flicks included.
+		if (Math.max(Math.abs(dx), Math.abs(dy)) > CLICK_SUPPRESS_PX) {
+			this.suppressClick = true;
+		}
+
 		if (this.axisLocked === null) {
 			if (Math.abs(dy) >= AXIS_LOCK_PX && Math.abs(dy) > Math.abs(dx)) {
 				this.axisLocked = 'vertical';
@@ -94,7 +101,6 @@ export class VerticalDragDetector {
 		this.lastDy = dy;
 		this.velocitySamples.push({ t: evt.timeStamp, y: evt.clientY });
 		if (this.velocitySamples.length > 8) this.velocitySamples.shift();
-		if (Math.abs(dy) > CLICK_SUPPRESS_PX) this.suppressClick = true;
 		this.callbacks.onDragMove(dy);
 	};
 
