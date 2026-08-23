@@ -897,3 +897,8 @@
 .dial-word-flip-end-restart:hover {
 	background: var(--interactive-hover, #e6e6e6);
 }
+
+/* Tapping the big word pronounces it. */
+.dial-word-flip-card-word.is-pronounce-target {
+	cursor: pointer;
+}

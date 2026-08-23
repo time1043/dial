@@ -1,10 +1,14 @@
-import { ItemView, Notice, setIcon, TFile, type WorkspaceLeaf } from 'obsidian';
+import { ItemView, Notice, Scope, setIcon, TFile, type WorkspaceLeaf } from 'obsidian';
 
 import type DialPlugin from '@/main';
 
 import { bookDisplayName, readWordBook } from '@/modules/word-flip/book-finder';
 import { WORD_ROW_FORMAT_HINT, type ParsedWordBook } from '@/modules/word-flip/book-parser';
-import { appendJourneySession, type JourneyWordSnapshot } from '@/modules/word-flip/journey-writer';
+import {
+	appendJourneySession,
+	journeyFilePath,
+	type JourneyWordSnapshot,
+} from '@/modules/word-flip/journey-writer';
 import { WordFlipCard, type WordFlipCardState } from '@/ui/word-flip-card';
 import { VerticalDragDetector, type DragCommitDirection } from '@/ui/word-flip-drag';
 import { WordFlipProgressBar } from '@/ui/word-flip-progress';
@@ -56,7 +60,6 @@ export class WordFlipView extends ItemView {
 	private footerEl: HTMLElement | null = null;
 	private sessionBtnEl: HTMLElement | null = null;
 	private markBtnEl: HTMLButtonElement | null = null;
-	private speakBtnEl: HTMLButtonElement | null = null;
 	private progressBar: WordFlipProgressBar | null = null;
 	private seekPreviewEl: HTMLElement | null = null;
 	private endCardEl: HTMLElement | null = null;
@@ -93,7 +96,11 @@ export class WordFlipView extends ItemView {
 		});
 
 		this.cardAreaEl = container.createDiv({ cls: 'dial-word-flip-area' });
-		this.card = new WordFlipCard(this.cardAreaEl, () => this.toggleReveal());
+		this.card = new WordFlipCard(
+			this.cardAreaEl,
+			() => this.toggleReveal(),
+			() => this.speakCurrentWord(),
+		);
 		this.card.rootEl.toggleClass('is-empty-state', true);
 		this.neighborCard = new WordFlipCard(this.cardAreaEl, () => {});
 		this.neighborCard.rootEl.addClass('dial-word-flip-card-neighbor');
@@ -118,33 +125,26 @@ export class WordFlipView extends ItemView {
 			cls: 'dial-word-flip-session-btn',
 		});
 		this.sessionBtnEl.addEventListener('click', () => {
-			if (this.session) this.endSession();
+			if (this.session) void this.finishSession();
 			else this.startSession();
 		});
-
-		// No dead speaker button on platforms without speech synthesis.
-		if (isSpeechSynthesisAvailable()) {
-			this.speakBtnEl = this.footerEl.createEl('button', {
-				cls: 'dial-word-flip-speak-btn',
-				attr: { 'aria-label': 'Pronounce word', title: 'Pronounce word' },
-			});
-			this.speakBtnEl.addEventListener('click', () => this.speakCurrentWord());
-		}
 
 		this.updateFooterButtons();
 
 		// Keyboard: ↓/Space = next, ↑ = previous (scroll semantics, like
-		// short-video web apps). Registered on the view's keymap scope so
-		// they only fire while this view is the active leaf.
-		this.scope?.register([], 'ArrowDown', () => {
+		// short-video web apps). View.scope defaults to null — it must be
+		// created for the keymap stack to pick it up while the view is in
+		// focus (see obsidian.d.ts on View.scope).
+		this.scope = new Scope(this.app.scope);
+		this.scope.register([], 'ArrowDown', () => {
 			this.next();
 			return false;
 		});
-		this.scope?.register([], 'ArrowUp', () => {
+		this.scope.register([], 'ArrowUp', () => {
 			this.prev();
 			return false;
 		});
-		this.scope?.register([], 'Space', () => {
+		this.scope.register([], 'Space', () => {
 			this.next();
 			return false;
 		});
@@ -182,7 +182,6 @@ export class WordFlipView extends ItemView {
 		this.footerEl = null;
 		this.sessionBtnEl = null;
 		this.markBtnEl = null;
-		this.speakBtnEl = null;
 		this.seekPreviewEl = null;
 		this.endCardEl = null;
 	}
@@ -262,6 +261,23 @@ export class WordFlipView extends ItemView {
 	}
 
 	/**
+	 * End button flow: settle the session, then close the flip view and
+	 * open the book's journey file so the fresh record is right in front
+	 * of the user.
+	 */
+	private async finishSession(): Promise<void> {
+		const bookPath = this.bookFile?.path ?? null;
+		await this.settleSession();
+		if (bookPath) {
+			const journeyFile = this.app.vault.getAbstractFileByPath(journeyFilePath(bookPath));
+			if (journeyFile instanceof TFile) {
+				await this.app.workspace.getLeaf('tab').openFile(journeyFile);
+			}
+		}
+		this.leaf?.detach();
+	}
+
+	/**
 	 * Settle the active session: snapshot the covered range with the
 	 * current mark state and append it to the book's journey file in a
 	 * single write. Trivial sessions (one word, under 5s, no marks) are
@@ -308,12 +324,6 @@ export class WordFlipView extends ItemView {
 	private updateFooterButtons(): void {
 		this.updateSessionButton();
 		this.updateMarkButton();
-		if (this.speakBtnEl) {
-			this.speakBtnEl.empty();
-			const iconEl = this.speakBtnEl.createSpan({ cls: 'dial-word-flip-btn-icon' });
-			setIcon(iconEl, 'volume-2');
-			this.speakBtnEl.disabled = !this.parsed || this.parsed.words.length === 0;
-		}
 	}
 
 	/** Pronounce the current word: book lang overrides the global setting. */

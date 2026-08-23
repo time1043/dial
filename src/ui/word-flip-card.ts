@@ -31,7 +31,7 @@ export class WordFlipCard {
 	private readonly meaningEl: HTMLElement;
 	private readonly formsEl: HTMLElement;
 
-	constructor(parent: HTMLElement, onToggleReveal: () => void) {
+	constructor(parent: HTMLElement, onToggleReveal: () => void, onPronounce?: () => void) {
 		this.rootEl = parent.createDiv({ cls: 'dial-word-flip-card' });
 		this.rootEl.addEventListener('click', () => onToggleReveal());
 
@@ -41,6 +41,14 @@ export class WordFlipCard {
 			text: '★',
 		});
 		this.wordEl = this.rootEl.createDiv({ cls: 'dial-word-flip-card-word' });
+		// Tapping the word pronounces it — stop propagation so the card's
+		// reveal-toggle click does not also fire (event bubbling).
+		this.wordEl.addClass('is-pronounce-target');
+		this.wordEl.setAttr('title', 'Pronounce');
+		this.wordEl.addEventListener('click', (evt) => {
+			evt.stopPropagation();
+			onPronounce?.();
+		});
 
 		this.answerEl = this.rootEl.createDiv({ cls: 'dial-word-flip-card-answer' });
 		this.ipaEl = this.answerEl.createDiv({ cls: 'dial-word-flip-card-ipa' });
