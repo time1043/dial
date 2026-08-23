@@ -37,14 +37,16 @@ lang: en-US        (optional, overrides the pronunciation language)
 - Use `<br>` inside a cell for multiple parts of speech or word forms.
 - Missing cells are fine; rows without a word are skipped with a notice.
 
-**Sessions and records**: the entry commands auto-start a study session
-(**End** closes it); quick links from the journey log open in browse mode,
-where marking stays disabled until you press **Start**. Each settled
-session is appended once to `_lib/vocabulary-journey/<book>.md` — one
-`# Epoch N` heading per round (a session started at word 1 opens a new
-epoch), one `## date time → time (duration · range)` section per session
-with the covered words and their mark state. Marks and resume positions
-live in plugin storage and carry over across epochs.
+**Sessions and records**: the entry commands auto-start a study session;
+pressing **End** settles it, closes the view and opens the book's journey
+file. Quick links inside the journey open in browse mode, where marking
+stays disabled until you press **Start** (browsing records nothing). Each
+settled session is appended once to `_lib/vocabulary-journey/<book>.md` —
+one `# Epoch N` heading per round (a session started at word 1 opens a new
+epoch), and per session a `## date time → time (duration)` heading with a
+trail list (resume link + start/end word numbers) followed by the covered
+words and their mark state. Marks and resume positions live in plugin
+storage and carry over across epochs.
 
 **Commands**: `Flip words` (resume the last book), `Flip words: from the
 active book`, `Flip words: choose a book`, `New word book` (creates a

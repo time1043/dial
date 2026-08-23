@@ -87,10 +87,15 @@ function formatSessionBlock(record: JourneySessionRecord): string {
 	const from = formatClock(record.startTime);
 	const to = formatClock(record.endTime);
 	const minutes = formatDurationMinutes(record.startTime, record.endTime);
-	const range = `${record.minIdx + 1} - ${record.maxIdx + 1}`;
 
 	const lines: string[] = [];
-	lines.push(`## ${formatDate(record.startTime)} ${from} → ${to} (${minutes}min · ${range})`);
+	lines.push(`## ${formatDate(record.startTime)} ${from} → ${to} (${minutes}min)`);
+	lines.push('');
+	// Session trail: resume link (lands on the last word reached) plus the
+	// word range covered, as list items directly under the session heading.
+	lines.push(`- ${buildResumeLink(record.bookPath, record.maxIdx)}`);
+	lines.push(`- Start word: ${record.startIdx + 1}`);
+	lines.push(`- End word: ${record.maxIdx + 1}`);
 	lines.push('');
 	lines.push('| # | word | ipa | meaning | forms | marked |');
 	lines.push('| - | ---- | --- | ------- | ----- | ------ |');
@@ -104,7 +109,7 @@ function formatSessionBlock(record: JourneySessionRecord): string {
  * Pure content builder: append one settled session to a journey file's
  * content. A session started at the first word opens a new epoch; anything
  * else is appended under the latest epoch (creating Epoch 1 if the file is
- * new). The resume link is only written when the file is created.
+ * new).
  */
 export function buildJourneyAppend(existing: string, record: JourneySessionRecord): string {
 	const epochs = countEpochs(existing);
@@ -112,9 +117,6 @@ export function buildJourneyAppend(existing: string, record: JourneySessionRecor
 	const epochNumber = epochs + 1;
 
 	const parts: string[] = [];
-	if (existing.trim().length === 0) {
-		parts.push(buildResumeLink(record.bookPath, record.maxIdx));
-	}
 	if (newEpoch) {
 		parts.push(`# Epoch ${epochNumber}`);
 	}
