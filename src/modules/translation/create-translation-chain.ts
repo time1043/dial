@@ -1,6 +1,7 @@
 import type { DialSettings } from '@/settings';
 
 import { AzureTranslateProvider } from './azure-translate-provider';
+import { BaiduTranslateProvider } from './baidu-translate-provider';
 import { DeeplTranslateProvider } from './deepl-translate-provider';
 import { orderTranslationEngines, TranslationChain } from './translation-chain';
 
@@ -18,6 +19,10 @@ export function createTranslationChain(getSettings: () => DialSettings): Transla
 		new DeeplTranslateProvider(() => {
 			const { deeplKey, deeplPlan } = getSettings();
 			return { key: deeplKey, plan: deeplPlan };
+		}),
+		new BaiduTranslateProvider(() => {
+			const { baiduTranslateAppId, baiduTranslateSecret } = getSettings();
+			return { appId: baiduTranslateAppId, secret: baiduTranslateSecret };
 		}),
 	];
 	return new TranslationChain(

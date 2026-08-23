@@ -46,6 +46,8 @@ export interface DialSettings {
 	azureRegion: string;
 	deeplKey: string;
 	deeplPlan: DeeplPlan;
+	baiduTranslateAppId: string;
+	baiduTranslateSecret: string;
 	vocabularyBucketPath: string;
 	wordFlipRevealMode: WordFlipRevealMode;
 }
@@ -72,11 +74,13 @@ export const DEFAULT_SETTINGS: DialSettings = {
 	translationEnabled: false,
 	translationSourceLang: 'en',
 	translationTargetLang: 'zh',
-	translationEngineOrder: ['azure-translate', 'deepl'],
+	translationEngineOrder: ['azure-translate', 'deepl', 'baidu-translate'],
 	azureTranslateKey: '',
 	azureRegion: '',
 	deeplKey: '',
 	deeplPlan: 'free',
+	baiduTranslateAppId: '',
+	baiduTranslateSecret: '',
 	vocabularyBucketPath: '_lib/vocabulary-bucket',
 	wordFlipRevealMode: 'hidden',
 };
@@ -561,6 +565,29 @@ export class DialSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					}),
 			);
+
+		new Setting(containerEl)
+			.setName('Baidu translate app ID')
+			.setDesc('App ID of the translate app you created on the open platform')
+			.addText((text) =>
+				text.setValue(this.plugin.settings.baiduTranslateAppId).onChange(async (value) => {
+					this.plugin.settings.baiduTranslateAppId = value.trim();
+					await this.plugin.saveSettings();
+					renderTranslationEngines();
+				}),
+			);
+
+		new Setting(containerEl)
+			.setName('Baidu translate secret')
+			.setDesc('Secret key paired with the app ID above')
+			.addText((text) => {
+				text.inputEl.type = 'password';
+				text.setValue(this.plugin.settings.baiduTranslateSecret).onChange(async (value) => {
+					this.plugin.settings.baiduTranslateSecret = value;
+					await this.plugin.saveSettings();
+					renderTranslationEngines();
+				});
+			});
 
 		new Setting(containerEl).setName('Lookup data').setHeading();
 
