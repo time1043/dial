@@ -68,12 +68,19 @@ export class TencentTranslateProvider implements TranslationProvider {
 		}
 
 		const data = JSON.parse(response.text) as {
-			Response?: { TranslatedText?: string; Error?: { Code?: string; Message?: string } };
+			Response?: {
+				TargetText?: string;
+				Error?: { Code?: string; Message?: string };
+			};
 		};
 		if (data.Response?.Error) {
 			throw new Error(`tencent translate error ${data.Response.Error.Code ?? 'unknown'}`);
 		}
-		const translation = data.Response?.TranslatedText;
+		// TMT's TextTranslate returns `TargetText` (NOT `TranslatedText` —
+		// that field does not exist on this action, and reading it always
+		// came back undefined, masking a real-world success as a "no
+		// translation returned" error).
+		const translation = data.Response?.TargetText;
 		if (!translation) {
 			throw new Error('tencent translate returned no translation');
 		}
