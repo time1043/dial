@@ -15,15 +15,19 @@ export const TENCENT_SPEECH_ID = 'tencent';
  * covers every service, and signup needs only a Chinese phone number plus
  * real-name verification (no international payment method).
  *
- * Standard English voices: 1050 = WeJack (male), 1051 = WeRose (female).
- * Word cards are overwhelmingly English, so unknown languages fall back to
- * an English voice rather than a Chinese one.
+ * Standard voices: 1050 = WeJack (male en), 1051 = WeRose (female en),
+ * 0 = 智美 (female zh). Unknown languages fall back per primary subtag:
+ * English-family tags get an English voice, everything else Chinese.
  */
 const TENCENT_VOICES: Record<string, number> = {
 	'en-US': 1051,
 	'en-GB': 1051,
+	'zh-CN': 0,
 };
-const DEFAULT_VOICE_TYPE = 1051;
+
+function tencentVoice(lang: string): number {
+	return TENCENT_VOICES[lang] ?? (lang.toLowerCase().startsWith('en') ? 1051 : 0);
+}
 
 function generateSessionId(now: () => Date): string {
 	return `${Math.floor(now().getTime())}-${Math.random().toString(36).slice(2, 10)}`;
@@ -60,7 +64,7 @@ export class TencentSpeechProvider implements SynthesizingSpeechProvider {
 		if (!credentials || !this.isAvailable()) {
 			throw new Error('tencent cloud is not configured');
 		}
-		const voiceType = TENCENT_VOICES[request.lang] ?? DEFAULT_VOICE_TYPE;
+		const voiceType = tencentVoice(request.lang);
 		const primaryLanguage = request.lang.toLowerCase().startsWith('en') ? 2 : 1;
 		const payload = JSON.stringify({
 			Text: request.word,

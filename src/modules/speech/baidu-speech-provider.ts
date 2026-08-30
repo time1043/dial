@@ -1,6 +1,6 @@
 import type { HttpFn } from '@/utils/http';
 
-import { playAudioBuffer } from '@/utils/audio';
+import { playAudioBuffer, assertAudioResponse } from '@/utils/audio';
 import { obsidianHttp } from '@/utils/http';
 
 import type { SpeakRequest, SynthesizingSpeechProvider } from './speech-provider';
@@ -101,10 +101,13 @@ export class BaiduSpeechProvider implements SynthesizingSpeechProvider {
 			method: 'GET',
 		});
 		// On success Baidu returns raw audio (audio/mpeg) with the bytes in
-		// arrayBuffer; on failure it returns a JSON error body instead.
+		// arrayBuffer; on failure it may return HTTP 200 with a JSON error
+		// body instead — playing that would be garbage, so throw and let
+		// the engine chain fall through.
 		if (response.status !== 200 || !response.arrayBuffer) {
 			throw new Error(`baidu tts failed (${response.status}) ${response.text.slice(0, 200)}`);
 		}
+		assertAudioResponse(response.arrayBuffer, 'baidu');
 		return response.arrayBuffer;
 	}
 

@@ -1,5 +1,6 @@
 import type { DialSettings } from '@/settings';
 
+import { AliyunTranslateProvider } from './aliyun-translate-provider';
 import { AzureTranslateProvider } from './azure-translate-provider';
 import { BaiduTranslateProvider } from './baidu-translate-provider';
 import { DeeplTranslateProvider } from './deepl-translate-provider';
@@ -28,6 +29,10 @@ export function createTranslationChain(getSettings: () => DialSettings): Transla
 		new TencentTranslateProvider(() => {
 			const { tencentSecretId, tencentSecretKey } = getSettings();
 			return { secretId: tencentSecretId, secretKey: tencentSecretKey };
+		}),
+		new AliyunTranslateProvider(() => {
+			const { aliyunAccessKeyId, aliyunAccessKeySecret } = getSettings();
+			return { accessKeyId: aliyunAccessKeyId, accessKeySecret: aliyunAccessKeySecret };
 		}),
 	];
 	return new TranslationChain(

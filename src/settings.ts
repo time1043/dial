@@ -90,7 +90,13 @@ export const DEFAULT_SETTINGS: DialSettings = {
 	translationEnabled: false,
 	translationSourceLang: 'en',
 	translationTargetLang: 'zh',
-	translationEngineOrder: ['azure-translate', 'deepl', 'baidu-translate', 'tencent-translate'],
+	translationEngineOrder: [
+		'azure-translate',
+		'deepl',
+		'baidu-translate',
+		'tencent-translate',
+		'aliyun-translate',
+	],
 	azureTranslateKey: '',
 	azureRegion: '',
 	deeplKey: '',
@@ -419,7 +425,9 @@ export class DialSettingTab extends PluginSettingTab {
 			.setDesc(
 				'Engines tried top to bottom when pronouncing a word. The dot shows ' +
 					'whether an engine works on this device; cloud engines light up once ' +
-					'their API key is set on the API keys tab. Use the arrows to reorder.',
+					'their API key is set on the API keys tab. Use the arrows to reorder. ' +
+					'The domestic engines (Tencent, Aliyun, Baidu) can pronounce English ' +
+					'and Chinese only.',
 			);
 		const speechListEl = speechEnginesSetting.descEl.createDiv({ cls: 'dial-speech-engines' });
 		const renderEngines = () =>
@@ -490,7 +498,8 @@ export class DialSettingTab extends PluginSettingTab {
 			.setName('Translation engines')
 			.setDesc(
 				'Engines tried top to bottom. Green = API key configured, yellow = needs ' +
-					'a key (set on the API keys tab). Use the arrows to reorder.',
+					'a key (set on the API keys tab). Use the arrows to reorder. Alibaba ' +
+					'shares the aliyun AccessKey pair with its speech engine.',
 			);
 		const translationListEl = translationEnginesSetting.descEl.createDiv({
 			cls: 'dial-speech-engines',

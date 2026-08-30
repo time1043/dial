@@ -100,11 +100,15 @@ export function createNlsTokenProvider(
 			throw new Error('alibaba cloud is not configured');
 		}
 		const timestamp = Math.floor(now().getTime() / 1000);
+		// POP RPC requires the timestamp as UTC ISO8601 (yyyy-MM-ddTHH:mm:ssZ,
+		// no millis) — an epoch number is rejected server-side.
+		const isoTimestamp = new Date(timestamp * 1000).toISOString().replace(/\.\d{3}Z$/, 'Z');
 		const params: RpcParams = {
 			Action: 'CreateToken',
-			Version: '2018-05-18',
+			Version: '2019-02-28',
+			RegionId: 'cn-shanghai',
 			AccessKeyId: credentials.accessKeyId,
-			Timestamp: String(timestamp),
+			Timestamp: isoTimestamp,
 			Format: 'JSON',
 			SignatureMethod: 'HMAC-SHA1',
 			SignatureVersion: '1.0',
