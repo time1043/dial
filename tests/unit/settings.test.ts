@@ -65,6 +65,7 @@ describe('DEFAULT_SETTINGS', () => {
 				'deepl',
 				'baidu-translate',
 				'tencent-translate',
+				'aliyun-translate',
 			],
 			azureTranslateKey: '',
 			azureRegion: '',
