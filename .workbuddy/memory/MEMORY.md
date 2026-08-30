@@ -41,15 +41,15 @@
 ## Word card UX (mvp/feat/word-card branch)
 
 - Card body: `.dial-word-card > (.dial-word-card-main, .dial-word-card-speak,
-  .dial-word-card-copy)`. Speak button is conditional on speech engine
+.dial-word-card-copy)`. Speak button is conditional on speech engine
   availability; copy button is always rendered (clipboard is browser-native).
 - Dismiss listeners live in `src/ui/word-card.ts`:
-  - Desktop: card `mouseenter`/`mouseleave` + document `scroll` (capture phase)
-    via `handleDocumentScroll`.
-  - Mobile: `attachDismissHandler()` wires `click`, `scroll`, `touchmove` to
-    `document` capture-phase; all three dismiss when the target is outside
-    the card and outside the word element. `touchmove` is needed because
-    mobile swipes don't always fire `scroll` on the first finger move.
+    - Desktop: card `mouseenter`/`mouseleave` + document `scroll` (capture phase)
+      via `handleDocumentScroll`.
+    - Mobile: `attachDismissHandler()` wires `click`, `scroll`, `touchmove` to
+      `document` capture-phase; all three dismiss when the target is outside
+      the card and outside the word element. `touchmove` is needed because
+      mobile swipes don't always fire `scroll` on the first finger move.
 - Translation chain failures are **silent** (no `new Notice`) — only logged
   to console + `_lib/logs/YYYY-MM.jsonl` (`kind:"translation"`, `source:"none"`,
   `ok:false`). The toast was removed because benign "no translation returned"
@@ -80,16 +80,16 @@
   loose branch ref was deleted.
 - For a LINKED WORKTREE, the shared branch ref lives in the MAIN repo's
   `.git/refs/heads/<branch>`, NOT in the worktree's own gitdir. So:
-  - Do NOT write to `<git rev-parse --git-dir>/refs/heads/...` (that fails:
-    ".git: Not a directory" because worktree `.git` is a pointer file).
-  - Write to `<git rev-parse --git-common-dir>/refs/heads/<branch>`
-    (this is the main repo's `.git`).
+    - Do NOT write to `<git rev-parse --git-dir>/refs/heads/...` (that fails:
+      ".git: Not a directory" because worktree `.git` is a pointer file).
+    - Write to `<git rev-parse --git-common-dir>/refs/heads/<branch>`
+      (this is the main repo's `.git`).
 - Recovery (verified working):
-  ```bash
-  FULLHASH=<hash from commit line>
-  COMMON=$(git rev-parse --git-common-dir)
-  mkdir -p "$COMMON/refs/heads/mvp/feat"
-  printf '%s\n' "$FULLHASH" > "$COMMON/refs/heads/mvp/feat/word-card"
-  ```
+    ```bash
+    FULLHASH=<hash from commit line>
+    COMMON=$(git rev-parse --git-common-dir)
+    mkdir -p "$COMMON/refs/heads/mvp/feat"
+    printf '%s\n' "$FULLHASH" > "$COMMON/refs/heads/mvp/feat/word-card"
+    ```
 - **STANDING RULE (2026-08-23, user explicit):** NEVER run `git commit` for
   this user. Only write/draft the commit message; the user commits themselves.
