@@ -419,7 +419,9 @@ export class DialSettingTab extends PluginSettingTab {
 			.setDesc(
 				'Engines tried top to bottom when pronouncing a word. The dot shows ' +
 					'whether an engine works on this device; cloud engines light up once ' +
-					'their API key is set on the API keys tab. Use the arrows to reorder.',
+					'their API key is set on the API keys tab. Use the arrows to reorder. ' +
+					'The domestic engines (Tencent, Aliyun, Baidu) can pronounce English ' +
+					'and Chinese only.',
 			);
 		const speechListEl = speechEnginesSetting.descEl.createDiv({ cls: 'dial-speech-engines' });
 		const renderEngines = () =>

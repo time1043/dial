@@ -4,6 +4,7 @@ import type { HttpTextRequest, HttpTextResponse } from '@/utils/http';
 
 import { AliyunSpeechProvider } from '@/modules/speech/aliyun-speech-provider';
 import { BaiduSpeechProvider } from '@/modules/speech/baidu-speech-provider';
+import { TencentSpeechProvider } from '@/modules/speech/tencent-speech-provider';
 import { assertAudioResponse } from '@/utils/audio';
 
 const FIXED_NOW = () => new Date('2026-08-23T12:00:00Z');
@@ -150,5 +151,72 @@ describe('AliyunSpeechProvider', () => {
 		await expect(provider.synthesize(REQUEST)).rejects.toThrow(
 			/JSON error body: Invalid token/,
 		);
+	});
+});
+
+describe('TencentSpeechProvider', () => {
+	function audioBase64(): string {
+		return btoa(String.fromCharCode(...new Uint8Array([0x49, 0x44, 0x33])));
+	}
+
+	function makeProvider() {
+		return new TencentSpeechProvider(
+			() => ({ secretId: 'sid', secretKey: 'skey' }),
+			async () => ({
+				status: 200,
+				text: JSON.stringify({ Response: { Audio: audioBase64(), SessionId: 's' } }),
+			}),
+			FIXED_NOW,
+		);
+	}
+
+	async function sentPayload(lang: string): Promise<Record<string, unknown>> {
+		let sent: HttpTextRequest | undefined;
+		const provider = new TencentSpeechProvider(
+			() => ({ secretId: 'sid', secretKey: 'skey' }),
+			async (req) => {
+				sent = req;
+				return {
+					status: 200,
+					text: JSON.stringify({ Response: { Audio: audioBase64() } }),
+				};
+			},
+			FIXED_NOW,
+		);
+		await provider.synthesize({ word: 'test', lang });
+		return JSON.parse(sent?.body ?? '{}') as Record<string, unknown>;
+	}
+
+	it('uses the Chinese voice with the Chinese primary language for zh', async () => {
+		const payload = await sentPayload('zh-CN');
+		expect(payload.VoiceType).toBe(0);
+		expect(payload.PrimaryLanguage).toBe(1);
+		expect(payload.Codec).toBe('mp3');
+		expect(payload.Text).toBe('test');
+	});
+
+	it('keeps the English voice for en and falls back per primary subtag', async () => {
+		expect((await sentPayload('en-US')).VoiceType).toBe(1051);
+		expect((await sentPayload('en-GB')).VoiceType).toBe(1051);
+		expect((await sentPayload('de-DE')).VoiceType).toBe(0);
+	});
+
+	it('surfaces API error codes instead of decoding empty audio', async () => {
+		const provider = new TencentSpeechProvider(
+			() => ({ secretId: 'sid', secretKey: 'skey' }),
+			async () => ({
+				status: 200,
+				text: JSON.stringify({ Response: { Error: { Code: 'FailedOperation' } } }),
+			}),
+			FIXED_NOW,
+		);
+		await expect(provider.synthesize({ word: 'x', lang: 'en-US' })).rejects.toThrow(
+			/tencent tts error FailedOperation/,
+		);
+	});
+
+	it('reports unavailable without credentials', () => {
+		expect(new TencentSpeechProvider(() => null).isAvailable()).toBe(false);
+		expect(makeProvider().isAvailable()).toBe(true);
 	});
 });
