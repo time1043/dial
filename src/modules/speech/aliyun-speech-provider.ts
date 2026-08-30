@@ -2,7 +2,7 @@ import type { NlsTokenProvider } from '@/utils/aliyun';
 import type { HttpFn } from '@/utils/http';
 
 import { createNlsTokenProvider } from '@/utils/aliyun';
-import { playAudioBuffer } from '@/utils/audio';
+import { playAudioBuffer, assertAudioResponse } from '@/utils/audio';
 import { obsidianHttp } from '@/utils/http';
 
 import type { SpeakRequest, SynthesizingSpeechProvider } from './speech-provider';
@@ -88,9 +88,12 @@ export class AliyunSpeechProvider implements SynthesizingSpeechProvider {
 			url: `https://nls-gateway-cn-shanghai.aliyuncs.com/stream/v1/tts?${params.toString()}`,
 			method: 'GET',
 		});
+		// The gateway returns HTTP 200 with a JSON body when synthesis
+		// fails (bad token, quota, …) — throw so the chain falls through.
 		if (response.status !== 200 || !response.arrayBuffer) {
 			throw new Error(`alibaba tts failed (${response.status})`);
 		}
+		assertAudioResponse(response.arrayBuffer, 'alibaba');
 		return response.arrayBuffer;
 	}
 
